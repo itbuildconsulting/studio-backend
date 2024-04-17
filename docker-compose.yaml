@@ -1,0 +1,21 @@
+version: '3.8'
+
+services:
+  db:
+    image: mysql:5.7
+    restart: always
+    environment:
+      MYSQL_DATABASE: 'studio_DB'
+      MYSQL_USER: 'studio_USER'
+      MYSQL_PASSWORD: 'studio_PASSWORD'
+      MYSQL_ROOT_PASSWORD: 'cde3@WSXzaq1'
+    ports:
+      - '3306:3306'
+
+  app:
+    build: .
+    restart: always
+    ports:
+      - '3000:3000'
+    depends_on:
+      - db
