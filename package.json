@@ -4,13 +4,15 @@
   "description": "Descrição do seu projeto",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "nodemon ./bin/server.js"
   },
   "keywords": [],
-  "author": "Seu Nome",
+  "author": "IT Build",
   "license": "ISC",
   "dependencies": {
-    "express": "^4.17.1",
-    "mysql2": "^2.3.0"
-  }
+    "express": "^4.19.2",
+    "mysql2": "^3.9.7"
+  },
+  "devDependencies": {}
 }

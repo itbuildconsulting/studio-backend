@@ -1,3 +1,3 @@
 docker-compose up
 
-
+npm install -g nodemon
