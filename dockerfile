@@ -15,4 +15,4 @@ RUN npm install
 EXPOSE 3000
 
 # Comando para iniciar sua aplicação quando o contêiner for iniciado
-CMD ["npm", "start"]
+#CMD ["npm", "start"]
