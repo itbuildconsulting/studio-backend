@@ -1,5 +1,5 @@
 const executeQueryWithoutTransaction = require('../db/database');
-const { sqlQueries } = require('../sqls/sqls');
+const { sqlQueries } = require('../sqls/sqls.js');
 
 const personCommand = {
     async showAllPerson() {
