@@ -1,6 +1,6 @@
 import express from "express";
-import SeedController from './src/controllers/SeedController';
-import PersonController from './src/controllers/PersonController';
+import SeedController from './controllers/SeedController';
+import PersonController from './controllers/PersonController';
 
 const routes = express.Router();
 //const upload = multer(uploadConfig);
