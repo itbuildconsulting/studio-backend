@@ -1,4 +1,6 @@
-const Sequelize = require('sequelize');
+const { Sequelize, DataTypes } = require('sequelize');
+const bcrypt = require('bcrypt');
+
 const sequelize = new Sequelize('studio_DB', 'studio_USER', 'studio_PASSWORD', {
     dialect: 'mysql', // Or your dialect (e.g., 'postgres')
     host: 'localhost', // Optional, defaults to localhost
@@ -6,18 +8,30 @@ const sequelize = new Sequelize('studio_DB', 'studio_USER', 'studio_PASSWORD', {
     // Other Sequelize options...
   });
 
-const Person = sequelize.define('person', {
+const Person = sequelize.define('Person', {
   name: {
-    type: Sequelize.STRING,
+    type: DataTypes.STRING,
     allowNull: false
   },
   email: {
-    type: Sequelize.STRING,
+    type: DataTypes.STRING,
     unique: true,
     validate: {
       isEmail: true
     }
+  },
+  password: {
+    type: DataTypes.STRING,
+    allowNull: false
   }
-});
+}, {
+  hooks: {
+    beforeCreate: async (person) => {
+      // Hash da senha antes de salvar no banco de dados
+      const hashedPassword = await bcrypt.hash(person.password, 10);
+      
+      person.password = hashedPassword;
+    }
+  }}, {tableName: 'persons'});
 
 module.exports = Person;
