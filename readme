@@ -2,5 +2,6 @@ docker-compose up
 
 npm install nodemon
 npm install bcrypt
+npm install jsonwebtoken
 
 npm start

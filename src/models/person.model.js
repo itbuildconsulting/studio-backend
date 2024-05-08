@@ -13,6 +13,10 @@ const Person = sequelize.define('Person', {
     type: DataTypes.STRING,
     allowNull: false
   },
+  phone: {
+    type: DataTypes.STRING,
+    allowNull: true
+  },
   email: {
     type: DataTypes.STRING,
     unique: true,
@@ -23,7 +27,31 @@ const Person = sequelize.define('Person', {
   password: {
     type: DataTypes.STRING,
     allowNull: false
-  }
+  },
+  address: {
+    type: DataTypes.STRING,
+    allowNull: true
+  },
+  height: {
+    type: DataTypes.INTEGER,
+    allowNull: true
+  },
+  weight: {
+    type: DataTypes.INTEGER,
+    allowNull: true
+  },
+  other: {
+    type: DataTypes.STRING,
+    allowNull: true
+  },
+  rule: {
+    type: DataTypes.STRING,
+    allowNull: true
+  },
+  active: {
+    type: DataTypes.BOOLEAN,
+    allowNull: false
+  },
 }, {
   hooks: {
     beforeCreate: async (person) => {

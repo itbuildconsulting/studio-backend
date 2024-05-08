@@ -1,0 +1,43 @@
+const express = require('express');
+const jwt = require('jsonwebtoken');
+const { Person } = require('./models'); // Importe o modelo Person que você definiu
+
+const router = express.Router();
+
+// Middleware para validar o token em todas as rotas protegidas
+const authenticateToken = (req, res, next) => {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+
+  if (!token) {
+    return res.status(401).json({ error: 'Token de autorização não fornecido' });
+  }
+
+  jwt.verify(token, 'sua_chave_secreta_aqui', (err, decoded) => {
+    if (err) {
+      return res.status(403).json({ error: 'Falha ao autenticar o token' });
+    }
+    req.userId = decoded.id;
+    next();
+  });
+};
+
+// Rota protegida que requer autenticação
+router.get('/recurso-protegido', authenticateToken, async (req, res) => {
+  try {
+    // Use req.userId para realizar operações relacionadas ao usuário autenticado
+    const userId = req.userId;
+    const person = await Person.findByPk(userId);
+
+    if (!person) {
+      return res.status(404).json({ error: 'Usuário não encontrado' });
+    }
+
+    return res.status(200).json({ message: 'Acesso autorizado', user: person });
+  } catch (error) {
+    console.error('Erro ao acessar recurso protegido:', error);
+    return res.status(500).json({ error: 'Erro interno do servidor' });
+  }
+});
+
+module.exports = router;
