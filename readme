@@ -5,3 +5,28 @@ npm install bcrypt
 npm install jsonwebtoken
 
 npm start
+
+
+
+
+---------------------------
+
+curl --location 'localhost:3001/persons/' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+  "name": "João",
+  "email": "joao@example.com",
+  "password":"testing",
+  "active": true
+}'
+
+----------------------------------
+
+curl --location 'localhost:3001/login' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+  "email": "joao@example.com",
+  "password":"testing"
+}'
+
+-----------------------------------
