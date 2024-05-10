@@ -1,5 +1,6 @@
 const { password } = require('../config/database.js');
-const Person = require('../models/person.model.js')
+const Person = require('../models/person.model.js');
+const validateToken = require('../core/token/authenticateToken.js');
 
 // CREATE
 exports.create = async (req, res, next) => {
@@ -16,8 +17,11 @@ exports.create = async (req, res, next) => {
 // READ
 exports.getAll = async (req, res, next) => {
     try {
-        const persons = await Person.findAll();
-        res.status(200).json(persons);
+        validateToken(req, res, () => {
+            Person.findAll().then((persons) => {
+              res.status(200).json(persons);
+            });
+          });
     } catch (error) {
         console.error('Erro ao buscar pessoas:', error);
         res.status(500).send('Erro ao buscar pessoas');

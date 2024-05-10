@@ -1,7 +1,7 @@
 const { password } = require('../config/database.js');
 const Person = require('../models/person.model.js');
 const bcrypt = require('bcrypt');
-const jwt = require('jsonwebtoken');
+const generateAuthToken = require('../core/token/generateAuthToken.js');
 
 //Login
 exports.login = async (req, res) => {
@@ -21,7 +21,7 @@ exports.login = async (req, res) => {
             return res.status(401).json({ error: 'Credenciais inválidas' });
         }
 
-        const token = jwt.sign({ id: person.id, email: person.email }, '6a78e7df-0a0d-4a3f-897f-de1ae0f5b9c3', { expiresIn: '1h' });
+        const token = generateAuthToken(person);
 
         return res.status(200).json({ token, expiresIn: '1h', name: person.name });
     } catch (error) {
