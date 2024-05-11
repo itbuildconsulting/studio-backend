@@ -1,43 +1,39 @@
-const personCommand = require('../core/business/personCommand.js'); // Importe o módulo que contém a função createDataBase()
-const person = require('../models/person.model.js')
+const xbank = require('../models/bank.model.js')
+const xclass = require('../models/class.model.js')
+const xperson = require('../models/person.model.js')
+const xplace = require('../models/place.model.js')
+const xproduct = require('../models/product.model.js')
+const xproductType = require('../models/productType.model.js')
 
 // Define as funções do controlador
 const seedController = {
     async post(req, res, next) {
         try {
-            await personCommand.createDataBase(); // Chame createDataBase() antes de lidar com a requisição POST
-            res.status(201).send('Requisição recebida com sucesso!');
-        } catch (error) {
-            console.error('Erro:', error);
-            res.status(500).send('Erro ao processar a requisição.');
-        }
-    },
-    async put(req, res, next) {
-        try {
-            let id = req.params.id;
-            await personCommand.createDataBase(); // Chame createDataBase() antes de lidar com a requisição PUT
-            res.status(201).send(`Requisição recebida com sucesso! ${id}`);
-        } catch (error) {
-            console.error('Erro:', error);
-            res.status(500).send('Erro ao processar a requisição.');
-        }
-    },
-    async delete(req, res, next) {
-        try {
-            let id = req.params.id;
-            await personCommand.createDataBase(); // Chame createDataBase() antes de lidar com a requisição PUT
-            res.status(201).send(`Requisição recebida com sucesso! ${id}`);
-        } catch (error) {
-            console.error('Erro:', error);
-            res.status(500).send('Erro ao processar a requisição.');
+            await Person.sync();
+            await ProductType.sync();
+            await Place.sync();
+            await Product.sync();
+            await Class.sync();
+            await Bank.sync();
+
+            res.status(201).send('All models synchronized with database');
+        } catch (err) {
+            res.status(500).send('Error syncing models with database: ' + err);
         }
     },
     async get(req, res, next) {
-            person.sync().then(() => {
-                res.status(201).send('Model synchronized with database');})
-            .catch((err) => {
-                res.status(500).send('Error syncing model with database:', err);
-            });
+        try {
+            await Person.sync();
+            await ProductType.sync();
+            await Place.sync();
+            await Product.sync();
+            await Class.sync();
+            await Bank.sync();
+            
+            res.status(201).send('All models synchronized with database');
+        } catch (err) {
+            res.status(500).send('Error syncing models with database: ' + err);
+        }
     },
 };
 
