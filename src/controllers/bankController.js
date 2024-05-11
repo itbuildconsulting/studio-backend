@@ -5,12 +5,12 @@ const validateToken = require('../core/token/authenticateToken.js');
 // CREATE
 exports.create = async (req, res, next) => {
     try {
-        const { name, email, password, active } = req.body;
-        const newBank = await Bank.create({ name, email, password, active });
+        const { value, config, active } = req.body;
+        const newBank = await Bank.create({ value, config, active });
         res.status(201).json(newBank);
     } catch (error) {
-        console.error('Erro ao criar pessoa:', error);
-        res.status(500).send('Erro ao criar pessoa');
+        console.error('Erro ao criar bank:', error);
+        res.status(500).send('Erro ao criar bank');
     }
 };
 
@@ -23,8 +23,8 @@ exports.getAll = async (req, res, next) => {
             });
           });
     } catch (error) {
-        console.error('Erro ao buscar pessoas:', error);
-        res.status(500).send('Erro ao buscar pessoas');
+        console.error('Erro ao buscar banks:', error);
+        res.status(500).send('Erro ao buscar banks');
     }
 };
 
@@ -33,12 +33,12 @@ exports.getById = async (req, res, next) => {
         const id = req.params.id;
         const Bank = await Bank.findByPk(id);
         if (!Bank) {
-            return res.status(404).send('Pessoa não encontrada');
+            return res.status(404).send('bank não encontrada');
         }
         res.status(200).json(Bank);
     } catch (error) {
-        console.error('Erro ao buscar pessoa:', error);
-        res.status(500).send('Erro ao buscar pessoa');
+        console.error('Erro ao buscar bank:', error);
+        res.status(500).send('Erro ao buscar bank');
     }
 };
 
@@ -49,15 +49,15 @@ exports.update = async (req, res, next) => {
         const { name, email } = req.body;
         const Bank = await Bank.findByPk(id);
         if (!Bank) {
-            return res.status(404).send('Pessoa não encontrada');
+            return res.status(404).send('bank não encontrada');
         }
         Bank.name = name;
         Bank.email = email;
         await Bank.save();
         res.status(200).json(Bank);
     } catch (error) {
-        console.error('Erro ao atualizar pessoa:', error);
-        res.status(500).send('Erro ao atualizar pessoa');
+        console.error('Erro ao atualizar bank:', error);
+        res.status(500).send('Erro ao atualizar bank');
     }
 };
 
@@ -67,12 +67,12 @@ exports.delete = async (req, res, next) => {
         const id = req.params.id;
         const Bank = await Bank.findByPk(id);
         if (!Bank) {
-            return res.status(404).send('Pessoa não encontrada');
+            return res.status(404).send('bank não encontrada');
         }
         await Bank.destroy();
-        res.status(200).send('Pessoa excluída com sucesso');
+        res.status(200).send('bank excluída com sucesso');
     } catch (error) {
-        console.error('Erro ao excluir pessoa:', error);
-        res.status(500).send('Erro ao excluir pessoa');
+        console.error('Erro ao excluir bank:', error);
+        res.status(500).send('Erro ao excluir bank');
     }
 };
