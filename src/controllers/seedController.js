@@ -23,12 +23,12 @@ const seedController = {
     },
     async get(req, res, next) {
         try {
-            await Person.sync();
-            await ProductType.sync();
-            await Place.sync();
-            await Product.sync();
-            await Class.sync();
-            await Bank.sync();
+            await xproductType.sync();
+            await xplace.sync();
+            await xperson.sync();
+            await xproduct.sync();
+            await xclass.sync();
+            await xbank.sync();
             
             res.status(201).send('All models synchronized with database');
         } catch (err) {

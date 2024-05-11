@@ -6,7 +6,7 @@ npm install jsonwebtoken
 
 npm start
 
-
+localhost:3001/seed >> para iniciar o banco de dados -- Criar as tabelas.
 
 
 ---------------------------

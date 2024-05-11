@@ -50,4 +50,4 @@ Class.belongsToMany(Person, { through: 'PersonClass' });
 Class.belongsTo(Person, { foreignKey: 'professorId' });
 
 
-module.exports = Product;
+module.exports = Class;

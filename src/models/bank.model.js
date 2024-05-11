@@ -24,7 +24,7 @@ const Bank = sequelize.define('bank', {
   },
 }, {tableName: 'bank'});
 
-Class.belongsTo(Product, { foreignKey: 'personId' });
+Bank.belongsTo(Person, { foreignKey: 'personId' });
 
 
-module.exports = Product;
+module.exports = Bank;
