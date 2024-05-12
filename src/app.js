@@ -1,7 +1,10 @@
 const express = require('express');
+const swaggerSetup = require('./swagger');
 const app = express();
+swaggerSetup(app);
 const router = express.Router();
 app.use(express.json());
+
 //Rotas
 const bankRoute = require('./routes/bankRoute');
 const classRoute = require('./routes/classRoute');

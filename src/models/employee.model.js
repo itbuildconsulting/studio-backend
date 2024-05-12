@@ -1,11 +1,6 @@
 const { Sequelize, DataTypes } = require('sequelize');
 const bcrypt = require('bcrypt');
-
-const sequelize = new Sequelize('studio_DB', 'studio_USER', 'studio_PASSWORD', {
-    dialect: 'mysql',
-    host: 'localhost',
-    port: 3306,
-  });
+const sequelize = require('../core/db/database.js');
 
 const Employee = sequelize.define('Employee', {
   name: {
