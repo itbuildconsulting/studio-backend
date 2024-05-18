@@ -5,8 +5,9 @@ const validateToken = require('../core/token/authenticateToken.js');
 // CREATE
 module.exports.create = async (req, res, next) => {
     try {
-        const { name, cost, active } = req.body;
-        const newProduct = await Product.create({ name, cost, active });
+        const { name, cost, credit, active, productTypeId, placeId } = req.body;
+        const { costPerClass } = cost / credit;
+        const newProduct = await Product.create({ name, cost, credit, costPerClass, active, productTypeId, placeId });
         res.status(201).json(newProduct);
     } catch (error) {
         console.error('Erro ao criar produto:', error);

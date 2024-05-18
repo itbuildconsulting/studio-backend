@@ -3,6 +3,7 @@ docker-compose up
 npm install nodemon
 npm install bcrypt
 npm install jsonwebtoken
+npm install swagger-ui-express swagger-jsdoc
 
 npm start
 
@@ -33,3 +34,15 @@ curl --location 'localhost:3001/login' \
 
 curl --location 'localhost:3001/persons' \
 --header 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwiZW1haWwiOiJqb2FvQGV4YW1wbGUuY29tIiwiaWF0IjoxNzE1Mzc5MjA3LCJleHAiOjE3MTUzODI4MDd9._JRLURrF0Skx5Fdqt9VBbfYppYsBD2EyUtneYTElQYM'
+
+-----------------------------
+
+curl --location 'localhost:3001/places/' \
+--header 'Content-Type: application/json' \
+--data '{
+    "name":"teste",
+    "active":true
+}'
+
+------------------------------
+
