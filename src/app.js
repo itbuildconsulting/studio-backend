@@ -1,7 +1,6 @@
 const express = require('express');
-const swaggerSetup = require('./swagger');
+const swaggerSetup = require('./swagger.js');
 const app = express();
-swaggerSetup(app);
 const router = express.Router();
 app.use(express.json());
 
@@ -25,5 +24,7 @@ app.use('/places', placeRoute);
 app.use('/products', productRoute);
 app.use('/productTypes', productTypeRoute);
 app.use('/seed', seedRoute);
+
+swaggerSetup(app);
 
 module.exports = app;

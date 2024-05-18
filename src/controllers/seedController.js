@@ -9,16 +9,16 @@ const xproductType = require('../models/productType.model.js')
 const seedController = {
     async post(req, res, next) {
         try {
-            await Person.sync();
-            await ProductType.sync();
-            await Place.sync();
-            await Product.sync();
-            await Class.sync();
-            await Bank.sync();
+            await xproductType.sync();
+            await xplace.sync();
+            await xperson.sync();
+            await xproduct.sync();
+            await xclass.sync();
+            await xbank.sync();
 
             res.status(201).send('All models synchronized with database');
         } catch (err) {
-            res.status(500).send('Error syncing models with database: ' + err);
+            res.status(400).send('Error syncing models with database: ' + err);
         }
     },
     async get(req, res, next) {

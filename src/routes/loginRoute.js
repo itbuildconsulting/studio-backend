@@ -4,6 +4,13 @@ const loginController = require('../controllers/loginController')
 
 /**
  * @swagger
+ * tags:
+ *   name: Auth
+ *   description: Operações de autenticação
+ */
+
+/**
+ * @swagger
  * /login:
  *   post:
  *     summary: Realiza o login do usuário
@@ -15,7 +22,7 @@ const loginController = require('../controllers/loginController')
  *           schema:
  *             type: object
  *             properties:
- *               username:
+ *               email:
  *                 type: string
  *               password:
  *                 type: string
