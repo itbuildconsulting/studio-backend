@@ -1,6 +1,6 @@
 const { password } = require('../config/database.js');
 const Person = require('../models/person.model.js');
-const bcrypt = require('bcrypt');
+const bcrypt = require('bcryptjs');
 const generateAuthToken = require('../core/token/generateAuthToken.js');
 
 module.exports.login = async (req, res) => {
