@@ -23,6 +23,19 @@ const controller = require('../controllers/seedController')
  */
 router.post('/', controller.post);
 
-//router.get('/', controller.get);
+/**
+ * @swagger
+ * /seed/addFirstData:
+ *   post:
+ *     summary: Cria o primeiro usuário
+ *     tags: [Seed]
+ *     responses:
+ *       200:
+ *         description: Usuário criado
+ *       401:
+ *         description: Erro ao criar usuário
+ */
+router.post('/addFirstData', controller.addFirstData);
+
 
 module.exports = router;

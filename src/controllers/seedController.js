@@ -21,18 +21,13 @@ const seedController = {
             res.status(400).send('Error syncing models with database: ' + err);
         }
     },
-    async get(req, res, next) {
+    async addFirstData(req, res, next) {
         try {
-            await xproductType.sync();
-            await xplace.sync();
-            await xperson.sync();
-            await xproduct.sync();
-            await xclass.sync();
-            await xbank.sync();
+            await xperson.create({ "name":"joao", "email":"joao@example.com", "password":"testing", "active":"true" });
             
             res.status(201).send('All models synchronized with database');
         } catch (err) {
-            res.status(500).send('Error syncing models with database: ' + err);
+            res.status(400).send(err);
         }
     },
 };

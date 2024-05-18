@@ -10,10 +10,22 @@ const options = {
       version: '1.0.0',
       description: 'Documentação da API',
     },
+    components: {
+      securitySchemes: {
+        bearerAuth: {
+          type: 'http',
+          scheme: 'bearer',
+          bearerFormat: 'JWT', // Opcional
+        },
+      },
+    },
+    security: [
+      {
+        bearerAuth: [],
+      },
+    ],
   },
-  apis: [
-    path.join(__dirname, './routes/*.js')
-  ],
+  apis: [path.join(__dirname, './routes/*.js')],
 };
 
 const specs = swaggerJsdoc(options);
