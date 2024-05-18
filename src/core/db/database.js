@@ -1,10 +1,8 @@
 const { Sequelize } = require('sequelize');
 
 const sequelize = new Sequelize('studio_DB', 'studio_USER', 'studio_PASSWORD', {
-    dialect: 'mysql',
-    dialectModule: require('mysql2'),
     host: 'localhost',
-    port: 3306,
-});
-
+    dialect: 'mysql'
+  });
+  
 module.exports = sequelize;
