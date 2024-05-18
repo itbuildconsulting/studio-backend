@@ -3,7 +3,7 @@ const Person = require('../models/person.model.js');
 const validateToken = require('../core/token/authenticateToken.js');
 
 // CREATE
-exports.create = async (req, res, next) => {
+module.exports.create = async (req, res, next) => {
     try {
         const { name, email, password, active } = req.body;
         const newPerson = await Person.create({ name, email, password, active });
@@ -15,7 +15,7 @@ exports.create = async (req, res, next) => {
 };
 
 // READ
-exports.getAll = async (req, res, next) => {
+module.exports.getAll = async (req, res, next) => {
     try {
         validateToken(req, res, () => {
             Person.findAll().then((persons) => {
@@ -28,7 +28,7 @@ exports.getAll = async (req, res, next) => {
     }
 };
 
-exports.getById = async (req, res, next) => {
+module.exports.getById = async (req, res, next) => {
     try {
         const id = req.params.id;
         const person = await Person.findByPk(id);
@@ -43,7 +43,7 @@ exports.getById = async (req, res, next) => {
 };
 
 // UPDATE
-exports.update = async (req, res, next) => {
+module.exports.update = async (req, res, next) => {
     try {
         const id = req.params.id;
         const { name, email } = req.body;
@@ -62,7 +62,7 @@ exports.update = async (req, res, next) => {
 };
 
 // DELETE
-exports.delete = async (req, res, next) => {
+module.exports.delete = async (req, res, next) => {
     try {
         const id = req.params.id;
         const person = await Person.findByPk(id);

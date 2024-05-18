@@ -3,8 +3,7 @@ const Person = require('../models/person.model.js');
 const bcrypt = require('bcrypt');
 const generateAuthToken = require('../core/token/generateAuthToken.js');
 
-//Login
-exports.login = async (req, res) => {
+module.exports.login = async (req, res) => {
     const {email, password} = req.body;
 
     try {
@@ -29,4 +28,4 @@ exports.login = async (req, res) => {
         return res.status(500).json({ error: 'Erro interno do servidor' });
     }
 
-    }
+    };
