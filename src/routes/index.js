@@ -22,8 +22,11 @@ const router = express.Router();
  */
 router.get('/', function (req, res, next) {
     res.status(200).send({
-        title: "Node Express API",
-        version: "0.0.1"
+        title: "Studio Backend",
+        version: "1.0.0",
+        node: {
+            version: "20.13.1"
+        }
     });
 });
 
