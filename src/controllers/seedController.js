@@ -23,9 +23,9 @@ const seedController = {
     },
     async addFirstData(req, res, next) {
         try {
-            await xperson.create({ "name":"joao", "email":"joao@example.com", "password":"testing", "active":"true" });
+            await xperson.create({ "name":"admin", "email":"admin@example.com", "password":"4dm1n!54321", "active":"true" });
             
-            res.status(201).send('All models synchronized with database');
+            res.status(201).send('first user created');
         } catch (err) {
             res.status(400).send(err);
         }
