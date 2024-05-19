@@ -4,30 +4,21 @@ const router = express.Router();
 /**
  * @swagger
  * tags:
- *   name: Persons
- *   description: Operações com pessoas
+ *   name: Index
+ *   description: Dados do sistema
  */
 
 /**
  * @swagger
- * /persons:
+ * /:
  *   get:
- *     summary: Retorna a lista de pessoas
- *     tags: [Persons]
+ *     summary: Info Sistema
+ *     tags: [Index]
  *     responses:
  *       200:
- *         description: Lista de pessoas
- *         content:
- *           application/json:
- *             schema:
- *               type: array
- *               items:
- *                 type: object
- *                 properties:
- *                   id:
- *                     type: integer
- *                   name:
- *                     type: string
+ *         description: Sistema funcionando
+ *       401:
+ *         description: Erro do sistema
  */
 router.get('/', function (req, res, next) {
     res.status(200).send({
@@ -35,4 +26,5 @@ router.get('/', function (req, res, next) {
         version: "0.0.1"
     });
 });
+
 module.exports = router;
