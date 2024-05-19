@@ -37,5 +37,4 @@ router.post('/', controller.post);
  */
 router.post('/addFirstData', controller.addFirstData);
 
-
 module.exports = router;
