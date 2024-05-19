@@ -5,34 +5,36 @@ const bankController = require('../controllers/bankController')
 /**
  * @swagger
  * tags:
- *   name: Persons
- *   description: Operações com pessoas
+ *   name: Bank
+ *   description: Operações Financeiras
  */
 
 /**
  * @swagger
- * /persons:
- *   get:
- *     summary: Retorna a lista de pessoas
- *     tags: [Persons]
+ * /bank/{personId}:
+ *   post:
+ *     summary: criar lançamento financeiro. Only Authenticated
+ *     tags: [Bank]
  *     responses:
  *       200:
- *         description: Lista de pessoas
- *         content:
- *           application/json:
- *             schema:
- *               type: array
- *               items:
- *                 type: object
- *                 properties:
- *                   id:
- *                     type: integer
- *                   name:
- *                     type: string
+ *         description: lançamento financeiro criado
+ *       401:
+ *         description: erro ao criar lançamento financeiro
  */
 router.post('/', bankController.create);
-router.get('/', bankController.getAll);
+
+/**
+ * @swagger
+ * /bank/{personId}:
+ *   get:
+ *     summary: lista lançamento financeiro. Only Authenticated
+ *     tags: [Bank]
+ *     responses:
+ *       200:
+ *         description: lançamento financeiro listado
+ *       401:
+ *         description: erro ao listar lançamento financeiro
+ */
 router.get('/:id', bankController.getById);
-router.put('/:id', bankController.update);
-router.delete('/:id', bankController.delete);
+
 module.exports = router;

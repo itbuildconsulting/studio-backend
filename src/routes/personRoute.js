@@ -6,34 +6,78 @@ const personController = require('../controllers/personController')
 /**
  * @swagger
  * tags:
- *   name: Persons
- *   description: Operações com pessoas
+ *   name: Person
+ *   description: Operações com pessoas. Only Authenticated
  */
 
 /**
  * @swagger
- * /persons:
- *   get:
- *     summary: Retorna a lista de pessoas
- *     tags: [Persons]
+ * /person:
+ *   post:
+ *     summary: Criar usuário. Only Authenticated
+ *     tags: [Person]
  *     responses:
  *       200:
- *         description: Lista de pessoas
- *         content:
- *           application/json:
- *             schema:
- *               type: array
- *               items:
- *                 type: object
- *                 properties:
- *                   id:
- *                     type: integer
- *                   name:
- *                     type: string
+ *         description: Usuário criado
+ *       401:
+ *         description: Erro ao criar usuário
  */
 router.post('/', personController.create);
+
+/**
+ * @swagger
+ * /person:
+ *   get:
+ *     summary: lista todos os usuários. Only Authenticated
+ *     tags: [Person]
+ *     responses:
+ *       200:
+ *         description: Usuário criado
+ *       401:
+ *         description: Erro ao criar usuário
+ */
 router.get('/', personController.getAll);
+
+/**
+ * @swagger
+ * /person/{id}:
+ *   get:
+ *     summary: Busca o usuário por Id. Only Authenticated
+ *     tags: [Person]
+ *     responses:
+ *       200:
+ *         description: Usuário criado
+ *       401:
+ *         description: Erro ao criar usuário
+ */
 router.get('/:id', personController.getById);
+
+/**
+ * @swagger
+ * /person/{id}:
+ *   put:
+ *     summary: atualiza o usuário por Id. Only Authenticated
+ *     tags: [Person]
+ *     responses:
+ *       200:
+ *         description: Usuário criado
+ *       401:
+ *         description: Erro ao criar usuário
+ */
 router.put('/:id', personController.update);
+
+/**
+ * @swagger
+ * /person/{id}:
+ *   delete:
+ *     summary: deleta o usuário por Id. Only Authenticated
+ *     tags: [Person]
+ *     responses:
+ *       200:
+ *         description: Usuário deletado
+ *       401:
+ *         description: Erro ao deletar usuário
+ */
 router.delete('/:id', personController.delete);
+
 module.exports = router;

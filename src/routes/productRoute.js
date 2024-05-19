@@ -5,34 +5,78 @@ const productController = require('../controllers/productController')
 /**
  * @swagger
  * tags:
- *   name: Persons
- *   description: Operações com pessoas
+ *   name: Product
+ *   description: Operações com produto
  */
 
 /**
  * @swagger
- * /persons:
- *   get:
- *     summary: Retorna a lista de pessoas
- *     tags: [Persons]
+ * /product:
+ *   post:
+ *     summary: Criar produto. Only Authenticated
+ *     tags: [Product]
  *     responses:
  *       200:
- *         description: Lista de pessoas
- *         content:
- *           application/json:
- *             schema:
- *               type: array
- *               items:
- *                 type: object
- *                 properties:
- *                   id:
- *                     type: integer
- *                   name:
- *                     type: string
+ *         description: Local Criado
+ *       401:
+ *         description: Erro ao Criar Local
  */
 router.post('/', productController.create);
+
+/**
+ * @swagger
+ * /product:
+ *   get:
+ *     summary: listar todos os produtos. Only Authenticated
+ *     tags: [Product]
+ *     responses:
+ *       200:
+ *         description: listar todos os produtos
+ *       401:
+ *         description: Erro ao listart produtos
+ */
 router.get('/', productController.getAll);
+
+/**
+ * @swagger
+ * /product/{id}:
+ *   get:
+ *     summary: listar produto por id. Only Authenticated
+ *     tags: [Product]
+ *     responses:
+ *       200:
+ *         description: produto listado por id
+ *       401:
+ *         description: Erro ao listar produto
+ */
 router.get('/:id', productController.getById);
+
+/**
+ * @swagger
+ * /product/{id}:
+ *   put:
+ *     summary: atualizar produto por id. Only Authenticated
+ *     tags: [Product]
+ *     responses:
+ *       200:
+ *         description: produto atualizado 
+ *       401:
+ *         description: Erro ao atualizar produto
+ */
 router.put('/:id', productController.update);
+
+/**
+ * @swagger
+ * /product/{id}:
+ *   delete:
+ *     summary: deleta produto por id. Only Authenticated
+ *     tags: [Product]
+ *     responses:
+ *       200:
+ *         description: produto deleta
+ *       401:
+ *         description: Erro ao deletar produto
+ */
 router.delete('/:id', productController.delete);
+
 module.exports = router;
