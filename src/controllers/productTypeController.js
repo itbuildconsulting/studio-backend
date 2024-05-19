@@ -1,4 +1,4 @@
-const { password } = require('../config/database.js');
+const { password } = require('../core/db/database.js');
 const ProductType = require('../models/productType.model.js');
 const validateToken = require('../core/token/authenticateToken.js');
 

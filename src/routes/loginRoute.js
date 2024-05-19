@@ -4,12 +4,34 @@ const loginController = require('../controllers/loginController')
 
 /**
  * @swagger
- * /login/:
+ * tags:
+ *   name: Auth
+ *   description: Operações de autenticação
+ */
+
+/**
+ * @swagger
+ * /login:
  *   post:
- *     description: erererererere
+ *     summary: Realiza o login do usuário
+ *     tags: [Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               email:
+ *                 type: string
+ *               password:
+ *                 type: string
  *     responses:
  *       200:
- *         description: Sucesso
+ *         description: Login realizado com sucesso
+ *       401:
+ *         description: Credenciais inválidas
  */
 router.post('/', loginController.login);
+
 module.exports = router;
