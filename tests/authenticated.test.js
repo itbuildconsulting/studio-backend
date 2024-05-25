@@ -1,7 +1,6 @@
-// login.test.js
+// authenticate.test.js
 const unirest = require('unirest');
 const { app } = require('../src/server.js')
-
 
 test('Persons - Get - error if without token', async () => {
   expect.assertions(1); 
