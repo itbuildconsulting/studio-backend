@@ -47,6 +47,14 @@ const Person = sequelize.define('Person', {
     type: DataTypes.BOOLEAN,
     allowNull: false
   },
+  employee: {
+    type: DataTypes.BOOLEAN,
+    allowNull: false
+  },
+  employee_level: {
+    type: DataTypes.STRING,
+    allowNull: true
+  }
 }, {
   hooks: {
     beforeCreate: async (person) => {

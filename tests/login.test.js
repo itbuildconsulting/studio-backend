@@ -1,6 +1,6 @@
 // login.test.js
 const unirest = require('unirest');
-const { app } = require('./src/app.js') // Substitua 'your_app' pelo nome do seu arquivo de aplicativo
+const { app } = require('../src/server.js') // Substitua 'your_app' pelo nome do seu arquivo de aplicativo
 
 test('login request should return a valid response', async () => {
   expect.assertions(2); // Defina o número de expectativas que você deseja que o teste execute
