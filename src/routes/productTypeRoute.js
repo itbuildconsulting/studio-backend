@@ -5,34 +5,78 @@ const productTypeController = require('../controllers/productTypeController')
 /**
  * @swagger
  * tags:
- *   name: Persons
- *   description: Operações com pessoas
+ *   name: ProductType
+ *   description: Operações com Tipo de Produto
  */
 
 /**
  * @swagger
- * /persons:
- *   get:
- *     summary: Retorna a lista de pessoas
- *     tags: [Persons]
+ * /productType:
+ *   post:
+ *     summary: Criar Tipo de Produto. Only Authenticated
+ *     tags: [ProductType]
  *     responses:
  *       200:
- *         description: Lista de pessoas
- *         content:
- *           application/json:
- *             schema:
- *               type: array
- *               items:
- *                 type: object
- *                 properties:
- *                   id:
- *                     type: integer
- *                   name:
- *                     type: string
+ *         description: Tipo de Produto criado
+ *       401:
+ *         description: Erro ao criar Tipo de Produto
  */
 router.post('/', productTypeController.create);
+
+/**
+ * @swagger
+ * /productType:
+ *   get:
+ *     summary: Lista todos os Tipo de Produto. Only Authenticated
+ *     tags: [ProductType]
+ *     responses:
+ *       200:
+ *         description: Tipo de Produto listado
+ *       401:
+ *         description: Erro ao listar Tipo de Produto
+ */
 router.get('/', productTypeController.getAll);
+
+/**
+ * @swagger
+ * /productType/{id}:
+ *   get:
+ *     summary: Lista Tipo de Produto por id. Only Authenticated
+ *     tags: [ProductType]
+ *     responses:
+ *       200:
+ *         description: Tipo de Produto listado
+ *       401:
+ *         description: Erro ao listar Tipo de Produto
+ */
 router.get('/:id', productTypeController.getById);
+
+/**
+ * @swagger
+ * /productType/{id}:
+ *   put:
+ *     summary: Atualiza o Tipo de Produto por id. Only Authenticated
+ *     tags: [ProductType]
+ *     responses:
+ *       200:
+ *         description: Tipo de Produto atualizado
+ *       401:
+ *         description: Erro ao atualizar Tipo de Produto
+ */
 router.put('/:id', productTypeController.update);
+
+/**
+ * @swagger
+ * /productType/{id}:
+ *   delete:
+ *     summary: deleta o Tipo de Produto. Only Authenticated
+ *     tags: [ProductType]
+ *     responses:
+ *       200:
+ *         description: Tipo de Produto deletad0
+ *       401:
+ *         description: Erro ao deletar Tipo de Produto
+ */
 router.delete('/:id', productTypeController.delete);
+
 module.exports = router;
