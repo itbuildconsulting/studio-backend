@@ -54,39 +54,49 @@ module.exports.update = async (req, res, next) => {
     try {
         validateToken(req, res, async () => {
             try {
-        const id = req.params.id;
-        const { name, email } = req.body;
-        const person = await Person.findByPk(id);
-        if (!person) {
-            return res.status(404).send('Pessoa não encontrada');
-        }
-        person.name = name;
-        person.email = email;
-        await person.save();
-        res.status(200).json(person);
-    } catch (error) {
-        console.error('Erro ao atualizar pessoa:', error);
-        res.status(500).send('Erro ao atualizar pessoa');
-    }
-} catch (error) {
-    console.error('Erro ao validar token:', error);
-    res.status(401).send('Token inválido');
-}
+                const id = req.params.id;
+                const { name, email } = req.body;
+                const person = await Person.findByPk(id);
+                
+                if (!person) {
+                    return res.status(404).send('Pessoa não encontrada');
+                }
 
+                person.name = name;
+                person.email = email;
+                await person.save();
+
+                res.status(200).json(person);
+            } catch (error) {
+                console.error('Erro ao atualizar pessoa:', error);
+                res.status(500).send('Erro ao atualizar pessoa');
+            }
+        });
+    } catch (error) {
+        console.error('Erro ao validar token:', error);
+        res.status(401).send('Token inválido');
+    }
 };
 
 // DELETE
 module.exports.delete = async (req, res, next) => {
     try {
-        const id = req.params.id;
-        const person = await Person.findByPk(id);
-        if (!person) {
-            return res.status(404).send('Pessoa não encontrada');
-        }
-        await person.destroy();
-        res.status(200).send('Pessoa excluída com sucesso');
+        validateToken(req, res, async () => {
+            try {
+                const id = req.params.id;
+                const person = await Person.findByPk(id);
+                    if (!person) {
+                        return res.status(404).send('Pessoa não encontrada');
+                    }
+                await person.destroy();
+                res.status(200).send('Pessoa excluída com sucesso');
+            } catch (error) {
+                console.error('Erro ao excluir pessoa:', error);
+                res.status(500).send('Erro ao excluir pessoa');
+            }
+        });
     } catch (error) {
-        console.error('Erro ao excluir pessoa:', error);
-        res.status(500).send('Erro ao excluir pessoa');
+        console.error('Erro ao validar token:', error);
+        res.status(401).send('Token inválido');
     }
 };
