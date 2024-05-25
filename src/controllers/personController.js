@@ -5,12 +5,19 @@ const validateToken = require('../core/token/authenticateToken.js');
 // CREATE
 module.exports.create = async (req, res, next) => {
     try {
-        const { name, email, password, active } = req.body;
-        const newPerson = await Person.create({ name, email, password, active });
-        res.status(201).json(newPerson);
+        validateToken(req, res, async () => {
+            const { name, email, password, active, employee } = req.body;
+            try {
+                const newPerson = await Person.create({ name, email, password, active, employee });
+                res.status(201).json(newPerson);
+            } catch (createError) {
+                console.error('Erro ao criar pessoa:', createError);
+                res.status(500).send('Erro ao criar pessoa');
+            }
+        });
     } catch (error) {
-        console.error('Erro ao criar pessoa:', error);
-        res.status(500).send('Erro ao criar pessoa');
+        console.error('Erro ao validar token:', error);
+        res.status(401).send('Token inválido');
     }
 };
 
@@ -45,6 +52,8 @@ module.exports.getById = async (req, res, next) => {
 // UPDATE
 module.exports.update = async (req, res, next) => {
     try {
+        validateToken(req, res, async () => {
+            try {
         const id = req.params.id;
         const { name, email } = req.body;
         const person = await Person.findByPk(id);
@@ -59,6 +68,11 @@ module.exports.update = async (req, res, next) => {
         console.error('Erro ao atualizar pessoa:', error);
         res.status(500).send('Erro ao atualizar pessoa');
     }
+} catch (error) {
+    console.error('Erro ao validar token:', error);
+    res.status(401).send('Token inválido');
+}
+
 };
 
 // DELETE

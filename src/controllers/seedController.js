@@ -23,7 +23,7 @@ const seedController = {
     },
     async addFirstData(req, res, next) {
         try {
-            await xperson.create({ "name":"joao", "email":"joao@example.com", "password":"testing", "active":"true" });
+            await xperson.create({ "name":"admin", "email":"admin@example.com", "password":"testing", "active":"true", "employee":"true" });
             
             res.status(201).send('All models synchronized with database');
         } catch (err) {

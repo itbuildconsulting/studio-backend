@@ -4,7 +4,7 @@ npm install nodemon
 npm install bcrypt
 npm install jsonwebtoken
 npm install swagger-ui-express swagger-jsdoc
-
+npx sequelize-cli db:migrate
 npm start
 
 localhost:3001/seed >> para iniciar o banco de dados -- Criar as tabelas.

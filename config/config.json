@@ -1,0 +1,23 @@
+{
+  "development": {
+    "username": "studio_USER",
+    "password": "studio_PASSWORD",
+    "database": "studio_DB",
+    "host": "localhost",
+    "dialect": "mysql"
+  },
+  "test": {
+    "username": "studio_USER",
+    "password": "studio_PASSWORD",
+    "database": "studio_DB",
+    "host": "localhost",
+    "dialect": "mysql"
+  },
+  "production": {
+    "username": "studio_USER",
+    "password": "studio_PASSWORD",
+    "database": "studio_DB",
+    "host": "srv802.hstgr.io",
+    "dialect": "mysql"
+  }
+}
