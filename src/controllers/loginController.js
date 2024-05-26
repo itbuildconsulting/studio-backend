@@ -40,7 +40,7 @@ module.exports.reset = async (req, res) => {
         const person = await Person.findOne({ where: { email } });
 
         if (!person) {
-            return res.status(201).send({ 'Senha enviada' });
+            return res.status(201).send('Senha enviada');
         }
 
         person.password = generateRandomPassword(6);
@@ -73,4 +73,5 @@ function generateRandomPassword(length) {
     }
   
     return password;
-  }
+  };
+
