@@ -1,11 +1,11 @@
 // authenticate.test.js
 const unirest = require('unirest');
-const { app } = require('../src/server.js')
+require('./setupTest.js');
 
 test('Persons - Get - error if without token', async () => {
   expect.assertions(1); 
   const response = await new Promise((resolve, reject) => {
-    unirest.get('http://localhost:3001/persons')
+    unirest.get('http://localhost:3002/persons')
       .headers({'Content-Type': 'application/json'})
       .end(resolve);
   });
@@ -15,7 +15,7 @@ test('Persons - Get - error if without token', async () => {
 test('Persons - Post - error if without token', async () => {
   expect.assertions(1); 
   const response = await new Promise((resolve, reject) => {
-    unirest.post('http://localhost:3001/persons')
+    unirest.post('http://localhost:3002/persons')
       .headers({'Content-Type': 'application/json'})
       .send({
         name: 'John Doe',
@@ -32,7 +32,7 @@ test('Persons - Post - error if without token', async () => {
 test('Persons - Put - error if without token', async () => {
   expect.assertions(1); 
   const response = await new Promise((resolve, reject) => {
-    unirest.put('http://localhost:3001/persons/1')
+    unirest.put('http://localhost:3002/persons/1')
       .headers({'Content-Type': 'application/json'})
       .end(resolve);
   });
@@ -42,7 +42,7 @@ test('Persons - Put - error if without token', async () => {
 test('Persons - Delete - error if without token', async () => {
   expect.assertions(1); 
   const response = await new Promise((resolve, reject) => {
-    unirest.delete('http://localhost:3001/persons/1')
+    unirest.delete('http://localhost:3002/persons/1')
       .headers({'Content-Type': 'application/json'})
       .end(resolve);
   });

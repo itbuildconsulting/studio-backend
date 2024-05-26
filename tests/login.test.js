@@ -1,13 +1,13 @@
 // login.test.js
 const unirest = require('unirest');
-const { app } = require('../src/server.js')
+require('./setupTest.js');
 
 let token;
 
 test('login request should return a valid response', async () => {
   expect.assertions(2); 
   const response = await new Promise((resolve, reject) => {
-    unirest.post('http://localhost:3001/login')
+    unirest.post('http://localhost:3002/login')
       .headers({ 'Content-Type': 'application/json' })
       .send({ email: 'admin@example.com', password: 'testing' })
       .end(resolve);
