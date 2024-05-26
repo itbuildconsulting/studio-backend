@@ -8,6 +8,7 @@ install:
 	npm install jsonwebtoken
 	npm install swagger-ui-express swagger-jsdoc
 	npx sequelize-cli db:migrate
+	npm install nodemailer
 
 start:
 	npm start
