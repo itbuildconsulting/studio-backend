@@ -9,15 +9,23 @@ const Product = sequelize.define('product', {
     type: DataTypes.STRING,
     allowNull: false
   },
-  cost: {
-    type: DataTypes.DECIMAL,
-    allowNull: false
-  },
   credit: {
     type: DataTypes.INTEGER,
     allowNull: false
   },
-  costPerClass: {
+  validate: {
+    type: DataTypes.DATE,
+    allowNull: false
+  },
+  productTypeId: { //VERIFICAR
+    type: DataTypes.STRING,
+    allowNull: false
+  },
+  placeId: { //VERIFICAR
+    type: DataTypes.STRING,
+    allowNull: false
+  },
+  value: {
     type: DataTypes.DECIMAL,
     allowNull: false
   },

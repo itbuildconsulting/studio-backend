@@ -18,6 +18,17 @@ const productTypeController = require('../controllers/productTypeController')
  *     responses:
  *       200:
  *         description: Tipo de Produto criado
+ *         content:
+ *           application/json:
+ *            schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *               placeId:
+ *                 type: string
+ *               active:
+ *                 type: boolean
  *       401:
  *         description: Erro ao criar Tipo de Produto
  */

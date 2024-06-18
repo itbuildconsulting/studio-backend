@@ -6,6 +6,10 @@ const Place = sequelize.define('place', {
     type: DataTypes.STRING,
     allowNull: false
   },
+  address: {
+    type: DataTypes.STRING,
+    allowNull: false
+  },
   active: {
     type: DataTypes.BOOLEAN,
     allowNull: false

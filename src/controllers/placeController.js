@@ -5,8 +5,8 @@ const validateToken = require('../core/token/authenticateToken.js');
 // CREATE
 module.exports.create = async (req, res, next) => {
     try {
-        const { name, active } = req.body;
-        const newPlace = await Place.create({ name, active });
+        const { name, active, address } = req.body;
+        const newPlace = await Place.create({ name, active, address });
         res.status(201).json(newPlace);
     } catch (error) {
         console.error('Erro ao criar local:', error);

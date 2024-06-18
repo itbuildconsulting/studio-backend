@@ -18,6 +18,17 @@ const placeController = require('../controllers/placeController')
  *     responses:
  *       200:
  *         description: Local Criado
+ *         content:
+ *           application/json:
+ *            schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *               address:
+ *                 type: string
+ *               active:
+ *                 type: boolean
  *       401:
  *         description: Erro ao Criar Local
  */

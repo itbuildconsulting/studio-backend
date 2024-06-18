@@ -6,6 +6,10 @@ const ProductType = sequelize.define('productType', {
     type: DataTypes.STRING,
     allowNull: false
   },
+  placeId: {
+    type: DataTypes.STRING,
+    allowNull: false
+  },
   active: {
     type: DataTypes.BOOLEAN,
     allowNull: false
