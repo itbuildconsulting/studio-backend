@@ -13,16 +13,8 @@ const Product = sequelize.define('product', {
     type: DataTypes.INTEGER,
     allowNull: false
   },
-  validate: {
+  validateDate: {
     type: DataTypes.DATEONLY,
-    allowNull: false
-  },
-  productTypeId: { //VERIFICAR
-    type: DataTypes.STRING,
-    allowNull: false
-  },
-  placeId: { //VERIFICAR
-    type: DataTypes.STRING,
     allowNull: false
   },
   value: {
