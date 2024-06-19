@@ -14,7 +14,7 @@ const Product = sequelize.define('product', {
     allowNull: false
   },
   validate: {
-    type: DataTypes.DATE,
+    type: DataTypes.DATEONLY,
     allowNull: false
   },
   productTypeId: { //VERIFICAR
