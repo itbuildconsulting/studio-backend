@@ -9,8 +9,8 @@ const xproductType = require('../models/productType.model.js')
 const seedController = {
     async post(req, res, next) {
         try {
-            await xproductType.sync();
             await xplace.sync();
+            await xproductType.sync();
             await xperson.sync();
             await xproduct.sync();
             await xclass.sync();
