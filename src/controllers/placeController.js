@@ -10,7 +10,11 @@ module.exports.create = async (req, res, next) => {
         res.status(201).json(newPlace);
     } catch (error) {
         console.error('Erro ao criar local:', error);
-        res.status(500).send('Erro ao criar local');
+        res.status(500).json(
+            { 
+                success: false, 
+                error: 'Erro ao criar local' }
+            );
     }
 };
 
@@ -24,7 +28,11 @@ module.exports.getAll = async (req, res, next) => {
           });
     } catch (error) {
         console.error('Erro ao buscar local:', error);
-        res.status(500).send('Erro ao buscar local');
+        res.status(500).json(
+            { 
+                success: false, 
+                error: 'Erro ao buscar local' }
+            );
     }
 };
 
@@ -38,7 +46,11 @@ module.exports.getById = async (req, res, next) => {
         res.status(200).json(Place);
     } catch (error) {
         console.error('Erro ao buscar local:', error);
-        res.status(500).send('Erro ao buscar local');
+        res.status(500).json(
+            { 
+                success: false, 
+                error: 'Erro ao buscar local' }
+            );
     }
 };
 
@@ -57,7 +69,12 @@ module.exports.update = async (req, res, next) => {
         res.status(200).json(Place);
     } catch (error) {
         console.error('Erro ao atualizar local:', error);
-        res.status(500).send('Erro ao atualizar local');
+        res.status(500).json(
+            { 
+                success: false, 
+                error: 'Erro ao atualizar local' }
+            );
+            
     }
 };
 
@@ -73,6 +90,10 @@ module.exports.delete = async (req, res, next) => {
         res.status(200).send('local excluída com sucesso');
     } catch (error) {
         console.error('Erro ao excluir local:', error);
-        res.status(500).send('Erro ao excluir local');
+        res.status(500).json(
+            { 
+                success: false, 
+                error: 'Erro ao excluir local' }
+            );
     }
 };
