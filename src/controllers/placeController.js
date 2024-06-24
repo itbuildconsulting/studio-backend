@@ -39,11 +39,11 @@ module.exports.getAll = async (req, res, next) => {
 module.exports.getById = async (req, res, next) => {
     try {
         const id = req.params.id;
-        const Place = await Place.findByPk(id);
-        if (!Place) {
+        const getPlaces = await Place.findByPk(id);
+        if (!getPlaces) {
             return res.status(404).send('local não encontrado');
         }
-        res.status(200).json(Place);
+        res.status(200).json(getPlaces);
     } catch (error) {
         console.error('Erro ao buscar local:', error);
         res.status(500).json(
@@ -59,12 +59,12 @@ module.exports.update = async (req, res, next) => {
     try {
         const id = req.params.id;
         const { name, email } = req.body;
-        const Place = await Place.findByPk(id);
-        if (!Place) {
+        const getPlace = await Place.findByPk(id);
+        if (!getPlace) {
             return res.status(404).send('local não encontrado');
         }
-        Place.name = name;
-        Place.email = email;
+        getPlace.name = name;
+        getPlace.email = email;
         await Place.save();
         res.status(200).json(Place);
     } catch (error) {
@@ -82,11 +82,11 @@ module.exports.update = async (req, res, next) => {
 module.exports.delete = async (req, res, next) => {
     try {
         const id = req.params.id;
-        const Place = await Place.findByPk(id);
-        if (!Place) {
+        const getPlace = await Place.findByPk(id);
+        if (!getPlace) {
             return res.status(404).send('local não encontrada');
         }
-        await Place.destroy();
+        await getPlace.destroy();
         res.status(200).send('local excluída com sucesso');
     } catch (error) {
         console.error('Erro ao excluir local:', error);
