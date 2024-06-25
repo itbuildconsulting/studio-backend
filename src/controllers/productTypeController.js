@@ -5,8 +5,8 @@ const validateToken = require('../core/token/authenticateToken.js');
 // CREATE
 module.exports.create = async (req, res, next) => {
     try {
-        const { name, active } = req.body;
-        const newProductType = await ProductType.create({ name, active });
+        const { name, active, placeId } = req.body;
+        const newProductType = await ProductType.create({ name, active, placeId });
         res.status(201).json(newProductType);
     } catch (error) {
         console.error('Erro ao criar tipo:', error);
@@ -31,11 +31,11 @@ module.exports.getAll = async (req, res, next) => {
 module.exports.getById = async (req, res, next) => {
     try {
         const id = req.params.id;
-        const ProductType = await ProductType.findByPk(id);
-        if (!ProductType) {
+        const getProductType = await ProductType.findByPk(id);
+        if (!getProductType) {
             return res.status(404).send('tipo não encontrada');
         }
-        res.status(200).json(ProductType);
+        res.status(200).json(getProductType);
     } catch (error) {
         console.error('Erro ao buscar tipo:', error);
         res.status(500).send('Erro ao buscar tipo');
@@ -47,14 +47,14 @@ module.exports.update = async (req, res, next) => {
     try {
         const id = req.params.id;
         const { name, email } = req.body;
-        const ProductType = await ProductType.findByPk(id);
-        if (!ProductType) {
+        const getProductType = await ProductType.findByPk(id);
+        if (!getProductType) {
             return res.status(404).send('tipo não encontrada');
         }
-        ProductType.name = name;
-        ProductType.email = email;
-        await ProductType.save();
-        res.status(200).json(ProductType);
+        getProductType.name = name;
+        getProductType.email = email;
+        await getProductType.save();
+        res.status(200).json(getProductType);
     } catch (error) {
         console.error('Erro ao atualizar tipo:', error);
         res.status(500).send('Erro ao atualizar tipo');
@@ -65,11 +65,11 @@ module.exports.update = async (req, res, next) => {
 module.exports.delete = async (req, res, next) => {
     try {
         const id = req.params.id;
-        const ProductType = await ProductType.findByPk(id);
-        if (!ProductType) {
+        const getProductType = await ProductType.findByPk(id);
+        if (!getProductType) {
             return res.status(404).send('tipo não encontrada');
         }
-        await ProductType.destroy();
+        await getProductType.destroy();
         res.status(200).send('tipo excluída com sucesso');
     } catch (error) {
         console.error('Erro ao excluir tipo:', error);

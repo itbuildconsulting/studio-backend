@@ -5,8 +5,8 @@ const validateToken = require('../core/token/authenticateToken.js');
 // CREATE
 module.exports.create = async (req, res, next) => {
     try {
-        const { name, credit, validate, productTypeId, placeId, value, active, } = req.body;
-        const newProduct = await Product.create({ name, credit, validate, productTypeId, placeId, value, active });
+        const { name, credit, validateDate, productTypeId, placeId, value, active, } = req.body;
+        const newProduct = await Product.create({ name, credit, validateDate, productTypeId, placeId, value, active });
         res.status(201).json(newProduct);
     } catch (error) {
         console.error('Erro ao criar produto:', error);
@@ -31,11 +31,11 @@ module.exports.getAll = async (req, res, next) => {
 module.exports.getById = async (req, res, next) => {
     try {
         const id = req.params.id;
-        const Product = await Product.findByPk(id);
-        if (!Product) {
+        const getProduct = await Product.findByPk(id);
+        if (!getProduct) {
             return res.status(404).send('produto não encontrada');
         }
-        res.status(200).json(Product);
+        res.status(200).json(getProduct);
     } catch (error) {
         console.error('Erro ao buscar produto:', error);
         res.status(500).send('Erro ao buscar produto');
@@ -47,14 +47,14 @@ module.exports.update = async (req, res, next) => {
     try {
         const id = req.params.id;
         const { name, email } = req.body;
-        const Product = await Product.findByPk(id);
-        if (!Product) {
+        const getProduct = await Product.findByPk(id);
+        if (!getProduct) {
             return res.status(404).send('produto não encontrada');
         }
-        Product.name = name;
-        Product.email = email;
-        await Product.save();
-        res.status(200).json(Product);
+        getProduct.name = name;
+        getProduct.email = email;
+        await getProduct.save();
+        res.status(200).json(getProduct);
     } catch (error) {
         console.error('Erro ao atualizar produto:', error);
         res.status(500).send('Erro ao atualizar produto');
@@ -65,11 +65,11 @@ module.exports.update = async (req, res, next) => {
 module.exports.delete = async (req, res, next) => {
     try {
         const id = req.params.id;
-        const Product = await Product.findByPk(id);
-        if (!Product) {
+        const getProduct = await Product.findByPk(id);
+        if (!getProduct) {
             return res.status(404).send('produto não encontrada');
         }
-        await Product.destroy();
+        await getProduct.destroy();
         res.status(200).send('produto excluída com sucesso');
     } catch (error) {
         console.error('Erro ao excluir produto:', error);
