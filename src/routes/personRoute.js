@@ -14,7 +14,7 @@ const personController = require('../controllers/personController')
 
 /**
  * @swagger
- * /product:
+ *  /persons:
  *   post:
  *     summary: Criar pessoa(Aluno/Professor). Only Authenticated
  *     tags: [Product]
