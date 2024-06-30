@@ -6,9 +6,9 @@ const validateToken = require('../core/token/authenticateToken.js');
 module.exports.create = async (req, res, next) => {
     try {
         validateToken(req, res, async () => {
-            const { name, email, password, active, employee } = req.body;
+            const { name, identity, email, phone, birthday, active, height, weight, other, password, rule, frequency,  employee, employee_level } = req.body;
             try {
-                const newPerson = await Person.create({ name, email, password, active, employee });
+                const newPerson = await Person.create({ name, identity, email, phone, birthday, active, height, weight, other, password, rule, frequency,  employee, employee_level });
                 res.status(201).json(newPerson);
             } catch (createError) {
                 console.error('Erro ao criar pessoa:', createError);
