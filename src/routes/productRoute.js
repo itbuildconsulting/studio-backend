@@ -27,10 +27,8 @@ const productController = require('../controllers/productController')
  *                 type: string
  *               credit:
  *                 type: number
- *               validate:
- *                  type: date
- *                  pattern: /([0-9]{4})-(?:[0-9]{2})-([0-9]{2})/
- *                  example: "2019-05-17"
+ *               validateDate:
+ *                  type: number
  *               productTypeId:
  *                 type: string
  *               placeId:

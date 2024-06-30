@@ -8,9 +8,9 @@ const Person = sequelize.define('Person', {
     type: DataTypes.STRING,
     allowNull: false
   },
-  phone: {
+  identity: {
     type: DataTypes.STRING,
-    allowNull: true
+    allowNull: false
   },
   email: {
     type: DataTypes.STRING,
@@ -19,13 +19,17 @@ const Person = sequelize.define('Person', {
       isEmail: true
     }
   },
-  password: {
-    type: DataTypes.STRING,
-    allowNull: false
-  },
-  address: {
+  phone: {
     type: DataTypes.STRING,
     allowNull: true
+  },
+  birthday: {
+    type: DataTypes.DATEONLY,
+    allowNull: false
+  },
+  active: {
+    type: DataTypes.BOOLEAN,
+    allowNull: false
   },
   height: {
     type: DataTypes.INTEGER,
@@ -38,15 +42,19 @@ const Person = sequelize.define('Person', {
   other: {
     type: DataTypes.STRING,
     allowNull: true
-  },
+  },  
+  password: {
+    type: DataTypes.STRING,
+    allowNull: false
+  },    
   rule: {
     type: DataTypes.STRING,
     allowNull: true
   },
-  active: {
-    type: DataTypes.BOOLEAN,
-    allowNull: false
-  },
+  frequency: {
+    type: DataTypes.STRING,
+    allowNull: true
+  },  
   employee: {
     type: DataTypes.BOOLEAN,
     allowNull: false

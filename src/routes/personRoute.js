@@ -10,6 +10,57 @@ const personController = require('../controllers/personController')
  *   description: Operações com pessoas
  */
 
+
+
+/**
+ * @swagger
+ * /product:
+ *   post:
+ *     summary: Criar pessoa(Aluno/Professor). Only Authenticated
+ *     tags: [Product]
+ *     responses:
+ *       200:
+ *         description: pessoa(Aluno/Professor) Criado
+ *         content:
+ *           application/json:
+ *            schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *               identity:
+ *                 type: string
+ *               email:
+ *                 type: string
+ *               phone:
+ *                  type: string
+ *               birthday:
+ *                   type: date
+ *                   pattern: /([0-9]{4})-(?:[0-9]{2})-([0-9]{2})/
+ *                   example: "2019-05-17"
+ *               active:
+ *                 type: boolean
+ *               height:
+ *                 type: integer
+ *               weight:
+ *                 type: integer
+ *               other:
+ *                 type: string
+ *               password:
+ *                 type: string
+ *               rule:
+ *                 type: string
+ *               frequency:
+ *                 type: string
+ *               employee:
+ *                 type: boolean
+ *               employee_level:
+ *                 type: string
+ *       401:
+ *         description: Erro ao Criar Produto
+ */
+router.post('/', personController.create);
+
 /**
  * @swagger
  * /persons:
@@ -31,7 +82,6 @@ const personController = require('../controllers/personController')
  *                   name:
  *                     type: string
  */
-router.post('/', personController.create);
 router.get('/', personController.getAll);
 router.get('/:id', personController.getById);
 router.put('/:id', personController.update);
