@@ -17,7 +17,7 @@ const personController = require('../controllers/personController')
  *  /persons:
  *   post:
  *     summary: Criar pessoa(Aluno/Professor). Only Authenticated
- *     tags: [Product]
+ *     tags: [Persons]
  *     responses:
  *       200:
  *         description: pessoa(Aluno/Professor) Criado
