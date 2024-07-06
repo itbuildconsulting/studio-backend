@@ -1,5 +1,6 @@
 const { password } = require('../core/db/database.js');
 const ProductType = require('../models/productType.model.js');
+const Place = require('../models/place.model.js');
 const validateToken = require('../core/token/authenticateToken.js');
 
 // CREATE
@@ -23,7 +24,12 @@ module.exports.create = async (req, res, next) => {
 module.exports.getAll = async (req, res, next) => {
     try {
         validateToken(req, res, () => {
-            ProductType.findAll().then((ProductTypes) => {
+            ProductType.findAll({
+                include: [{
+                    model: Place,  // Substitua 'Place' pelo nome correto do seu modelo, se necessário
+                    attributes: ['name']  // Apenas inclui o campo 'name' do 'Place'
+                }]
+            }).then((ProductTypes) => {
               res.status(200).json(ProductTypes);
             });
           });
