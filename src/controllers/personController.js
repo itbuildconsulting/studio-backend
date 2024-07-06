@@ -12,7 +12,12 @@ module.exports.create = async (req, res, next) => {
                 res.status(201).json(newPerson);
             } catch (createError) {
                 console.error('Erro ao criar pessoa:', createError);
-                res.status(500).send('Erro ao criar pessoa');
+                res.status(500).json(
+                    { 
+                        success: false,
+                        data:  createError,
+                        error: 'Erro ao criar pessoa' }
+                    );
             }
         });
     } catch (error) {
@@ -31,7 +36,12 @@ module.exports.getAll = async (req, res, next) => {
           });
     } catch (error) {
         console.error('Erro ao buscar pessoas:', error);
-        res.status(500).send('Erro ao buscar pessoas');
+        res.status(500).json(
+            { 
+                success: false,
+                data:  error,
+                error: 'Erro ao buscar pessoas' }
+            );
     }
 };
 
