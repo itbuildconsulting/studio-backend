@@ -102,7 +102,7 @@ module.exports.getById = async (req, res, next) => {
 module.exports.update = async (req, res, next) => {
     try {
         const id = req.params.id;
-        const { name, email } = req.body;
+        const { name, active, placeId } = req.body;
         const getProductType = await ProductType.findByPk(id);
         if (!getProductType) {
             return res.status(404).json(
@@ -113,7 +113,8 @@ module.exports.update = async (req, res, next) => {
             );
         }
         getProductType.name = name;
-        getProductType.email = email;
+        getProductType.active = active;
+        getProductType.placeId = placeId;
         await getProductType.save();
         res.status(200).json(getProductType);
     } catch (error) {

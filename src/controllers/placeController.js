@@ -63,7 +63,7 @@ module.exports.getById = async (req, res, next) => {
 module.exports.update = async (req, res, next) => {
     try {
         const id = req.params.id;
-        const { name, email } = req.body;
+        const { name, active, address} = req.body;
         const getPlace = await Place.findByPk(id);
         if (!getPlace) {
             return res.status(404).json(
@@ -74,7 +74,8 @@ module.exports.update = async (req, res, next) => {
             );
         }
         getPlace.name = name;
-        getPlace.email = email;
+        getPlace.active = active;
+        getPlace.address = address;
         await Place.save();
         res.status(200).json(Place);
     } catch (error) {
