@@ -50,6 +50,21 @@ router.get('/', productTypeController.getAll);
 
 /**
  * @swagger
+ * /productType/dropdown/:
+ *   get:
+ *     summary: Lista todos os Tipo de Produto. Only Authenticated
+ *     tags: [ProductType]
+ *     responses:
+ *       200:
+ *         description: Tipo de Produto + Local listado
+ *       401:
+ *         description: Erro ao listar Tipo de Produto
+ */
+
+router.get('/dropdown/', productTypeController.getDropdown);
+
+/**
+ * @swagger
  * /productType/{id}:
  *   get:
  *     summary: Lista Tipo de Produto por id. Only Authenticated

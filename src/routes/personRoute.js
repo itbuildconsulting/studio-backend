@@ -83,6 +83,59 @@ router.post('/', personController.create);
  *                     type: string
  */
 router.get('/', personController.getAll);
+
+/**
+ * @swagger
+ * /persons/employee/filter:
+ *   get:
+ *     summary: Retorna a lista de pessoas
+ *     tags: [Persons]
+ *     responses:
+ *       200:
+ *         description: Lista de pessoas
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   name:
+ *                     type: string
+ *                   email:
+ *                     type: string
+ *                   identity:
+ *                     type: string
+ */
+
+router.post('/employee/filter', personController.getByCriteriaEmployee);
+
+/**
+ * @swagger
+ * /persons/student/filter:
+ *   get:
+ *     summary: Retorna a lista de pessoas
+ *     tags: [Persons]
+ *     responses:
+ *       200:
+ *         description: Lista de pessoas
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   name:
+ *                     type: string
+ *                   email:
+ *                     type: string
+ *                   identity:
+ *                     type: string
+ */
+router.post('/student/filter', personController.getByCriteriaStudent);
+
+
 router.get('/:id', personController.getById);
 router.put('/:id', personController.update);
 router.delete('/:id', personController.delete);

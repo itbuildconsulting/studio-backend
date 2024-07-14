@@ -44,6 +44,36 @@ module.exports.getAll = async (req, res, next) => {
     }
 };
 
+
+// READ Dropdown
+module.exports.getDropdown = async (req, res, next) => {
+    try {
+        validateToken(req, res, () => {
+            ProductType.findAll({
+                attributes: ['id', 'name'], // Especifica que apenas 'id' e 'name' do produto são necessários
+                include: [
+                    {
+                        model: Place,
+                        attributes: ['name'],  // Especifica que apenas o 'name' do Place é necessário
+                        as: 'place'  // Use o alias correto se você tiver definido um no seu modelo de associação
+                    }
+                ]
+            }).then((Products) => {
+                res.status(200).json(Products);
+            });
+        });
+    } catch (error) {
+        console.error('Erro ao buscar produtos:', error);
+        res.status(500).json(
+            { 
+                success: false, 
+                error: 'Erro ao buscar Tipos de Produtos'
+            }
+        );
+    }
+};
+
+
 module.exports.getById = async (req, res, next) => {
     try {
         const id = req.params.id;

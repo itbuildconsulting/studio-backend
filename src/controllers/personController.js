@@ -1,6 +1,7 @@
 const { password } = require('../core/db/database.js');
 const Person = require('../models/person.model.js');
 const validateToken = require('../core/token/authenticateToken.js');
+const { Op } = require('sequelize'); // Operadores do Sequelize
 
 // CREATE
 module.exports.create = async (req, res, next) => {
@@ -58,6 +59,63 @@ module.exports.getById = async (req, res, next) => {
         res.status(500).send('Erro ao buscar pessoa');
     }
 };
+
+
+
+module.exports.getByCriteriaEmployee = async (req, res, next) => {
+    try {
+
+        const { email, name, identity } = req.body;
+
+        const criteria = { employee: true }; // Assegure-se que a coluna é 'employee', e não 'employer' se necessário
+        console.log(name)
+        if (email) criteria.email = email;
+        if (name) criteria.name = { [Op.like]: `%${name}%` }; // Uso de 'like' para busca parcial corrigido
+        if (identity) criteria.identity = identity;
+
+        const people = await Person.findAll({
+            where: criteria
+        });
+
+        if (!people || people.length === 0) {
+            return res.status(404).send('Pessoas não encontradas');
+        }
+
+        res.status(200).json(people);
+    } catch (error) {
+        console.error('Erro ao buscar pessoas:', error);
+        res.status(500).send('Erro ao buscar pessoas');
+    }
+};
+
+module.exports.getByCriteriaStudent = async (req, res, next) => {
+    try {
+        //const { email, nome, cpf } = req.query; // Assume que os filtros podem vir como query parameters
+        const email = req.params.email;
+        const nome = req.params.nome;
+        const cpf = req.params.cpf;
+
+        const criteria = {employee: false};
+        if (email) criteria.email = email;
+        if (nome) criteria.name = { [Op.like]: `%${nome}%` }; // Uso de 'like' para busca parcial
+        if (cpf) criteria.cpf = cpf;
+
+        const person = await Person.findOne({
+            where: criteria
+        });
+
+        if (!person) {
+            return res.status(404).send('Pessoa não encontrada');
+        }
+
+        res.status(200).json(person);
+    } catch (error) {
+        console.error('Erro ao buscar pessoa:', error);
+        res.status(500).send('Erro ao buscar pessoa');
+    }
+};
+
+
 
 // UPDATE
 module.exports.update = async (req, res, next) => {
