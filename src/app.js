@@ -14,6 +14,7 @@ const placeRoute = require('./routes/placeRoute');
 const productRoute = require('./routes/productRoute');
 const productTypeRoute = require('./routes/productTypeRoute');
 const seedRoute = require('./routes/seedRoute');
+const paymentRoute = require('./routes/paymentRoute');
 
 app.use('/bank', bankRoute);
 app.use('/class', classRoute);
@@ -24,6 +25,7 @@ app.use('/places', placeRoute);
 app.use('/products', productRoute);
 app.use('/productTypes', productTypeRoute);
 app.use('/seed', seedRoute);
+app.use('/payments', paymentRoute);
 
 swaggerSetup(app);
 

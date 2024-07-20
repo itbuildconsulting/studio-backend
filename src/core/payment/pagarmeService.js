@@ -1,4 +1,5 @@
-const pagarme = require('@pagarme/pagarme-js');
+// services/pagarmeService.js
+const pagarme = require('pagarme')
 
 class PagarmeService {
     constructor(apiKey) {
@@ -17,7 +18,7 @@ class PagarmeService {
         return this.client.transactions.create(transactionData);
     }
 
-    // Adicione mais métodos conforme necessário
+    // Adicionar mais métodos conforme necessário
 }
 
-module.exports = PagarmeService;z   
+module.exports = new PagarmeService(process.env.PAGARME_API_KEY);
