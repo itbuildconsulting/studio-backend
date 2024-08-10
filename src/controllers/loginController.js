@@ -23,8 +23,9 @@ module.exports.login = async (req, res) => {
         }
 
         const token = generateAuthToken(person);
+        console.log(person)
 
-        return res.status(200).json({ token, expiresIn: '1h', name: person.name });
+        return res.status(200).json({ token, expiresIn: '1h', name: person.name, id: person.id, email: person.email });
     } catch (error) {
         console.error('Erro durante o login:', error);
         return res.status(500).json({ error: 'Erro interno do servidor' });

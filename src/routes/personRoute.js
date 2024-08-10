@@ -26,7 +26,7 @@ const personController = require('../controllers/personController')
  *            schema:
  *             type: object
  *             properties:
- *               name:
+ *               name:  
  *                 type: string
  *               identity:
  *                 type: string
@@ -40,6 +40,16 @@ const personController = require('../controllers/personController')
  *                   example: "2019-05-17"
  *               active:
  *                 type: boolean
+ *               address:
+ *                 type: string
+ *               zipCode:
+ *                 type: string
+ *               city:
+ *                 type: string
+ *               state:
+ *                 type: string
+ *               country:
+ *                 type: string
  *               height:
  *                 type: integer
  *               weight:

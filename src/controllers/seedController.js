@@ -23,7 +23,27 @@ const seedController = {
     },
     async addFirstData(req, res, next) {
         try {
-            await xperson.create({ "name":"admin", "identity": "000000000", "email":"admin@example.com", "phone": "00000000", "birthday": "1994-05-17", "height": "160", "weight": "100", "other": "41", "password":"testing", "rule": "", "frequency": "", "active":"true", "employee":"true", "employee_level": "admin" });
+            await xperson.create(
+                { 
+                    "name":"admin", 
+                    "identity": "000000000", 
+                    "email":"admin@example.com", 
+                    "phone": "00000000", 
+                    "birthday": "1994-05-17", 
+                    "active":"true", 
+                    "address":"7221, Avenida Dra Ruth Cardoso, Pinheiro", 
+                    "zipCode": "05425070", 
+                    "city": "São Paulo", 
+                    "state": "SP", 
+                    "country": "BR", 
+                    "height": "160", 
+                    "weight": "100", 
+                    "other": "41", 
+                    "password":"testing", 
+                    "rule": "", 
+                    "frequency": "",                     
+                    "employee":"true", 
+                    "employee_level": "admin" });
             res.status(201).send('All models synchronized with database');
         } catch (err) {
             res.status(400).send(err);

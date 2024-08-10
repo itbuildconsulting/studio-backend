@@ -7,9 +7,9 @@ const { Op } = require('sequelize'); // Operadores do Sequelize
 module.exports.create = async (req, res, next) => {
     try {
         validateToken(req, res, async () => {
-            const { name, identity, email, phone, birthday, active, height, weight, other, password, rule, frequency,  employee, employee_level } = req.body;
+            const { name, identity, email, phone, birthday, active, address, zipCode, city, state, country, height, weight, other, password, rule, frequency,  employee, employee_level } = req.body;
             try {
-                const newPerson = await Person.create({ name, identity, email, phone, birthday, active, height, weight, other, password, rule, frequency,  employee, employee_level });
+                const newPerson = await Person.create({ name, identity, email, phone, birthday, active, address, zipCode, city, state, country, height, weight, other, password, rule, frequency,  employee, employee_level });
                 res.status(201).json(newPerson);
             } catch (createError) {
                 console.error('Erro ao criar pessoa:', createError);
