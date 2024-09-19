@@ -4,6 +4,9 @@ const xperson = require('../models/person.model.js')
 const xplace = require('../models/place.model.js')
 const xproduct = require('../models/product.model.js')
 const xproductType = require('../models/productType.model.js')
+const xitems = require('../models/items.model.js')
+const xbalance = require('../models/balance.model.js')
+const xtransaction = require('../models/transaction.model.js')
 
 // Define as funções do controlador
 const seedController = {
@@ -15,6 +18,9 @@ const seedController = {
             await xproduct.sync();
             await xclass.sync();
             await xbank.sync();
+            await xitems.sync();
+            await xbalance.sync();
+            await xtransaction.sync();
 
             res.status(201).send('All models synchronized with database');
         } catch (err) {

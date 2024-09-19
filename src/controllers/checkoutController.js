@@ -2,6 +2,12 @@ const Person = require('../models/person.model.js');
 const Product = require('../models/product.model.js');
 const validateToken = require('../core/token/authenticateToken.js');
 const paymentController = require('./paymentController');
+const { saveTransaction } = require('./transactionController.js');
+
+const {updateCustomerBalance} = require('./balanceController.js');
+
+const itemsController = require('./itemsController.js')
+
 
 // READ
 module.exports.checkout = async (req, res, next) => {
@@ -27,14 +33,19 @@ module.exports.checkout = async (req, res, next) => {
                   return res.status(404).json({ message: 'Produtos não encontrados' });
               }
 
+              let creditTotal = 0;
+
               // Mapear produtos para o formato de itens do checkout
               const items = products.map(item => {
                   const product = productInfo.find(p => p.id.toString() === item.productId);
+                  creditTotal = creditTotal + product.credit;
                   return {
+                      itemId: product.id,
                       amount: product.value * parseInt(item.quantity),  // Multiplica o preço pelo quantidade
+                      credit: product.credit,
                       description: product.name,
                       quantity: parseInt(item.quantity),  // Certifica-se que a quantidade é um número inteiro
-                      code: product.id
+                      code: product.id,
                   };
               });
 
@@ -96,11 +107,26 @@ module.exports.checkout = async (req, res, next) => {
               if (!result.success) {
                   console.error('Falha ao criar transação:', result.message);
                   res.status(500).json({ success: false, error: 'Falha ao criar transação:', details: result.message});
-                  // Decide o que fazer com o erro, por exemplo, pode reenviar ou alertar o usuário
               } else {
                   console.log('Transação criada com sucesso:', result.data);
-                  res.status(200).json({ success: true, message: 'Transação concluída com sucesso', details: result.data});
-                  // Continue com o processamento se necessário
+                  const save = await saveTransaction(result.data, creditTotal);
+                  if (save.success) {
+                      // Supondo que `amount` deve ser adicionado ao saldo
+                      const updateBalanceResult = await updateCustomerBalance(personData.id, creditTotal, true);
+
+                      itemsController.createItemsAfterTransaction(result.data.id, items)
+                        .then(result => console.log(result.message))
+                        .catch(error => console.error("Falha ao criar itens:", error));
+
+
+                      if (updateBalanceResult.success) {
+                          res.status(200).json({ success: true, message: 'Transação concluída e saldo atualizado com sucesso', details: result.data});
+                      } else {
+                          res.status(500).json({ success: false, error: 'Transação bem-sucedida, mas falha ao atualizar saldo', details: updateBalanceResult.message});
+                      }
+                  } else {
+                      res.status(500).json({ success: false, error: 'Falha ao salvar transação', details: save.message});
+                  }
               }
               
 

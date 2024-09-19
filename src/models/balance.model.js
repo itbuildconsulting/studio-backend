@@ -1,15 +1,15 @@
+const { Sequelize, DataTypes } = require('sequelize');
 const sequelize = require('../core/db/database.js');
 
 const Balance = sequelize.define('balance', {
     idCustomer: {
-      type: DataTypes.STRING,  // Assumindo que o ID do cliente é uma string
+      type: DataTypes.STRING, 
       primaryKey: true,
       allowNull: false
     },
-    saldo: {
-      type: DataTypes.DECIMAL(10, 2),  // Permite valores decimais para saldo, como 1000.50
+    balance: {
+      type: DataTypes.INTEGER,  
       allowNull: false,
-      defaultValue: 0.00  // Começa com saldo zero
     },
     lastUpdated: {
       type: DataTypes.DATE,
@@ -21,4 +21,7 @@ const Balance = sequelize.define('balance', {
   });
   
   // Certifique-se de sincronizar o modelo com o banco de dados
-  Balance.sync({ alter: true });
+  //Balance.sync({ alter: true });
+
+
+  module.exports = Balance;

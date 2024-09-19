@@ -1,36 +1,37 @@
 const { Sequelize, DataTypes } = require('sequelize');
 const sequelize = require('../core/db/database.js');
 
-const Transactions = sequelize.define('product', {
-    success: {
-      type: DataTypes.STRING,
-      allowNull: false
-    },
+const Transactions = sequelize.define('transactions', {
     status: {
       type: DataTypes.STRING,
-      allowNull: false
-    },
-    message: {
-      type: DataTypes.STRING,
-      allowNull: false
+      allowNull: false,
     },
     transactionType: {
-      type: DataTypes.NUMBER,
+      type: DataTypes.INTEGER, // 1 PARA CRÉDITO E 2 PARA DÉBITO
       allowNull: false
     },
     transactionId: {
       type: DataTypes.STRING,
-      allowNull: false
+      allowNull: false,
+      primaryKey: true
     },
     transactionCode: {
       type: DataTypes.STRING,
       allowNull: false
     },
+    balance: {
+      type: DataTypes.INTEGER,  // Permite valores decimais para saldo, como 1000.50
+      allowNull: false,
+    },
     amount: {
-      type: DataTypes.STRING,
+      type: DataTypes.INTEGER,
       allowNull: false
     },
     currency: {
+      type: DataTypes.STRING,
+      allowNull: false
+    },
+    payment_method:{
       type: DataTypes.STRING,
       allowNull: false
     },
@@ -39,39 +40,40 @@ const Transactions = sequelize.define('product', {
       allowNull: false
     },
     customerId: {
-      type: DataTypes.BOOLEAN,
+      type: DataTypes.STRING,
       allowNull: false
     },
     customerName: {
-      type: DataTypes.BOOLEAN,
+      type: DataTypes.STRING,
       allowNull: false
     },
     customerEmail: {
-      type: DataTypes.BOOLEAN,
+      type: DataTypes.STRING,
       allowNull: false
     },
     customerDocument: {
-      type: DataTypes.BOOLEAN,
+      type: DataTypes.STRING,
       allowNull: false
     },
     //////////
-    created_at: {
-      type: DataTypes.BOOLEAN,
+    createdAt: {
+      type: DataTypes.DATEONLY,
       allowNull: false
     },
-    updated_at: {
-      type: DataTypes.BOOLEAN,
+    updatedAt: {
+      type: DataTypes.DATEONLY,
       allowNull: false
     },
-    closed_at: {
-      type: DataTypes.BOOLEAN,
+    closedAt: {
+      type: DataTypes.DATEONLY,
       allowNull: false
     },
     //////////
   
   
-  }, {tableName: 'transaction'});
+  }, {tableName: 'transactions'});
   
 
+  //Transactions.sync({ alter: true });
 
 module.exports = Transactions;
