@@ -56,15 +56,15 @@ module.exports.getById = async (req, res, next) => {
 };
 
 module.exports.getDropdown = async (req, res, next) => {
-    const productTypeId = req.params.productTypeId; // Obtenção do productTypeId da rota (pode ser undefined)
+    const productTypeId = req.params.productTypeId; // Obtenção do productTypeId da rota
 
     // Construindo o objeto de consulta
     const queryOptions = {
         attributes: ['id', 'name'], // Especifica que apenas 'id' e 'name' do produto são necessários
     };
 
-    // Adiciona a condição de filtro somente se productTypeId for fornecido
-    if (productTypeId) {
+    // Adiciona a condição de filtro somente se productTypeId for fornecido e não for 'null'
+    if (productTypeId && productTypeId !== 'null') {
         queryOptions.where = {
             productTypeId: productTypeId
         };
