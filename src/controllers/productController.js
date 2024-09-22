@@ -56,22 +56,25 @@ module.exports.getById = async (req, res, next) => {
 };
 
 module.exports.getDropdown = async (req, res, next) => {
-    const productTypeId = req.params.productTypeId; // Obtenção do productTypeId da rota
+    const productTypeId = req.params.productTypeId; // Obtenção do productTypeId da rota (pode ser undefined)
 
-    if (!productTypeId) {
-        return res.status(400).json({ message: 'Product Type ID is required' });
+    // Construindo o objeto de consulta
+    const queryOptions = {
+        attributes: ['id', 'name'], // Especifica que apenas 'id' e 'name' do produto são necessários
+    };
+
+    // Adiciona a condição de filtro somente se productTypeId for fornecido
+    if (productTypeId) {
+        queryOptions.where = {
+            productTypeId: productTypeId
+        };
     }
 
     try {
-        const products = await Product.findAll({
-            where: {
-                productTypeId: productTypeId
-            },
-            attributes: ['id', 'name'] // Especifica que apenas 'id' e 'name' do produto são necessários
-        });
+        const products = await Product.findAll(queryOptions);
 
         if (products.length === 0) {
-            return res.status(404).json({ message: 'No products found for the given product type ID' });
+            return res.status(404).json({ message: 'No products found' });
         }
 
         return res.status(200).json(products);
@@ -80,6 +83,7 @@ module.exports.getDropdown = async (req, res, next) => {
         res.status(500).json({ message: 'Error fetching products', error: error.message });
     }
 };
+
 
 // UPDATE
 module.exports.update = async (req, res, next) => {

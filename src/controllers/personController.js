@@ -116,6 +116,32 @@ module.exports.getByCriteriaStudent = async (req, res, next) => {
 };
 
 
+module.exports.getDropdownEmployee = async (req, res, next) => {
+    try {
+        validateToken(req, res, () => {
+            // Filtra apenas onde `employee` é true
+            Person.findAll({
+                where: {
+                    employee: true
+                }
+            }).then((employees) => {
+                res.status(200).json(employees);
+            });
+        });
+    } catch (error) {
+        console.error('Erro ao buscar funcionários:', error);
+        res.status(500).json({
+            success: false,
+            data: error,
+            error: 'Erro ao buscar funcionários'
+        });
+    }
+};
+
+
+
+
+
 
 // UPDATE
 module.exports.update = async (req, res, next) => {
