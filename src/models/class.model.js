@@ -2,35 +2,40 @@ const { Sequelize, DataTypes } = require('sequelize');
 const sequelize = require('../core/db/database.js');
 
 const Product = require('./product.model.js');
+const ProductType = require('./productType.model.js');
 const Person = require('./person.model.js');
 
 const Class = sequelize.define('class', {
-  name: {
-    type: DataTypes.STRING,
+  date: {
+    type: DataTypes.DATEONLY,
     allowNull: false
+  },
+  time: {
+    type: DataTypes.TIME,
+    allowNull: false
+  },
+  teacherId: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    references: {
+      model: 'Persons',
+      key: 'id'
+    }
   },
   limit: {
     type: DataTypes.INTEGER,
     allowNull: false
   },
-  income: {
-    type: DataTypes.DECIMAL,
+  hasCommission: {
+    type: DataTypes.BOOLEAN,
     allowNull: false
-  },
-  date: {
-    type: DataTypes.DATEONLY,
-    allowNull: false
-  },
-  config: {
+  },  
+  kickbackRule: {
     type: DataTypes.STRING,
     allowNull: false
   },
   kickback: {
     type: DataTypes.DECIMAL,
-    allowNull: false
-  },
-  kickbackRule: {
-    type: DataTypes.STRING,
     allowNull: false
   },
   active: {
@@ -39,9 +44,8 @@ const Class = sequelize.define('class', {
   },
 }, {tableName: 'class'});
 
+Product.belongsTo(ProductType, { foreignKey: 'productTypeId' });
 Class.belongsTo(Product, { foreignKey: 'productId' });
-Class.belongsToMany(Person, { through: 'PersonClass' });
-Class.belongsTo(Person, { foreignKey: 'professorId' });
-
+Class.belongsToMany(Person, { through: 'ClassStudents', as: 'students' });
 
 module.exports = Class;
