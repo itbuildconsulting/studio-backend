@@ -119,13 +119,17 @@ module.exports.getByCriteriaStudent = async (req, res, next) => {
 module.exports.getDropdownEmployee = async (req, res, next) => {
     try {
         validateToken(req, res, () => {
-            // Filtra apenas onde `employee` é true
             Person.findAll({
                 where: {
                     employee: true
-                }
+                },
+                attributes: ['id', 'name'], // Especifica que apenas 'id' e 'name' do funcionário são necessários
             }).then((employees) => {
-                res.status(200).json(employees);
+                if (employees.length === 0) {
+                    res.status(404).json({ message: 'No employees found' });
+                } else {
+                    res.status(200).json(employees);
+                }
             });
         });
     } catch (error) {
@@ -138,8 +142,31 @@ module.exports.getDropdownEmployee = async (req, res, next) => {
     }
 };
 
-
-
+module.exports.getDropdownStudent = async (req, res, next) => {
+    try {
+        validateToken(req, res, () => {
+            Person.findAll({
+                where: {
+                    employee: false // Filtra apenas onde `employee` é false
+                },
+                attributes: ['id', 'name'] // Especifica que apenas 'id' e 'name' do estudante são necessários
+            }).then((students) => {
+                if (students.length === 0) {
+                    res.status(404).json({ message: 'No students found' });
+                } else {
+                    res.status(200).json(students);
+                }
+            });
+        });
+    } catch (error) {
+        console.error('Erro ao buscar estudantes:', error);
+        res.status(500).json({
+            success: false,
+            data: error,
+            error: 'Erro ao buscar estudantes'
+        });
+    }
+};
 
 
 

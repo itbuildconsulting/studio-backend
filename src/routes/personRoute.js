@@ -147,6 +147,7 @@ router.post('/student/filter', personController.getByCriteriaStudent);
 
 
 router.get('/employee/dropdown', personController.getDropdownEmployee);
+router.get('/student/dropdown', personController.getDropdownStudent);
 
 
 router.get('/:id', personController.getById);
