@@ -6,7 +6,7 @@ const Balance = sequelize.define('balance', {
       primaryKey: true,
       allowNull: false
     },
-    saldo: {
+    balance: {
       type: DataTypes.DECIMAL(10, 2),  // Permite valores decimais para saldo, como 1000.50
       allowNull: false,
       defaultValue: 0.00  // Começa com saldo zero
