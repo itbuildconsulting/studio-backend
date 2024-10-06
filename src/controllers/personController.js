@@ -7,18 +7,43 @@ const { Op } = require('sequelize'); // Operadores do Sequelize
 module.exports.create = async (req, res, next) => {
     try {
         validateToken(req, res, async () => {
-            const { name, identity, email, phone, birthday, active, address, zipCode, city, state, country, height, weight, other, password, rule, frequency,  employee, employee_level } = req.body;
+            const {
+                date,
+                time,
+                teacherId,
+                limit: qtdStudents,
+                hasCommission: canCommission,
+                kickbackRules: commissionRules,
+                kickback: commissionValue,
+                productId: product,
+                students
+            } = req.body;
+
             try {
-                const newPerson = await Person.create({ name, identity, email, phone, birthday, active, address, zipCode, city, state, country, height, weight, other, password, rule, frequency,  employee, employee_level });
-                res.status(201).json(newPerson);
+                const newClass = await Class.create({
+                    date,
+                    time,
+                    teacherId,
+                    studentLimit: qtdStudents,
+                    hasCommission: canCommission,
+                    commissionRules,
+                    commissionValue,
+                    productId: product
+                });
+
+                // Aqui, assumindo que temos uma relação muitos-para-muitos com `students`
+                if (students && students.length > 0) {
+                    await newClass.addStudents(students);
+                }
+
+                res.status(201).json(newClass);
             } catch (createError) {
-                console.error('Erro ao criar pessoa:', createError);
-                res.status(500).json(
-                    { 
-                        success: false,
-                        data:  createError,
-                        error: 'Erro ao criar pessoa' }
-                    );
+                console.error('Erro ao criar classe:', createError);
+                res.status(500).json({
+                    success: false,
+                    data: createError,
+                    error: 'Erro ao criar classe'
+                });
             }
         });
     } catch (error) {
@@ -26,6 +51,7 @@ module.exports.create = async (req, res, next) => {
         res.status(401).send('Token inválido');
     }
 };
+
 
 // READ
 module.exports.getAll = async (req, res, next) => {
@@ -112,6 +138,59 @@ module.exports.getByCriteriaStudent = async (req, res, next) => {
     } catch (error) {
         console.error('Erro ao buscar pessoa:', error);
         res.status(500).send('Erro ao buscar pessoa');
+    }
+};
+
+
+module.exports.getDropdownEmployee = async (req, res, next) => {
+    try {
+        validateToken(req, res, () => {
+            Person.findAll({
+                where: {
+                    employee: true
+                },
+                attributes: ['id', 'name'], // Especifica que apenas 'id' e 'name' do funcionário são necessários
+            }).then((employees) => {
+                if (employees.length === 0) {
+                    res.status(404).json({ message: 'No employees found' });
+                } else {
+                    res.status(200).json(employees);
+                }
+            });
+        });
+    } catch (error) {
+        console.error('Erro ao buscar funcionários:', error);
+        res.status(500).json({
+            success: false,
+            data: error,
+            error: 'Erro ao buscar funcionários'
+        });
+    }
+};
+
+module.exports.getDropdownStudent = async (req, res, next) => {
+    try {
+        validateToken(req, res, () => {
+            Person.findAll({
+                where: {
+                    employee: false // Filtra apenas onde `employee` é false
+                },
+                attributes: ['id', 'name'] // Especifica que apenas 'id' e 'name' do estudante são necessários
+            }).then((students) => {
+                if (students.length === 0) {
+                    res.status(404).json({ message: 'No students found' });
+                } else {
+                    res.status(200).json(students);
+                }
+            });
+        });
+    } catch (error) {
+        console.error('Erro ao buscar estudantes:', error);
+        res.status(500).json({
+            success: false,
+            data: error,
+            error: 'Erro ao buscar estudantes'
+        });
     }
 };
 

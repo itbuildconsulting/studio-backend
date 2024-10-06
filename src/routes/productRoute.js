@@ -98,4 +98,7 @@ router.put('/:id', productController.update);
  */
 router.delete('/:id', productController.delete);
 
+
+router.get('/dropdown/:productTypeId', productController.getDropdown);
+
 module.exports = router;
