@@ -10,7 +10,6 @@ npm start
 
 localhost:3001/seed >> para iniciar o banco de dados -- Criar as tabelas.
 
-
 ---------------------------
 
 curl --location 'localhost:3001/persons/' \
