@@ -3,7 +3,7 @@ import cors from 'cors'; // Importa o cors
 import swaggerSetup from './swagger/swagger';
 //import bankRoute from './routes/bankRoute';
 import classRoute from './routes/classRoutes';
-//import indexRoute from './routes/indexRoute';
+import indexRoute from './routes/indexRoutes';
 import loginRoute from './routes/loginRoutes';
 import personRoute from './routes/personRoutes';
 import placeRoute from './routes/placeRoutes';
@@ -32,7 +32,7 @@ app.use(express.json());
 // Rotas
 //app.use('/bank', bankRoute);
 app.use('/class', classRoute);
-//app.use('/', indexRoute);
+app.use('/', indexRoute);
 app.use('/login', loginRoute);
 app.use('/persons', personRoute);
 app.use('/places', placeRoute);
