@@ -1,38 +1,17 @@
 {
   "compilerOptions": {
-    /* Language and Environment */
-    "target": "es2016",                     // Define a versão de ECMAScript alvo
-    "module": "commonjs",                   // Define o sistema de módulos usado
-    "esModuleInterop": true,                // Facilita a importação de módulos CommonJS
-    "forceConsistentCasingInFileNames": true, // Garante que os nomes dos arquivos sejam consistentes com o sistema de arquivos
-
-    /* Strict Type-Checking Options */
-    "strict": true,                         // Habilita todas as verificações estritas de tipo
-    // "noImplicitAny": true,               // (opcional) Habilita erros quando 'any' é inferido implicitamente
-    // "strictNullChecks": true,            // (opcional) Verifica 'null' e 'undefined' em tipos
-    // "noImplicitReturns": true,           // (opcional) Gera erro quando uma função não tem retorno explícito
-
-    /* Module Resolution */
-    "moduleResolution": "node",             // Usa o sistema de resolução de módulos do Node.js
-    "resolveJsonModule": true,              // Permite importar arquivos JSON
-    "skipLibCheck": true,                   // Ignora a checagem de bibliotecas (d.ts files)
-
-    /* JavaScript Support */
-    "allowJs": true,                        // Permite incluir arquivos JavaScript no projeto
-    "checkJs": false,                       // Não faz checagem de tipos em arquivos JavaScript
-
-    /* Emit */
-    "sourceMap": true,                      // Gera arquivos de sourcemap
-    "removeComments": true,                 // Remove comentários do código gerado
-    "outDir": "./dist",                     // Diretório de saída para os arquivos compilados
-    "declaration": true,                    // Gera arquivos de declaração (.d.ts) para facilitar reutilização em outros projetos
-
-    /* Interop Constraints */
-    "allowSyntheticDefaultImports": true,   // Permite usar 'import x from y' mesmo quando o módulo não tem exportação default
-
-    /* Type Checking */
-    "noUnusedLocals": true,                 // Gera erro quando variáveis locais não são usadas
-    "noUnusedParameters": true,             // Gera erro quando parâmetros de função não são usados
+      "module": "commonjs",
+      "esModuleInterop": true,
+      "allowSyntheticDefaultImports": true,
+      "target": "es6",
+      "noImplicitAny": true,
+      "moduleResolution": "node",
+      "sourceMap": true,
+      "outDir": "dist",
+      "baseUrl": ".",
+      "paths": {
+          "*": ["node_modules/*", "src/types/*"]
+      }
   },
   "include": [
     "src/**/*.ts",                          // Inclui todos os arquivos TypeScript na pasta src
