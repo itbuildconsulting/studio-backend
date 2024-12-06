@@ -159,8 +159,6 @@ export const checkout = async (req: Request, res: Response, ): Promise<Response 
 
 // Função para criar transação
 async function createTransaction(checkout: any) {
-    console.log('AQUIII')
-    console.log(checkout)
     try {
         const response = await fetch('https://api.pagar.me/core/v5/orders', {
             method: 'POST',

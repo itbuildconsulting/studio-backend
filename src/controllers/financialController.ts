@@ -23,7 +23,7 @@ export const getLatestTransactions = async (_req: Request, res: Response): Promi
 
         return res.status(200).json({
             success: true,
-            transactions: formattedTransactions,
+            data: formattedTransactions,
         });
     } catch (error) {
         console.error('Erro ao buscar transações:', error);

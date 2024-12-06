@@ -92,6 +92,7 @@ Class.init(
 
 // Definindo a associação
 Class.belongsTo(Product, { foreignKey: 'productId' });
+
 //Class.sync({ alter: true });
 
 export default Class;

@@ -6,9 +6,27 @@ import Person from '../models/Person.model';
 export const createPerson = async (req: Request, res: Response): Promise<Response> => {
     try {
         const {
-            name, identity, email, phone, birthday, active, address, zipCode, city, state, country, height, weight, other,
-            password, rule, frequency, employee, employee_level
+            name,
+            identity,
+            email,
+            phone,
+            birthday,
+            height,
+            weight,
+            other,
+            password,
+            rule,
+            frequency,
+            employee,
+            employee_level,
+            zipCode,
+            state,
+            city,
+            address,
+            country,
+            active
         } = req.body;
+        console.log(req.body)
 
         // Validação de dados
         const validationError = validatePersonData(req.body);
@@ -18,8 +36,25 @@ export const createPerson = async (req: Request, res: Response): Promise<Respons
 
         // Criação da pessoa
         const newPerson = await Person.create({
-            name, identity, email, phone, birthday, active, address, zipCode, city, state, country, height, weight,
-            other, password, rule, frequency, employee, employee_level
+            name,
+            identity,
+            email,
+            phone,
+            birthday,
+            height,
+            weight,
+            other,
+            password,
+            rule,
+            frequency,
+            employee,
+            employee_level,
+            zipCode,
+            state,
+            city,
+            address,
+            country,
+            active
         });
 
         return res.status(201).json({
@@ -32,6 +67,7 @@ export const createPerson = async (req: Request, res: Response): Promise<Respons
         return res.status(500).json({
             success: false,
             error: 'Erro ao criar pessoa',
+            mesage: error
         });
     }
 };
@@ -105,22 +141,26 @@ export const getByCriteriaEmployee = async (req: Request, res: Response): Promis
 export const getByCriteriaStudent = async (req: Request, res: Response): Promise<Response> => {
     try {
         const { email, name, identity } = req.body;
+
+        // Critérios de busca dinâmica
         const criteria: any = { employee: false }; // Apenas estudantes
 
-        if (email) criteria.email = email;
-        if (name) criteria.name = { [Op.like]: `%${name}%` };
-        if (identity) criteria.identity = identity;
+        // Adicionar filtros dinâmicos com busca parcial
+        if (email) criteria.email = { [Op.like]: `%${email}%` }; // Busca parcial por e-mail
+        if (name) criteria.name = { [Op.like]: `%${name}%` }; // Busca parcial por nome
+        if (identity) criteria.identity = { [Op.like]: `%${identity}%` }; // Busca parcial por identidade
 
-        const person = await Person.findOne({ where: criteria });
+        // Busca múltiplos registros
+        const people = await Person.findAll({ where: criteria });
 
-        if (!person) {
-            return res.status(404).send('Pessoa não encontrada');
+        if (!people || people.length === 0) {
+            return res.status(404).send('Nenhum estudante encontrado');
         }
 
-        return res.status(200).json(person);
+        return res.status(200).json(people);
     } catch (error) {
-        console.error('Erro ao buscar pessoa:', error);
-        return res.status(500).send('Erro ao buscar pessoa');
+        console.error('Erro ao buscar estudantes:', error);
+        return res.status(500).send('Erro ao buscar estudantes');
     }
 };
 
@@ -173,7 +213,21 @@ export const updatePerson = async (req: Request, res: Response): Promise<Respons
     try {
         const { id } = req.params;
         const {
-            name, identity, email, phone, birthday, active, address, zipCode, city, state, country, height, weight, password, employee_level
+            name,
+            identity,
+            email,
+            phone,
+            birthday,
+            height,
+            weight,
+            password,
+            employee_level,
+            zipCode,
+            state,
+            city,
+            address,
+            country,
+            active
         } = req.body;
 
         const person = await Person.findByPk(id);
@@ -278,7 +332,22 @@ export const deletePerson = async (req: Request, res: Response): Promise<Respons
 
 export const validatePersonData = (personData: any) => {
     const {
-        name, identity, email, phone, birthday, active, address, zipCode, city, state, country, height, weight, password, employee, employee_level
+        name,
+            identity,
+            email,
+            phone,
+            birthday,
+            height,
+            weight,
+            password,
+            employee,
+            employee_level,
+            zipCode,
+            state,
+            city,
+            address,
+            country,
+            active
     } = personData;
 
     if (!name || name.trim() === '') return 'O campo name é obrigatório';

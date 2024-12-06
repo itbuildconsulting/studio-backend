@@ -37,7 +37,7 @@
   "include": [
     "src/**/*.ts",                          // Inclui todos os arquivos TypeScript na pasta src
     "src/**/*.js"                           // Inclui todos os arquivos JavaScript na pasta src
-, "src/routes/seedRoutes.tts"  ],
+, "src/routes/seedRoutes.ts"  ],
   "exclude": [
     "node_modules",                         // Exclui a pasta node_modules
     "dist"                                  // Exclui a pasta de saída (dist)

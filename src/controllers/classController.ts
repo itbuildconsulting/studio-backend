@@ -4,6 +4,7 @@ import ClassStudent from '../models/ClassStudent.model';
 import { authenticateToken } from '../core/token/authenticateToken';
 import moment from 'moment';
 import Bike from '../models/Bike.model';
+import { Op } from 'sequelize';
 
 // CREATE
 export const createClass = async (req: Request, res: Response): Promise<Response> => {
@@ -73,13 +74,46 @@ export const createClass = async (req: Request, res: Response): Promise<Response
     }
 };
  
-// READ
-export const getAllClasses = async (_req: Request, res: Response): Promise<void | Response> => {
+
+export const getAllClasses = async (req: Request, res: Response): Promise<void | Response> => {
     try {
-        authenticateToken(_req, res, async () => {
+        authenticateToken(req, res, async () => {
             try {
-                const classes = await Class.findAll();
-                return res.status(200).json(classes); // Retorno explícito dentro do callback
+                const { date, time, productType, teacherId } = req.body;
+
+                // Critérios de busca dinâmica para aulas
+                const criteria: any = {};
+
+                if (date) {
+                    criteria.date = date; // Busca por data exata
+                }
+
+                if (time) {
+                    criteria.time = time; // Busca por hora exata
+                }
+
+                if (productType) {
+                    criteria.productType = { [Op.like]: `%${productType}%` }; // Busca parcial por tipo de produto
+                }
+
+                if (teacherId) {
+                    criteria.teacherId = teacherId; // Filtro por teacherId
+                }
+
+                // Busca as aulas com os critérios aplicados
+                const classes = await Class.findAll({
+                    where: criteria,
+                });
+
+                // Retorno da busca
+                if (!classes || classes.length === 0) {
+                    return res.status(404).send('Nenhuma aula encontrada');
+                }
+
+                return res.status(200).json({
+                    success: true,
+                    data: classes
+                });
             } catch (findError) {
                 console.error('Erro ao buscar aulas:', findError);
                 return res.status(500).send('Erro ao buscar aulas');

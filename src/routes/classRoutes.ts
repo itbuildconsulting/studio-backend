@@ -37,7 +37,7 @@ router.post('/', authenticateToken, createClass);
  *       401:
  *         description: Erro ao listar classes
  */
-router.get('/', authenticateToken, getAllClasses);
+router.post('/filter', authenticateToken, getAllClasses);
 
 /**
  * @swagger
