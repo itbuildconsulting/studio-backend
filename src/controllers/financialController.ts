@@ -1,26 +1,48 @@
 import { Request, Response } from 'express';
+import { Op } from 'sequelize';
 import Transactions from '../models/Transaction.model'; // Importando o modelo de transações
 
 
-export const getLatestTransactions = async (_req: Request, res: Response): Promise<Response> => {
+export const getFilteredTransactions = async (req: Request, res: Response): Promise<Response> => {
     try {
+        const { customerName, status, createdAt, transactionId } = req.body;
+
+        // Montar os critérios de busca dinamicamente
+        const filters: any = {};
+
+        if (customerName) {
+            filters.customerName = { [Op.like]: `%${customerName}%` }; // Busca parcial por nome
+        }
+
+        if (status) {
+            filters.status = status; // Busca exata por status
+        }
+
+        if (createdAt) {
+            filters.createdAt = { [Op.eq]: new Date(createdAt) }; // Busca exata por data
+        }
+
+        if (transactionId) {
+            filters.transactionId = transactionId; // Busca exata por ID da transação
+        }
+
+        // Busca no banco com os filtros
         const transactions = await Transactions.findAll({
-            attributes: ['transactionId', 'amount', 'customerName', 'status', 'createdAt'], // Only select necessary fields
-            order: [['createdAt', 'DESC']], // Order by latest transactions
-            limit: 10, // Limit to the latest 10 transactions
+            where: filters,
+            attributes: ['transactionId', 'amount', 'customerName', 'status', 'createdAt'], // Seleciona apenas os campos necessários
+            order: [['createdAt', 'DESC']], // Ordena pelas transações mais recentes
         });
 
-        // Map through the transactions and format the dates correctly
-        const formattedTransactions = transactions.map(transaction => {
-            return {
-                transactionId: transaction.transactionId,
-                amount: transaction.amount,
-                customerName: transaction.customerName,
-                status: transaction.status,
-                createdAt: new Date(transaction.createdAt).toLocaleDateString('pt-BR'), // Format date in DD/MM/YYYY
-            };
-        });
+        // Formata os dados
+        const formattedTransactions = transactions.map(transaction => ({
+            transactionId: transaction.transactionId,
+            amount: transaction.amount,
+            customerName: transaction.customerName,
+            status: transaction.status,
+            createdAt: new Date(transaction.createdAt).toLocaleDateString('pt-BR'), // Formata a data
+        }));
 
+        // Retorna o resultado
         return res.status(200).json({
             success: true,
             data: formattedTransactions,

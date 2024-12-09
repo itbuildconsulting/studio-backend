@@ -14,6 +14,7 @@ import seedRoute from './routes/seedRoutes';
 import checkoutRoute from './routes/checkoutRoutes';
 import appRoute from './routes/appRoutes';
 import financialRoutes from './routes/financialRoutes';
+import dashboardRoutes from './routes/dashboardRoutes';
 
 const app: Application = express();
 
@@ -43,6 +44,7 @@ app.use('/seed', seedRoute);
 app.use('/checkout', checkoutRoute);
 app.use('/app', appRoute);
 app.use('/financial', financialRoutes);
+app.use('/dashboard', dashboardRoutes);
 
 // Configuração do Swagger
 swaggerSetup(app);

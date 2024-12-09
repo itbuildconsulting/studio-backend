@@ -17,7 +17,7 @@ export const createClass = async (req: Request, res: Response): Promise<Response
             hasCommission,
             kickbackRule,
             kickback,
-            productId,
+            productTypeId,
             bikes, // Array de objetos com { studentId, bikeNumber }
             active
         } = req.body;
@@ -31,7 +31,7 @@ export const createClass = async (req: Request, res: Response): Promise<Response
             hasCommission,
             kickbackRule,
             kickback,
-            productId,
+            productTypeId,
             active
         });
 

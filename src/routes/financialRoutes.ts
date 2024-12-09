@@ -25,7 +25,7 @@ const router: Router = express.Router();
  *       500:
  *         description: Internal server error
  */
-router.get('/lastTransactions', authenticateToken, financialController.getLatestTransactions);
+router.post('/lastTransactions', authenticateToken, financialController.getFilteredTransactions);
 
 
 router.get('/transaction/:transactionId', authenticateToken, financialController.getTransactionById);

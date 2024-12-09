@@ -3,6 +3,12 @@ import Place from '../models/Place.model';
 import ProductType from '../models/ProductType.model';
 import Person from '../models/Person.model';
 import Product from '../models/Product.model';
+import Balance from '../models/Balance.model';
+import Bike from '../models/Bike.model';
+import Class from '../models/Class.model';
+import ClassStudent from '../models/ClassStudent.model';
+import Item from '../models/Item.model';
+import Transactions from '../models/Transaction.model';
 
 // Definir funções do controlador
 export const seedController = {
@@ -13,6 +19,12 @@ export const seedController = {
             await ProductType.sync();
             await Person.sync();
             await Product.sync();
+            await Balance.sync();            
+            await Class.sync();
+            await Bike.sync();
+            await ClassStudent.sync();            
+            await Transactions.sync();
+            await Item.sync();
             
             return res.status(201).send('Todas as tabelas sincronizadas com o banco de dados');
         } catch (err) {

@@ -1,6 +1,6 @@
 import { Model, DataTypes, Optional } from 'sequelize';
 import sequelize from '../config/database';
-import Product from './Product.model';
+import ProductType from './ProductType.model';
 
 // Definindo a interface dos atributos
 interface ClassAttributes {
@@ -13,7 +13,7 @@ interface ClassAttributes {
   kickbackRule?: string;
   kickback?: number;
   active: boolean;
-  productId: number;
+  productTypeId: number;
 }
 
 // Interface para criação de novos registros, onde o campo `id` é opcional
@@ -30,7 +30,7 @@ class Class extends Model<ClassAttributes, ClassCreationAttributes> implements C
   public kickbackRule?: string;
   public kickback?: number;
   public active!: boolean;
-  public productId!: number;
+  public productTypeId!: number;
 
   // Timestamps
   public readonly createdAt!: Date;
@@ -75,11 +75,11 @@ Class.init(
       type: DataTypes.BOOLEAN,
       allowNull: false,
     },
-    productId: {
+    productTypeId: {
       type: DataTypes.INTEGER.UNSIGNED,
       allowNull: false,
       references: {
-        model: Product,
+        model: ProductType,
         key: 'id',
       },
     },
@@ -91,7 +91,7 @@ Class.init(
 );
 
 // Definindo a associação
-Class.belongsTo(Product, { foreignKey: 'productId' });
+Class.belongsTo(ProductType, { foreignKey: 'productTypeId' });
 
 //Class.sync({ alter: true });
 
