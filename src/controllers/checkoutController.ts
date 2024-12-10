@@ -122,7 +122,7 @@ export const checkout = async (req: Request, res: Response, ): Promise<Response 
                 console.log("Checkout Payload:", JSON.stringify(checkout, null, 2));
                 const result = await createTransaction(checkout);
                 console.log(result)
-                if (!result.success) {
+                if (!result.success || result.data.status !== 'paid') {
                     console.error('Falha ao criar transação2:', result.message);
                     return res.status(500).json({ success: false, error: 'Falha ao criar transação:', details: result.message });
                 }
@@ -176,7 +176,7 @@ async function createTransaction(checkout: any) {
             return {
                 success: false,
                 message: data.message || 'Erro na transação',
-                data: null
+                data: data.erros
             };
         }
   

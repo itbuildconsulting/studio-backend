@@ -34,10 +34,12 @@ export const createPerson = async (req: Request, res: Response): Promise<Respons
             return res.status(400).json({ success: false, error: validationError });
         }
 
+        const document = identity.replace(/[.\-\/]/g, '');
+
         // Criação da pessoa
         const newPerson = await Person.create({
             name,
-            identity,
+            identity: document,
             email,
             phone,
             birthday,
@@ -241,9 +243,11 @@ export const updatePerson = async (req: Request, res: Response): Promise<Respons
             return res.status(400).json({ success: false, error: validationError });
         }
 
+        const document = identity.replace(/[.\-\/]/g, '');
+
         // Atualização dos campos da pessoa
         person.name = name;
-        person.identity = identity;
+        person.identity = document;
         person.email = email;
         person.phone = phone;
         person.birthday = birthday;
