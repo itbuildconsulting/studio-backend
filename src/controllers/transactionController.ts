@@ -26,9 +26,9 @@ interface TransactionData {
 // Função para salvar transação
 export const saveTransaction = async (data: TransactionData, credit: number): Promise<{ success: boolean; message: string }> => {
     try {
-        console.log('SAVE TRANSACTION');
-        console.log(data.charges[0].payment_method);
-        console.log(data);
+        //console.log('SAVE TRANSACTION');
+        //console.log(data.charges[0].payment_method);
+        //console.log(data);
 
         // Criar o objeto de transação
         const objectTransaction = {

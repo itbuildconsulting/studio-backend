@@ -243,3 +243,114 @@ export const addStudentToClassWithBikeNumber = async (req: Request, res: Respons
         });
     }
 };
+
+
+export const nextClass = async (req: Request, res: Response): Promise<Response> => {
+    try {
+        const { studentId } = req.params;
+
+        // Verificar se o ID do aluno foi fornecido
+        if (!studentId) {
+            return res.status(400).json({ success: false, message: 'ID do aluno é obrigatório' });
+        }
+
+        // Validar se o aluno existe
+        const student = await Person.findByPk(studentId);
+        if (!student) {
+            return res.status(404).json({ success: false, message: 'Aluno não encontrado' });
+        }
+
+        // Buscar todas as aulas associadas ao aluno na tabela ClassStudent
+        const classStudentRecords = await ClassStudent.findAll({
+            where: {
+                studentId,
+            },
+            attributes: ['classId'], // Apenas o campo classId para buscar as aulas
+        });
+
+        // Extrair os IDs das aulas
+        const classIds = classStudentRecords.map(record => record.classId);
+
+        // Caso o aluno não tenha aulas associadas
+        if (!classIds.length) {
+            return res.status(200).json({ success: true, message: 'Nenhuma próxima aula encontrada', data: [] });
+        }
+
+        // Buscar as próximas aulas na tabela Class
+        const now = new Date();
+        const nextClasses = await Class.findAll({
+            where: {
+                id: classIds, // Filtrar pelas aulas associadas ao aluno
+                date: {
+                    [Op.gte]: now, // Apenas aulas futuras
+                },
+            },
+            order: [['date', 'ASC'], ['time', 'ASC']], // Ordenar por data e horário
+            attributes: ['id', 'date', 'time'], // Campos necessários
+        });
+
+        // Caso não haja próximas aulas
+        if (!nextClasses.length) {
+            return res.status(200).json({ success: true, message: 'Nenhuma próxima aula encontrada', data: [] });
+        }
+
+        // Retornar as próximas aulas
+        return res.status(200).json({ success: true, data: nextClasses });
+    } catch (error) {
+        console.error('Erro ao listar próximas aulas:', error);
+        return res.status(500).json({ success: false, message: 'Erro ao listar próximas aulas' });
+    }
+};
+
+export const getStudentSummary = async (req: Request, res: Response): Promise<Response> => {
+    try {
+        const { studentId } = req.params;
+
+        // Validar se o ID do aluno foi fornecido
+        if (!studentId) {
+            return res.status(400).json({ success: false, message: 'ID do aluno é obrigatório' });
+        }
+
+        // Buscar o aluno no banco de dados
+        const student = await Person.findByPk(studentId);
+        if (!student) {
+            return res.status(404).json({ success: false, message: 'Aluno não encontrado' });
+        }
+
+        const idCustomer = studentId;
+
+        // Buscar o saldo do aluno na tabela balance
+        const balanceRecords = await Balance.findAll({
+            where: { idCustomer },
+            attributes: ['balance'],
+        });
+
+        // Calcular o saldo total
+        const credits = balanceRecords.reduce((total, record) => total + record.balance, 0);
+
+        // Buscar todas as aulas relacionadas ao aluno na tabela ClassStudent
+        const classStudentRecords = await ClassStudent.findAll({
+            where: { studentId },
+            attributes: ['classId', 'checkin'],
+        });
+
+        // Separar as aulas agendadas e realizadas
+        const scheduledClassesCount = classStudentRecords.filter(record => record.checkin === null).length;
+
+        const completedClassesCount = classStudentRecords.filter(record => record.checkin !== null).length;
+
+        // Resumo do aluno
+        const summary = {
+            studentId: student.id,
+            name: student.name,
+            credits,
+            scheduledClasses: scheduledClassesCount,
+            completedClasses: completedClassesCount,
+        };
+
+        return res.status(200).json({ success: true, data: summary });
+    } catch (error) {
+        console.error('Erro ao obter resumo do aluno:', error);
+        return res.status(500).json({ success: false, message: 'Erro ao obter resumo do aluno' });
+    }
+};

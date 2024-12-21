@@ -5,6 +5,7 @@ import { authenticateToken } from '../core/token/authenticateToken';
 import moment from 'moment';
 import Bike from '../models/Bike.model';
 import { Op } from 'sequelize';
+import Person from '../models/Person.model';
 
 // CREATE
 export const createClass = async (req: Request, res: Response): Promise<Response> => {
@@ -128,11 +129,45 @@ export const getAllClasses = async (req: Request, res: Response): Promise<void |
 export const getClassById = async (req: Request, res: Response): Promise<Response> => {
     try {
         const id = req.params.id;
+
+        // Buscar dados da aula pelo ID
         const classData = await Class.findByPk(id);
         if (!classData) {
             return res.status(404).send('Aula não encontrada');
         }
-        return res.status(200).json(classData);
+
+        // Buscar as bicicletas associadas à aula
+        const bikes = await Bike.findAll({
+            where: { classId: id },
+            attributes: ['bikeNumber', 'status', 'studentId'], // Inclui studentId para buscar o nome do aluno, se houver
+        });
+
+        // Para cada bicicleta, buscar o nome do aluno associado, se houver
+        const formattedBikes = await Promise.all(
+            bikes.map(async (bike) => {
+                let studentName = null;
+
+                if (bike.studentId) {
+                    // Buscar o nome do aluno associado, se houver um studentId
+                    const student = await Person.findByPk(bike.studentId, {
+                        attributes: ['name'], // Buscar apenas o nome do aluno
+                    });
+                    studentName = student?.name || null;
+                }
+
+                return {
+                    bikeNumber: bike.bikeNumber,
+                    status: bike.status, // Status da bicicleta (ex.: disponível, em uso, manutenção)
+                    studentName, // Nome do aluno associado (ou null se não houver)
+                };
+            })
+        );
+
+        // Retornar os dados da aula com as bicicletas
+        return res.status(200).json({
+            ...classData.toJSON(), // Converte os dados da aula para JSON
+            bikes: formattedBikes, // Adiciona as bicicletas ao retorno
+        });
     } catch (error) {
         console.error('Erro ao buscar aula:', error);
         return res.status(500).send('Erro ao buscar aula');
