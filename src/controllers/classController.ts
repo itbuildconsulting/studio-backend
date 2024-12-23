@@ -175,8 +175,109 @@ export const getClassById = async (req: Request, res: Response): Promise<Respons
 };
 
 // UPDATE
-export const updateClass = async (_req: Request, res: Response): Promise<Response> => {
-    return res.status(200).send('Aula excluída com sucesso');
+export const updateClass = async (req: Request, res: Response): Promise<Response> => {
+    try {
+        const id = req.params.id; // ID da aula a ser editada
+        const {
+            date,
+            time,
+            teacherId,
+            limit,
+            hasCommission,
+            kickbackRule,
+            kickback,
+            productTypeId,
+            bikes, // Array atualizado de { studentId, bikeNumber }
+            active,
+        } = req.body;
+
+        // Verificar se a aula existe
+        const classData = await Class.findByPk(id);
+        if (!classData) {
+            return res.status(404).send('Aula não encontrada');
+        }
+
+        // Atualizar os campos da aula
+        await classData.update({
+            date: date || classData.date,
+            time: time || classData.time,
+            teacherId: teacherId || classData.teacherId,
+            limit: limit || classData.limit,
+            hasCommission: hasCommission !== undefined ? hasCommission : classData.hasCommission,
+            kickbackRule: kickbackRule || classData.kickbackRule,
+            kickback: kickback || classData.kickback,
+            productTypeId: productTypeId || classData.productTypeId,
+            active: active !== undefined ? active : classData.active,
+        });
+
+        // Atualizar as associações de alunos e bicicletas
+        if (bikes && bikes.length >= 0) {
+            const classId = classData.id;
+
+            // Obter todos os registros existentes em ClassStudent para esta aula
+            const existingClassStudents = await ClassStudent.findAll({ where: { classId } });
+
+            // Processar as novas associações
+            for (const bike of bikes) {
+                const { studentId, bikeNumber } = bike;
+
+                // Verifica se a bike já existe na tabela 'Bike'
+                let bikeRecord = await Bike.findOne({ where: { bikeNumber } });
+                if (!bikeRecord) {
+                    // Cria a bike se ela não existir
+                    bikeRecord = await Bike.create({ bikeNumber, status: 'in_use', studentId });
+                } else {
+                    // Atualiza o status da bike para 'in_use'
+                    bikeRecord.status = 'in_use';
+                    bikeRecord.studentId = studentId || null; // Atualiza o aluno associado, se houver
+                    await bikeRecord.save();
+                }
+
+                // Verificar se a associação já existe
+                const existingAssociation = existingClassStudents.find(
+                    (cs) => cs.bikeId === bikeRecord.bikeNumber
+                );
+
+                if (!existingAssociation) {
+                    // Criar nova associação em ClassStudent
+                    await ClassStudent.create({
+                        classId,
+                        PersonId: teacherId,
+                        studentId,
+                        bikeId: bikeRecord.bikeNumber,
+                    });
+                } else {
+                    // Atualizar associação existente
+                    await existingAssociation.update({
+                        studentId,
+                        bikeId: bikeRecord.bikeNumber,
+                    });
+                }
+            }
+
+            // Remover associações que não estão mais presentes no array `bikes`
+            const bikesToKeep = bikes.map((bike: any) => bike.bikeNumber);
+            for (const cs of existingClassStudents) {
+                if (!bikesToKeep.includes(cs.bikeId)) {
+                    // Remover a associação
+                    await cs.destroy();
+                }
+            }
+        }
+
+        return res.status(200).json({
+            success: true,
+            message: 'Aula e associações atualizadas com sucesso',
+            data: classData,
+        });
+    } catch (error) {
+        console.error('Erro ao atualizar aula:', error);
+        return res.status(500).json({
+            success: false,
+            error: 'Erro ao atualizar aula',
+            details: error.message,
+        });
+    }
 };
 
 // DELETE
