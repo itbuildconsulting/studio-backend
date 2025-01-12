@@ -13,6 +13,7 @@ interface TransactionAttributes {
   payment_method: string;
   closed: boolean;
   customerId: string;
+  studentId: number;
   customerName: string;
   customerEmail: string;
   customerDocument: string;
@@ -36,6 +37,7 @@ class Transactions extends Model<TransactionAttributes, TransactionCreationAttri
   public payment_method!: string;
   public closed!: boolean;
   public customerId!: string;
+  public studentId!: number;
   public customerName!: string;
   public customerEmail!: string;
   public customerDocument!: string;
@@ -85,6 +87,10 @@ Transactions.init({
   },
   customerId: {
     type: DataTypes.STRING,
+    allowNull: false,
+  },
+  studentId: {
+    type: DataTypes.INTEGER,
     allowNull: false,
   },
   customerName: {

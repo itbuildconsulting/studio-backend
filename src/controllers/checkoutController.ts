@@ -128,7 +128,7 @@ export const checkout = async (req: Request, res: Response, ): Promise<Response 
                     return res.status(500).json({ success: false, error: 'Falha ao criar transação:', details: result.message });
                 }
 
-                const save = await saveTransaction(result.data, creditTotal);
+                const save = await saveTransaction(result.data, creditTotal, personData.id);
                 if (save.success) {
                     const updateBalanceResult = await updateCustomerBalance(personData.id, creditTotal, true);
 

@@ -7,6 +7,7 @@ import Person from '../models/Person.model';
 import ClassStudent from '../models/ClassStudent.model';
 import Bike from '../models/Bike.model';
 import sequelize from '../config/database';
+import Transactions from '../models/Transaction.model'; // Importando o modelo de transações
 
 export const balance = async (req: Request, res: Response): Promise<Response | void> => {
     const personId = req.body.user?.id;    
@@ -352,5 +353,71 @@ export const getStudentSummary = async (req: Request, res: Response): Promise<Re
     } catch (error) {
         console.error('Erro ao obter resumo do aluno:', error);
         return res.status(500).json({ success: false, message: 'Erro ao obter resumo do aluno' });
+    }
+};
+
+
+export const getLatestClassesByStudent = async (req: Request, res: Response): Promise<Response> => {
+    try {
+        const { studentId } = req.params;
+
+        // Validar se o ID do aluno foi fornecido
+        if (!studentId) {
+            return res.status(400).json({ success: false, message: 'ID do aluno é obrigatório' });
+        }
+
+        // Buscar as aulas mais recentes associadas ao aluno
+        const latestClasses = await ClassStudent.findAll({
+            where: { studentId },
+            include: [
+                {
+                    model: Class,
+                    attributes: ['id', 'date', 'time', 'productTypeId'], // Ajuste os campos conforme necessário
+                },                
+            ],
+            order: [['createdAt', 'DESC']], // Ordenar pelas mais recentes
+            limit: 10, // Limitar às últimas 10 aulas
+        });
+
+        return res.status(200).json({
+            success: true,
+            data: latestClasses,
+        });
+    } catch (error) {
+        console.error('Erro ao buscar últimas aulas do aluno:', error);
+        return res.status(500).json({ success: false, message: 'Erro ao buscar últimas aulas do aluno' });
+    }
+};
+
+export const getUserTransactions = async (req: Request, res: Response): Promise<Response> => {
+    try {
+        const { userId } = req.params;
+
+        // Validar se o ID do usuário foi fornecido
+        if (!userId) {
+            return res.status(400).json({ success: false, message: 'ID do usuário é obrigatório' });
+        }
+
+        // Verificar se o usuário existe
+        const user = await Person.findByPk(userId);
+        if (!user) {
+            return res.status(404).json({ success: false, message: 'Usuário não encontrado' });
+        }
+
+        // Buscar transações associadas ao usuário
+        const studentId = userId;
+        const transactions = await Transactions.findAll({
+            where: { studentId},
+            attributes: ['transactionId', 'amount', 'status', 'createdAt'], // Ajuste os campos conforme necessário
+            order: [['createdAt', 'DESC']], // Ordenar pelas mais recentes
+        });
+
+        return res.status(200).json({
+            success: true,
+            data: transactions,
+        });
+    } catch (error) {
+        console.error('Erro ao buscar transações do usuário:', error);
+        return res.status(500).json({ success: false, message: 'Erro ao buscar transações do usuário' });
     }
 };

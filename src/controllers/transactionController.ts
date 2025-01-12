@@ -24,7 +24,7 @@ interface TransactionData {
 }
 
 // Função para salvar transação
-export const saveTransaction = async (data: TransactionData, credit: number): Promise<{ success: boolean; message: string }> => {
+export const saveTransaction = async (data: TransactionData, credit: number, studentId: number): Promise<{ success: boolean; message: string }> => {
     try {
         //console.log('SAVE TRANSACTION');
         //console.log(data.charges[0].payment_method);
@@ -41,6 +41,7 @@ export const saveTransaction = async (data: TransactionData, credit: number): Pr
             payment_method: data.charges[0].payment_method,
             closed: data.closed,
             customerId: data.customer.id,
+            studentId: studentId,
             customerName: data.customer.name,
             customerEmail: data.customer.email,
             customerDocument: data.customer.document,
