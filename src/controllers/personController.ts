@@ -24,9 +24,10 @@ export const createPerson = async (req: Request, res: Response): Promise<Respons
             city,
             address,
             country,
-            active
+            active,
         } = req.body;
-        console.log(req.body)
+
+        console.log(req.body);
 
         // Validação de dados
         const validationError = validatePersonData(req.body);
@@ -34,7 +35,7 @@ export const createPerson = async (req: Request, res: Response): Promise<Respons
             return res.status(400).json({ success: false, error: validationError });
         }
 
-        const document = identity.replace(/[.\-\/]/g, '');
+        const document = identity.replace(/[.\-\/]/g, ''); // Remove caracteres especiais do documento
 
         // Criação da pessoa
         const newPerson = await Person.create({
@@ -56,20 +57,20 @@ export const createPerson = async (req: Request, res: Response): Promise<Respons
             city,
             address,
             country,
-            active
+            active,
         });
 
         return res.status(201).json({
             success: true,
             message: 'Pessoa criada com sucesso',
-            id: newPerson.id
+            id: newPerson.id,
         });
     } catch (error) {
         console.error('Erro ao criar pessoa:', error);
         return res.status(500).json({
             success: false,
             error: 'Erro ao criar pessoa',
-            mesage: error
+            message: error.message,
         });
     }
 };
@@ -334,42 +335,91 @@ export const deletePerson = async (req: Request, res: Response): Promise<Respons
     }
 };
 
-export const validatePersonData = (personData: any) => {
+export const validatePersonData = (data: any): string | null => {
     const {
         name,
-            identity,
-            email,
-            phone,
-            birthday,
-            height,
-            weight,
-            password,
-            employee,
-            employee_level,
-            zipCode,
-            state,
-            city,
-            address,
-            country,
-            active
-    } = personData;
+        identity,
+        email,
+        phone,
+        birthday,
+        password,
+        employee,
+        employee_level,
+        zipCode,
+        state,
+        city,
+        address,
+        country,
+        active,
+    } = data;
 
-    if (!name || name.trim() === '') return 'O campo name é obrigatório';
-    if (!identity || identity.trim() === '') return 'O campo identity é obrigatório';
-    if (!email || email.trim() === '') return 'O campo email é obrigatório';
-    if (!phone || phone.trim() === '') return 'O campo phone é obrigatório';
-    if (!birthday) return 'O campo birthday é obrigatório';
-    if (active === undefined) return 'O campo active é obrigatório';
-    if (!address || address.trim() === '') return 'O campo address é obrigatório';
-    if (!zipCode || zipCode.trim() === '') return 'O campo zipCode é obrigatório';
-    if (!city || city.trim() === '') return 'O campo city é obrigatório';
-    if (!state || state.trim() === '') return 'O campo state é obrigatório';
-    if (!country || country.trim() === '') return 'O campo country é obrigatório';
-    if (!height) return 'O campo height é obrigatório';
-    if (!weight) return 'O campo weight é obrigatório';
-    if (!password || password.trim() === '') return 'O campo password é obrigatório';
-    if (employee === undefined) return 'O campo employee é obrigatório';
-    if (!employee_level || employee_level.trim() === '') return 'O campo employee_level é obrigatório';
+    // Nome
+    if (!name || typeof name !== 'string' || name.trim() === '') {
+        return 'Nome é obrigatório e deve ser um texto válido.';
+    }
 
-    return null; // Se todos os campos estiverem corretos, retorna null (sem erros)
+    // Documento (CPF ou CNPJ)
+    if (!identity || typeof identity !== 'string' || identity.trim() === '') {
+        return 'Documento é obrigatório.';
+    }
+
+    // Email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!email || !emailRegex.test(email)) {
+        return 'Email é obrigatório e deve ser válido.';
+    }
+
+    // Telefone
+    if (!phone || typeof phone !== 'string' || phone.trim() === '') {
+        return 'Telefone é obrigatório.';
+    }
+
+    // Data de nascimento
+    const dateRegex = /^\d{4}-\d{2}-\d{2}$/; // Formato esperado: YYYY-MM-DD
+    if (!birthday || !dateRegex.test(birthday)) {
+        return 'Data de nascimento é obrigatória e deve estar no formato YYYY-MM-DD.';
+    }
+
+    // Senha
+    if (!password || typeof password !== 'string' || password.length < 6) {
+        return 'Senha é obrigatória e deve ter pelo menos 6 caracteres.';
+    }
+
+    // Funcionário e Nível de Funcionário
+    if (employee !== undefined && typeof employee !== 'boolean') {
+        return 'O campo employee deve ser um valor booleano.';
+    }
+
+    if (employee && (!employee_level || typeof employee_level !== 'string')) {
+        return 'O campo employee_level é obrigatório para funcionários e deve ser uma string.';
+    }
+
+    // Endereço
+    if (!zipCode || typeof zipCode !== 'string' || zipCode.trim() === '') {
+        return 'CEP é obrigatório.';
+    }
+
+    if (!state || typeof state !== 'string' || state.trim() === '') {
+        return 'Estado é obrigatório.';
+    }
+
+    if (!city || typeof city !== 'string' || city.trim() === '') {
+        return 'Cidade é obrigatória.';
+    }
+
+    if (!address || typeof address !== 'string' || address.trim() === '') {
+        return 'Endereço é obrigatório.';
+    }
+
+    if (!country || typeof country !== 'string' || country.trim() === '') {
+        return 'País é obrigatório.';
+    }
+
+    // Ativo
+    if (active !== undefined && typeof active !== 'boolean') {
+        return 'O campo active deve ser um valor booleano.';
+    }
+
+    // Se todas as validações passarem
+    return null;
 };

@@ -10,21 +10,14 @@ import Person from '../models/Person.model';
 // CREATE
 export const createClass = async (req: Request, res: Response): Promise<Response> => {
     try {
-        const {
-            date = moment(req.body.date, 'MM/DD/YYYY').format('YYYY-MM-DD'),
-            time,
-            teacherId,
-            limit,
-            hasCommission,
-            kickbackRule,
-            kickback,
-            productTypeId,
-            bikes, // Array de objetos com { studentId, bikeNumber }
-            active
-        } = req.body;
+        const validation = validateClassData(req.body);
 
-        // Criação da aula
-        const newClass = await Class.create({
+        // Verificar se os dados são válidos
+        if (!validation.isValid) {
+            return res.status(400).json({ success: false, message: validation.message });
+        }
+
+        const {
             date,
             time,
             teacherId,
@@ -33,7 +26,24 @@ export const createClass = async (req: Request, res: Response): Promise<Response
             kickbackRule,
             kickback,
             productTypeId,
-            active
+            bikes,
+            active,
+        } = req.body;
+
+        // Formatar a data corretamente
+        const formattedDate = moment(date, 'MM/DD/YYYY').format('YYYY-MM-DD');
+
+        // Criação da aula
+        const newClass = await Class.create({
+            date: formattedDate,
+            time,
+            teacherId,
+            limit,
+            hasCommission,
+            kickbackRule,
+            kickback,
+            productTypeId,
+            active,
         });
 
         // Processar cada bike do array `bikes` e garantir que as bikes existam na tabela `Bike`
@@ -43,38 +53,37 @@ export const createClass = async (req: Request, res: Response): Promise<Response
             for (const bike of bikes) {
                 const { studentId, bikeNumber } = bike;
 
-                // Verifica se a bike já existe na tabela 'Bike'
                 let bikeRecord = await Bike.findOne({ where: { bikeNumber } });
                 if (!bikeRecord) {
-                    // Cria a bike se ela não existir
                     bikeRecord = await Bike.create({ bikeNumber, status: 'in_use', studentId });
                 } else {
-                    // Atualiza o status da bike para 'in_use'
                     bikeRecord.status = 'in_use';
                     await bikeRecord.save();
                 }
 
-                // Cria a associação na tabela `ClassStudent`
                 await ClassStudent.create({
                     classId,
                     PersonId: teacherId,
                     studentId,
-                    bikeId: bikeRecord.bikeNumber
+                    bikeId: bikeRecord.bikeNumber,
                 });
             }
         }
 
-        return res.status(201).json({ success: true, message: 'Aula e bikes associadas criadas com sucesso', classId: newClass.id });
+        return res.status(201).json({
+            success: true,
+            message: 'Aula e bikes associadas criadas com sucesso',
+            classId: newClass.id,
+        });
     } catch (createError) {
         console.error('Erro ao criar aula:', createError);
         return res.status(500).json({
             success: false,
             data: createError,
-            error: 'Erro ao criar aula'
+            error: 'Erro ao criar aula',
         });
     }
 };
- 
 
 export const getAllClasses = async (req: Request, res: Response): Promise<void | Response> => {
     try {
@@ -194,7 +203,13 @@ export const updateClass = async (req: Request, res: Response): Promise<Response
         // Verificar se a aula existe
         const classData = await Class.findByPk(id);
         if (!classData) {
-            return res.status(404).send('Aula não encontrada');
+            return res.status(404).json({ success: false, message: 'Aula não encontrada' });
+        }
+
+        // **Validação dos Dados**
+        const validation = validateClassData({ date, time, teacherId, productTypeId });
+        if (!validation.isValid) {
+            return res.status(400).json({ success: false, message: validation.message });
         }
 
         // Atualizar os campos da aula
@@ -294,4 +309,32 @@ export const deleteClass = async (req: Request, res: Response): Promise<Response
         console.error('Erro ao excluir aula:', error);
         return res.status(500).send('Erro ao excluir aula');
     }
+};
+
+
+export const validateClassData = (data: any): { isValid: boolean; message?: string } => {
+    const { date, time, teacherId, productTypeId } = data;
+
+    // Validação da data
+    if (!date || !moment(date, 'MM/DD/YYYY', true).isValid()) {
+        return { isValid: false, message: 'Data inválida ou ausente.' };
+    }
+
+    // Validação do horário
+    if (!time) {
+        return { isValid: false, message: 'Horário é obrigatório.' };
+    }
+
+    // Validação do professor
+    if (!teacherId) {
+        return { isValid: false, message: 'ID do professor é obrigatório.' };
+    }
+
+    // Validação do tipo de produto
+    if (!productTypeId) {
+        return { isValid: false, message: 'Tipo de produto é obrigatório.' };
+    }
+
+    // Se todas as validações passarem
+    return { isValid: true };
 };
