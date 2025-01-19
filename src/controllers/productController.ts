@@ -24,28 +24,51 @@ export const createProduct = async (req: Request, res: Response): Promise<Respon
 };
 
 // READ ALL
-export const getAllProducts = async (_req:Request, res: Response): Promise<Response> => {
+export const getAllProducts = async (req: Request, res: Response): Promise<Response> => {
     try {
-        const products = await Product.findAll({
+        const { page = 1, pageSize = 10 } = req.query;
+
+        // Configurar paginação
+        const limit = parseInt(pageSize as string, 10); // Número de registros por página
+        const offset = (parseInt(page as string, 10) - 1) * limit; // Deslocamento
+
+        // Busca com paginação e relacionamentos
+        const { rows: products, count: totalRecords } = await Product.findAndCountAll({
             include: [
                 {
                     model: ProductType,
                     as: 'productType',
-                    attributes: ['name'],  // Inclui apenas o nome do ProductType
+                    attributes: ['name'], // Inclui apenas o nome do ProductType
                     include: [
                         {
                             model: Place,
-                            as: 'place',  // Usa o alias correto para Place, se definido
-                            attributes: ['name']  // Inclui apenas o nome do Place
-                        }
-                    ]
-                }
-            ]
+                            as: 'place', // Usa o alias correto para Place, se definido
+                            attributes: ['name'], // Inclui apenas o nome do Place
+                        },
+                    ],
+                },
+            ],
+            limit,
+            offset,
         });
-        return res.status(200).json(products);
+
+        // Retornar resultado com paginação
+        return res.status(200).json({
+            success: true,
+            data: products,
+            pagination: {
+                totalRecords,
+                totalPages: Math.ceil(totalRecords / limit),
+                currentPage: parseInt(page as string, 10),
+                pageSize: limit,
+            },
+        });
     } catch (error) {
         console.error('Erro ao buscar produtos:', error);
-        return res.status(500).send('Erro ao buscar produtos');
+        return res.status(500).json({
+            success: false,
+            error: 'Erro ao buscar produtos',
+        });
     }
 };
 

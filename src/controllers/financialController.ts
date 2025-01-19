@@ -5,7 +5,7 @@ import Transactions from '../models/Transaction.model'; // Importando o modelo d
 
 export const getFilteredTransactions = async (req: Request, res: Response): Promise<Response> => {
     try {
-        const { customerName, status, createdAt, transactionId } = req.body;
+        const { customerName, status, createdAt, transactionId, page = 1, pageSize = 10 } = req.body;
 
         // Montar os critérios de busca dinamicamente
         const filters: any = {};
@@ -26,11 +26,17 @@ export const getFilteredTransactions = async (req: Request, res: Response): Prom
             filters.transactionId = transactionId; // Busca exata por ID da transação
         }
 
-        // Busca no banco com os filtros
-        const transactions = await Transactions.findAll({
+        // Configurar paginação
+        const limit = parseInt(pageSize, 10); // Número de registros por página
+        const offset = (parseInt(page, 10) - 1) * limit; // Deslocamento
+
+        // Busca no banco com os filtros e paginação
+        const { rows: transactions, count: totalRecords } = await Transactions.findAndCountAll({
             where: filters,
             attributes: ['transactionId', 'amount', 'customerName', 'status', 'createdAt'], // Seleciona apenas os campos necessários
             order: [['createdAt', 'DESC']], // Ordena pelas transações mais recentes
+            limit,
+            offset,
         });
 
         // Formata os dados
@@ -42,10 +48,16 @@ export const getFilteredTransactions = async (req: Request, res: Response): Prom
             createdAt: new Date(transaction.createdAt).toLocaleDateString('pt-BR'), // Formata a data
         }));
 
-        // Retorna o resultado
+        // Retorna o resultado com paginação
         return res.status(200).json({
             success: true,
             data: formattedTransactions,
+            pagination: {
+                totalRecords,
+                totalPages: Math.ceil(totalRecords / limit),
+                currentPage: parseInt(page, 10),
+                pageSize: limit,
+            },
         });
     } catch (error) {
         console.error('Erro ao buscar transações:', error);

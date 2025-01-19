@@ -245,6 +245,87 @@ export const addStudentToClassWithBikeNumber = async (req: Request, res: Respons
     }
 };
 
+export const cancelStudentPresenceInClass = async (req: Request, res: Response): Promise<Response> => {
+    const { classId, studentId } = req.body;
+
+    // Iniciar uma transação para garantir consistência
+    const transaction = await sequelize.transaction();
+
+    try {
+        // 1. Verificar se a aula existe
+        const classData = await Class.findByPk(classId);
+        if (!classData) {
+            return res.status(404).json({ message: 'Aula não encontrada' });
+        }
+
+        // 2. Verificar se o horário atual está dentro do limite de cancelamento (2 horas antes da aula)
+        const classDateTime = new Date(`${classData.date}T${classData.time}`);
+        const now = new Date();
+
+        const twoHoursBeforeClass = new Date(classDateTime);
+        twoHoursBeforeClass.setHours(twoHoursBeforeClass.getHours() - 2);
+
+        if (now >= twoHoursBeforeClass) {
+            return res.status(400).json({
+                success: false,
+                message: 'O cancelamento só é permitido até 2 horas antes da aula.',
+            });
+        }
+
+        // 3. Verificar se o aluno está associado à aula
+        const classStudent = await ClassStudent.findOne({
+            where: { classId, studentId },
+        });
+
+        if (!classStudent) {
+            return res.status(404).json({ message: 'Aluno não está registrado nesta aula' });
+        }
+
+        // 4. Buscar a bike associada ao aluno na aula
+        const bike = await Bike.findOne({
+            where: { classId, studentId },
+        });
+
+        if (bike) {
+            // Remover a bike da aula
+            await bike.destroy({ transaction });
+        }
+
+        // 5. Atualizar o status do registro no ClassStudent para false
+        await classStudent.update(
+            { status: false },
+            { transaction }
+        );
+
+        // 6. Devolver 1 crédito ao saldo do aluno
+        const studentBalance = await Balance.findOne({
+            where: { idCustomer: studentId },
+        });
+
+        if (studentBalance) {
+            studentBalance.balance += 1; // Adicionar 1 crédito
+            await studentBalance.save({ transaction });
+        }
+
+        // Confirmar a transação
+        await transaction.commit();
+
+        return res.status(200).json({
+            success: true,
+            message: 'Presença do aluno cancelada e crédito devolvido com sucesso',
+        });
+    } catch (error) {
+        // Reverter a transação em caso de erro
+        await transaction.rollback();
+        console.error('Erro ao cancelar presença do aluno:', error);
+
+        return res.status(500).json({
+            success: false,
+            message: 'Erro ao cancelar presença do aluno',
+            error: error instanceof Error ? error.message : 'Erro desconhecido',
+        });
+    }
+};
 
 export const nextClass = async (req: Request, res: Response): Promise<Response> => {
     try {

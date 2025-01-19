@@ -108,7 +108,7 @@ export const getPersonById = async (req: Request, res: Response): Promise<Respon
 // FILTRAR FUNCIONÁRIOS
 export const getByCriteriaEmployee = async (req: Request, res: Response): Promise<Response> => {
     try {
-        const { email, name, identity } = req.body;
+        const { email, name, identity, page = 1, pageSize = 10, active } = req.body;
 
         // Critérios básicos: Apenas funcionários
         const criteria: any = { employee: true };
@@ -117,9 +117,18 @@ export const getByCriteriaEmployee = async (req: Request, res: Response): Promis
         if (email && email.trim() !== "") criteria.email = email;
         if (name && name.trim() !== "") criteria.name = { [Op.like]: `%${name}%` };
         if (identity && identity.trim() !== "") criteria.identity = identity;
+        if (active !== undefined) criteria.active = active; // Filtro por status ativo/inativo
 
-        // Busca pessoas com os critérios fornecidos
-        const people = await Person.findAll({ where: criteria });
+        // Configurar paginação
+        const limit = parseInt(pageSize, 10); // Número de registros por página
+        const offset = (parseInt(page, 10) - 1) * limit; // Deslocamento
+
+        // Busca pessoas com os critérios fornecidos e paginação
+        const { rows: people, count: totalRecords } = await Person.findAndCountAll({
+            where: criteria,
+            limit,
+            offset,
+        });
 
         if (!people || people.length === 0) {
             return res.status(404).json({
@@ -130,7 +139,13 @@ export const getByCriteriaEmployee = async (req: Request, res: Response): Promis
 
         return res.status(200).json({
             success: true,
-            data: people
+            data: people,
+            pagination: {
+                totalRecords,
+                totalPages: Math.ceil(totalRecords / limit),
+                currentPage: parseInt(page, 10),
+                pageSize: limit,
+            },
         });
     } catch (error) {
         console.error('Erro ao buscar funcionários:', error);
@@ -140,30 +155,55 @@ export const getByCriteriaEmployee = async (req: Request, res: Response): Promis
         });
     }
 };
+
 // FILTRAR ESTUDANTES
 export const getByCriteriaStudent = async (req: Request, res: Response): Promise<Response> => {
     try {
-        const { email, name, identity } = req.body;
+        const { email, name, identity, page = 1, pageSize = 10, active } = req.body;
 
-        // Critérios de busca dinâmica
-        const criteria: any = { employee: false }; // Apenas estudantes
+        // Critérios básicos: Apenas estudantes
+        const criteria: any = { employee: false };
 
         // Adicionar filtros dinâmicos com busca parcial
-        if (email) criteria.email = { [Op.like]: `%${email}%` }; // Busca parcial por e-mail
-        if (name) criteria.name = { [Op.like]: `%${name}%` }; // Busca parcial por nome
-        if (identity) criteria.identity = { [Op.like]: `%${identity}%` }; // Busca parcial por identidade
+        if (email && email.trim() !== "") criteria.email = { [Op.like]: `%${email}%` }; // Busca parcial por e-mail
+        if (name && name.trim() !== "") criteria.name = { [Op.like]: `%${name}%` }; // Busca parcial por nome
+        if (identity && identity.trim() !== "") criteria.identity = { [Op.like]: `%${identity}%` }; // Busca parcial por identidade
+        if (active !== undefined) criteria.active = active; // Filtro por status ativo/inativo
 
-        // Busca múltiplos registros
-        const people = await Person.findAll({ where: criteria });
+        // Configurar paginação
+        const limit = parseInt(pageSize, 10); // Número de registros por página
+        const offset = (parseInt(page, 10) - 1) * limit; // Deslocamento
 
-        if (!people || people.length === 0) {
-            return res.status(404).send('Nenhum estudante encontrado');
+        // Busca os registros com paginação
+        const { rows: students, count: totalRecords } = await Person.findAndCountAll({
+            where: criteria,
+            limit,
+            offset,
+        });
+
+        if (!students || students.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'Nenhum estudante encontrado com os critérios fornecidos',
+            });
         }
 
-        return res.status(200).json(people);
+        return res.status(200).json({
+            success: true,
+            data: students,
+            pagination: {
+                totalRecords,
+                totalPages: Math.ceil(totalRecords / limit),
+                currentPage: parseInt(page, 10),
+                pageSize: limit,
+            },
+        });
     } catch (error) {
         console.error('Erro ao buscar estudantes:', error);
-        return res.status(500).send('Erro ao buscar estudantes');
+        return res.status(500).json({
+            success: false,
+            error: 'Erro ao buscar estudantes',
+        });
     }
 };
 

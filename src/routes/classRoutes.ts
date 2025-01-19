@@ -27,16 +27,134 @@ router.post('/', authenticateToken, createClass);
 
 /**
  * @swagger
- * /class:
+ * /classes:
  *   get:
- *     summary: Lista todas as classes. Only Authenticated
- *     tags: [Class]
+ *     summary: Lista todas as aulas com filtros e paginação
+ *     tags: [Classes]
+ *     parameters:
+ *       - in: query
+ *         name: date
+ *         schema:
+ *           type: string
+ *           format: date
+ *         required: false
+ *         description: Data da aula no formato YYYY-MM-DD
+ *       - in: query
+ *         name: time
+ *         schema:
+ *           type: string
+ *           format: time
+ *         required: false
+ *         description: Hora da aula no formato HH:MM
+ *       - in: query
+ *         name: productType
+ *         schema:
+ *           type: string
+ *         required: false
+ *         description: Nome do tipo de produto associado à aula
+ *       - in: query
+ *         name: teacher
+ *         schema:
+ *           type: string
+ *         required: false
+ *         description: Nome do professor associado à aula
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         required: false
+ *         description: Número da página para paginação
+ *       - in: query
+ *         name: pageSize
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *         required: false
+ *         description: Número de registros por página
  *     responses:
  *       200:
- *         description: Lista de classes
- *       401:
- *         description: Erro ao listar classes
+ *         description: Lista de aulas retornada com sucesso
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: integer
+ *                         example: 1
+ *                       date:
+ *                         type: string
+ *                         example: "2025-01-18"
+ *                       time:
+ *                         type: string
+ *                         example: "08:00"
+ *                       teacherId:
+ *                         type: integer
+ *                         example: 3
+ *                       teacher:
+ *                         type: string
+ *                         example: "admin"
+ *                       productTypeId:
+ *                         type: integer
+ *                         example: 1
+ *                       productType:
+ *                         type: string
+ *                         example: "Aula Coletiva"
+ *                       limit:
+ *                         type: integer
+ *                         example: 10
+ *                 pagination:
+ *                   type: object
+ *                   properties:
+ *                     totalRecords:
+ *                       type: integer
+ *                       example: 50
+ *                     totalPages:
+ *                       type: integer
+ *                       example: 5
+ *                     currentPage:
+ *                       type: integer
+ *                       example: 1
+ *                     pageSize:
+ *                       type: integer
+ *                       example: 10
+ *       404:
+ *         description: Nenhuma aula encontrada
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: "Nenhuma aula encontrada"
+ *       500:
+ *         description: Erro interno no servidor
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: "Erro interno no servidor"
  */
+
 router.post('/filter', authenticateToken, getAllClasses);
 
 /**

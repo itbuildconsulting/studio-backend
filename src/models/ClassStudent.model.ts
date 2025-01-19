@@ -11,6 +11,7 @@ class ClassStudent extends Model {
   public checkin!: number | null;
   public createdAt!: Date;
   public updatedAt!: Date;
+  public status!: boolean;
 }
 
 // Definindo o modelo com as associações necessárias
@@ -42,6 +43,10 @@ ClassStudent.init(
       type: DataTypes.INTEGER,
       allowNull: true,
     },
+    status: {
+      type: DataTypes.BOOLEAN,
+      allowNull: true,
+    }
   },
   {
     sequelize,

@@ -6,6 +6,7 @@ import moment from 'moment';
 import Bike from '../models/Bike.model';
 import { Op } from 'sequelize';
 import Person from '../models/Person.model';
+import ProductType from '../models/ProductType.model';
 
 // CREATE
 export const createClass = async (req: Request, res: Response): Promise<Response> => {
@@ -89,7 +90,7 @@ export const getAllClasses = async (req: Request, res: Response): Promise<void |
     try {
         authenticateToken(req, res, async () => {
             try {
-                const { date, time, productType, teacherId } = req.body;
+                const { date, time, productType, teacherId, page = 1, pageSize = 10 } = req.body;
 
                 // Critérios de busca dinâmica para aulas
                 const criteria: any = {};
@@ -103,26 +104,56 @@ export const getAllClasses = async (req: Request, res: Response): Promise<void |
                 }
 
                 if (productType) {
-                    criteria.productType = { [Op.like]: `%${productType}%` }; // Busca parcial por tipo de produto
+                    criteria.productTypeId = productType; // Filtro por ID do tipo de produto
                 }
 
                 if (teacherId) {
-                    criteria.teacherId = teacherId; // Filtro por teacherId
+                    criteria.teacherId = teacherId; // Filtro por ID do professor
                 }
 
-                // Busca as aulas com os critérios aplicados
-                const classes = await Class.findAll({
+                // Configurar paginação
+                const limit = parseInt(pageSize, 10); // Número de registros por página
+                const offset = (parseInt(page, 10) - 1) * limit; // Deslocamento
+
+                // Busca as aulas com os critérios aplicados e paginação
+                const { rows: classes, count: totalRecords } = await Class.findAndCountAll({
                     where: criteria,
+                    limit,
+                    offset,
                 });
 
-                // Retorno da busca
                 if (!classes || classes.length === 0) {
                     return res.status(404).send('Nenhuma aula encontrada');
                 }
 
+                // Buscar os nomes manualmente
+                const enrichedClasses = await Promise.all(
+                    classes.map(async (classItem) => {
+                        const productType = await ProductType.findByPk(classItem.productTypeId, {
+                            attributes: ['id', 'name'],
+                        });
+
+                        const teacher = await Person.findByPk(classItem.teacherId, {
+                            attributes: ['id', 'name'],
+                        });
+
+                        return {
+                            ...classItem.toJSON(),
+                            productType: productType ? productType.name : null,
+                            teacher: teacher ?  teacher.name : null,
+                        };
+                    })
+                );
+
                 return res.status(200).json({
                     success: true,
-                    data: classes
+                    data: enrichedClasses,
+                    pagination: {
+                        totalRecords,
+                        totalPages: Math.ceil(totalRecords / limit),
+                        currentPage: parseInt(page, 10),
+                        pageSize: limit,
+                    },
                 });
             } catch (findError) {
                 console.error('Erro ao buscar aulas:', findError);
