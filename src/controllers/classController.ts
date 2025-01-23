@@ -7,6 +7,7 @@ import Bike from '../models/Bike.model';
 import { Op } from 'sequelize';
 import Person from '../models/Person.model';
 import ProductType from '../models/ProductType.model';
+import Balance from '../models/Balance.model';
 
 // CREATE
 export const createClass = async (req: Request, res: Response): Promise<Response> => {
@@ -227,7 +228,7 @@ export const updateClass = async (req: Request, res: Response): Promise<Response
             kickbackRule,
             kickback,
             productTypeId,
-            bikes, // Array atualizado de { studentId, bikeNumber }
+            bikes, // Array atualizado de { studentId, bikeNumber, deductCredits }
             active,
         } = req.body;
 
@@ -237,7 +238,7 @@ export const updateClass = async (req: Request, res: Response): Promise<Response
             return res.status(404).json({ success: false, message: 'Aula não encontrada' });
         }
 
-        // **Validação dos Dados**
+        // Validação dos Dados
         const validation = validateClassData({ date, time, teacherId, productTypeId });
         if (!validation.isValid) {
             return res.status(400).json({ success: false, message: validation.message });
@@ -265,13 +266,13 @@ export const updateClass = async (req: Request, res: Response): Promise<Response
 
             // Processar as novas associações
             for (const bike of bikes) {
-                const { studentId, bikeNumber } = bike;
+                const { studentId, bikeNumber, deductCredits = true } = bike;
 
                 // Verifica se a bike já existe na tabela 'Bike'
                 let bikeRecord = await Bike.findOne({ where: { bikeNumber } });
                 if (!bikeRecord) {
                     // Cria a bike se ela não existir
-                    bikeRecord = await Bike.create({ bikeNumber, status: 'in_use', studentId });
+                    bikeRecord = await Bike.create({ bikeNumber, status: 'in_use', studentId, classId });
                 } else {
                     // Atualiza o status da bike para 'in_use'
                     bikeRecord.status = 'in_use';
@@ -290,8 +291,17 @@ export const updateClass = async (req: Request, res: Response): Promise<Response
                         classId,
                         PersonId: teacherId,
                         studentId,
-                        bikeId: bikeRecord.bikeNumber,
+                        bikeId: bikeRecord.id,
                     });
+
+                    // Descontar crédito, se necessário
+                    if (deductCredits && studentId) {
+                        const balance = await Balance.findOne({ where: { idCustomer: studentId } });
+                        if (balance && balance.balance > 0) {
+                            balance.balance -= 1;
+                            await balance.save();
+                        }
+                    }
                 } else {
                     // Atualizar associação existente
                     await existingAssociation.update({
@@ -326,6 +336,7 @@ export const updateClass = async (req: Request, res: Response): Promise<Response
     }
 };
 
+
 // DELETE
 export const deleteClass = async (req: Request, res: Response): Promise<Response> => {
     try {
@@ -347,7 +358,7 @@ export const validateClassData = (data: any): { isValid: boolean; message?: stri
     const { date, time, teacherId, productTypeId } = data;
 
     // Validação da data
-    if (!date || !moment(date, 'MM/DD/YYYY', true).isValid()) {
+    if (!date || !moment(date, 'YYYY-MM-DD', true).isValid()) {
         return { isValid: false, message: 'Data inválida ou ausente.' };
     }
 

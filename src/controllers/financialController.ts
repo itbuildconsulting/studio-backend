@@ -5,17 +5,13 @@ import Transactions from '../models/Transaction.model'; // Importando o modelo d
 
 export const getFilteredTransactions = async (req: Request, res: Response): Promise<Response> => {
     try {
-        const { customerName, status, createdAt, transactionId, page = 1, pageSize = 10 } = req.body;
+        const { studentId, createdAt, transactionId, page = 1, pageSize = 10 } = req.body;
 
         // Montar os critérios de busca dinamicamente
         const filters: any = {};
 
-        if (customerName) {
-            filters.customerName = { [Op.like]: `%${customerName}%` }; // Busca parcial por nome
-        }
-
-        if (status) {
-            filters.status = status; // Busca exata por status
+        if (studentId) {
+            filters.studentId = studentId; // Busca exata por ID do estudante
         }
 
         if (createdAt) {
@@ -33,7 +29,7 @@ export const getFilteredTransactions = async (req: Request, res: Response): Prom
         // Busca no banco com os filtros e paginação
         const { rows: transactions, count: totalRecords } = await Transactions.findAndCountAll({
             where: filters,
-            attributes: ['transactionId', 'amount', 'customerName', 'status', 'createdAt'], // Seleciona apenas os campos necessários
+            attributes: ['transactionId', 'amount', 'studentId', 'status', 'createdAt'], // Seleciona apenas os campos necessários
             order: [['createdAt', 'DESC']], // Ordena pelas transações mais recentes
             limit,
             offset,
@@ -43,7 +39,7 @@ export const getFilteredTransactions = async (req: Request, res: Response): Prom
         const formattedTransactions = transactions.map(transaction => ({
             transactionId: transaction.transactionId,
             amount: transaction.amount,
-            customerName: transaction.customerName,
+            studentId: transaction.studentId,
             status: transaction.status,
             createdAt: new Date(transaction.createdAt).toLocaleDateString('pt-BR'), // Formata a data
         }));
