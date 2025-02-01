@@ -33,11 +33,11 @@ export const createClass = async (req: Request, res: Response): Promise<Response
         } = req.body;
 
         // Formatar a data corretamente
-        const formattedDate = moment(date, 'MM/DD/YYYY').format('YYYY-MM-DD');
+        //const formattedDate = moment(date, 'MM/DD/YYYY').format('YYYY-MM-DD');
 
         // Criação da aula
         const newClass = await Class.create({
-            date: formattedDate,
+            date,
             time,
             teacherId,
             limit,
