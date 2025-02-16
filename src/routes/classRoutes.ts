@@ -1,5 +1,5 @@
 import express from 'express';
-import { createClass, getAllClasses, getClassById, updateClass, deleteClass } from '../controllers/classController';
+import { createClass, getAllClasses, getClassById, updateClass, deleteClass, createMultipleClasses, cancelClass } from '../controllers/classController';
 import { authenticateToken } from '../core/token/authenticateToken';
 
 const router = express.Router();
@@ -24,6 +24,8 @@ const router = express.Router();
  *         description: Erro ao criar classe
  */
 router.post('/', authenticateToken, createClass);
+
+router.post('/multiple/', authenticateToken, createMultipleClasses);
 
 /**
  * @swagger
@@ -170,6 +172,21 @@ router.post('/filter', authenticateToken, getAllClasses);
  *         description: Erro ao listar classe
  */
 router.get('/:id', authenticateToken, getClassById);
+
+/**
+ * @swagger
+ * /class/{id}:
+ *   get:
+ *     summary: Lista classe por ID. Only Authenticated
+ *     tags: [Class]
+ *     responses:
+ *       200:
+ *         description: Classe listada
+ *       401:
+ *         description: Erro ao listar classe
+ */
+router.get('/cancelClass/:id', authenticateToken, cancelClass);
+
 
 /**
  * @swagger

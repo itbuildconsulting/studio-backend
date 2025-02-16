@@ -80,7 +80,7 @@ const router = Router();
  *       401:
  *         description: Erro ao criar pessoa
  */
-router.post('/', authenticateToken, createPerson);
+router.post('/',createPerson);
 
 /**
  * @swagger

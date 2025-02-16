@@ -186,7 +186,16 @@ export const addStudentToClassWithBikeNumber = async (req: Request, res: Respons
             return res.status(404).json({ message: 'Aula não encontrada' });
         }
 
-        // 2. Verificar o saldo de créditos do aluno na tabela Balance
+        // 2. Verificar se o aluno já está inscrito na aula
+        const existingEnrollment = await ClassStudent.findOne({
+            where: { classId, studentId }
+        });
+
+        if (existingEnrollment) {
+            return res.status(400).json({ message: 'Aluno já está inscrito nesta aula' });
+        }
+
+        // 3. Verificar o saldo de créditos do aluno na tabela Balance
         const studentBalance = await Balance.findOne({
             where: { idCustomer: studentId }
         });
@@ -195,7 +204,7 @@ export const addStudentToClassWithBikeNumber = async (req: Request, res: Respons
             return res.status(400).json({ message: 'Créditos insuficientes para o aluno' });
         }
 
-        // 3. Verificar se a bike está disponível para essa aula e número específico
+        // 4. Verificar se a bike está disponível para essa aula e número específico
         const existingBike = await Bike.findOne({
             where: { classId, bikeNumber }
         });
@@ -204,7 +213,7 @@ export const addStudentToClassWithBikeNumber = async (req: Request, res: Respons
             return res.status(400).json({ message: 'Bike não está disponível' });
         }
 
-        // 4. Criar a bike para a aula e aluno, se ainda não existir
+        // 5. Criar a bike para a aula e aluno, se ainda não existir
         const bike = existingBike || await Bike.create({
             classId,
             studentId,
@@ -212,7 +221,7 @@ export const addStudentToClassWithBikeNumber = async (req: Request, res: Respons
             status: 'in_use'
         }, { transaction });
 
-        // 5. Associar o aluno à aula em `ClassStudent`
+        // 6. Associar o aluno à aula em `ClassStudent`
         await ClassStudent.create({
             classId,
             PersonId: studentId,
@@ -220,7 +229,7 @@ export const addStudentToClassWithBikeNumber = async (req: Request, res: Respons
             bikeId: bike.id
         }, { transaction });
 
-        // 6. Descontar 1 crédito do saldo do aluno
+        // 7. Descontar 1 crédito do saldo do aluno
         studentBalance.balance -= 1;
         await studentBalance.save({ transaction });
 
@@ -244,6 +253,7 @@ export const addStudentToClassWithBikeNumber = async (req: Request, res: Respons
         });
     }
 };
+
 
 export const cancelStudentPresenceInClass = async (req: Request, res: Response): Promise<Response> => {
     const { classId, studentId } = req.body;

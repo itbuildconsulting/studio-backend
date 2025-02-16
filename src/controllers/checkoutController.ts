@@ -4,7 +4,7 @@ import Product from '../models/Product.model';
 import { authenticateToken } from '../core/token/authenticateToken';
 import { saveTransaction } from './transactionController';
 import { updateCustomerBalance } from './balanceController';
-import { createItemsAfterTransaction } from './itemsController';
+import { checkPurchaseLimit, createItemsAfterTransaction } from './itemsController';
 
 interface ProductRequest {
     productId: string;
@@ -49,6 +49,17 @@ export const checkout = async (req: Request, res: Response, ): Promise<Response 
                 }
 
                 let creditTotal = 0;
+
+                 // Verificação do limite de compras
+                 for (const item of products) {
+                    const isAllowed = await checkPurchaseLimit(personData.id, item.productId);
+                    if (!isAllowed) {
+                        return res.status(400).json({ 
+                            success: false, 
+                            message: `O produto ${item.productId} só pode ser comprado uma vez por usuário.` 
+                        });
+                    }
+                }
 
                 // Mapear produtos para o formato de itens do checkout
                 const items = products.map(item => {
@@ -133,7 +144,7 @@ export const checkout = async (req: Request, res: Response, ): Promise<Response 
                     const updateBalanceResult = await updateCustomerBalance(personData.id, creditTotal, true);
 
                     try {
-                        await createItemsAfterTransaction(result.data.id, items);
+                        await createItemsAfterTransaction(result.data.id, personData.id, items);
                     } catch (error) {
                         console.error('Falha ao criar itens:', error);
                     }
@@ -157,6 +168,153 @@ export const checkout = async (req: Request, res: Response, ): Promise<Response 
         return res.status(401).send('Token inválido');
     }
 };
+
+interface ProductRequest {
+    productId: string;
+    quantity: number;
+}
+
+interface CashPaymentRequest {
+    description: string;
+    confirm: boolean;
+    metadata?: object;
+}
+
+interface CheckoutRequest {
+    personId: string;
+    products: ProductRequest[];
+    cashPayment: CashPaymentRequest;
+}
+
+// Função de checkout com pagamento em dinheiro
+export const checkoutCash = async (req: Request, res: Response): Promise<Response | void> => {
+    try {
+        authenticateToken(req, res, async () => {
+            const { personId, products, cashPayment }: CheckoutRequest = req.body;
+            try {
+                const personData = await Person.findByPk(personId);
+                if (!personData) {
+                    return res.status(404).json({ message: 'Pessoa não encontrada' });
+                }
+
+                // Buscar informações dos produtos
+                const productIds = products.map(product => product.productId);
+                const productInfo = await Product.findAll({
+                    where: {
+                        id: productIds
+                    }
+                });
+
+                if (!productInfo.length) {
+                    return res.status(404).json({ message: 'Produtos não encontrados' });
+                }
+
+                let creditTotal = 0;
+
+                // Verificação do limite de compras
+                for (const item of products) {
+                    const isAllowed = await checkPurchaseLimit(personData.id, item.productId);
+                    if (!isAllowed) {
+                        return res.status(400).json({ 
+                            success: false, 
+                            message: `O produto ${item.productId} só pode ser comprado uma vez por usuário.` 
+                        });
+                    }
+                }
+
+                // Mapear produtos para o formato de itens do checkout
+                const items = products.map(item => {
+                    const product = productInfo.find(p => p.id.toString() === item.productId);
+                    if (!product) {
+                        throw new Error(`Produto com ID ${item.productId} não encontrado`);
+                    }
+                    creditTotal += product.credit;
+                    const total = product.value * item.quantity; 
+                    const totalForCheckout = Math.round(total * 100); // 10500
+                    return {
+                        itemId: product.id,
+                        amount: totalForCheckout,  // Multiplica o preço pela quantidade
+                        credit: product.credit,
+                        description: product.name.replace(/[^a-zA-Z0-9 ]/g, ''),  // Remover caracteres especiais
+                        quantity: Number(item.quantity),
+                        code: "EX123",
+                    };
+                });
+
+                const checkout = {
+                    closed: true,
+                    customer: {
+                        name: personData.name,
+                        type: 'individual',
+                        email: personData.email,
+                        document: personData.identity,
+                        address: {
+                            line_1: personData.address,
+                            line_2: 'Casa',  // Assumindo que line_2 não está disponível
+                            zip_code: personData.zipCode,
+                            city: personData.city,
+                            state: personData.state,
+                            country: 'BR'
+                        },
+                        phones: {
+                            mobile_phone: {
+                                country_code: '55',
+                                area_code: '21',
+                                number: '999999999'
+                            }
+                        }
+                    },
+                    items: items,
+                    payments: [
+                        {
+                            payment_method: 'cash',
+                            cash: {
+                                description: cashPayment.description || 'Pagamento em dinheiro', // Descrição do pagamento
+                                confirm: cashPayment.confirm || false, // Confirmado ou não
+                                metadata: cashPayment.metadata || {}  // Informações adicionais sobre o pagamento
+                            }
+                        }
+                    ]
+                };
+
+                // Chamar o paymentController para processar a transação
+                const result = await createTransaction(checkout);
+                if (!result.success || result.data.status !== 'paid') {
+                    console.error('Falha ao criar transação:', result.message);
+                    return res.status(500).json({ success: false, error: 'Falha ao criar transação:', details: result.message });
+                }
+
+                // Salvar transação e atualizar o saldo
+                const save = await saveTransaction(result.data, creditTotal, personData.id);
+                if (save.success) {
+                    const updateBalanceResult = await updateCustomerBalance(personData.id, creditTotal, true);
+
+                    try {
+                        await createItemsAfterTransaction(result.data.id, personData.id, items);
+                    } catch (error) {
+                        console.error('Falha ao criar itens:', error);
+                    }
+
+                    if (updateBalanceResult.success) {
+                        return res.status(200).json({ success: true, message: 'Transação concluída e saldo atualizado com sucesso', details: result.data });
+                    } else {
+                        return res.status(500).json({ success: false, error: 'Transação bem-sucedida, mas falha ao atualizar saldo', details: updateBalanceResult.message });
+                    }
+                } else {
+                    return res.status(500).json({ success: false, error: 'Falha ao salvar transação', details: save.message });
+                }
+
+            } catch (fetchError) {
+                console.error('Erro ao buscar pessoa ou produtos:', fetchError);
+                return res.status(500).json({ success: false, error: 'Erro ao buscar pessoa ou produtos' });
+            }
+        });
+    } catch (error) {
+        console.error('Erro ao validar token:', error);
+        return res.status(401).send('Token inválido');
+    }
+};
+
 
 // Função para criar transação
 async function createTransaction(checkout: any) {

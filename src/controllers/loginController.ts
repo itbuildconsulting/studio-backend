@@ -30,7 +30,7 @@ export const login = async (req: Request, res: Response): Promise<Response> => {
             employee_level: person.employee_level, // Usamos employee_level
         });
 
-        return res.status(200).json({ token, expiresIn: '1h', name: person.name, id: person.id, email: person.email });
+        return res.status(200).json({ token, expiresIn: '1h', name: person.name, id: person.id, email: person.email, level: person.employee_level });
     } catch (error) {
         console.error('Erro durante o login:', error);
         return res.status(500).json({ error: 'Erro interno do servidor' });
