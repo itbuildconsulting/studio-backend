@@ -5,10 +5,14 @@ import Transactions from '../models/Transaction.model'; // Importando o modelo d
 
 export const getFilteredTransactions = async (req: Request, res: Response): Promise<Response> => {
     try {
-        const { studentId, createdAt, transactionId, page = 1, pageSize = 10 } = req.body;
+        const { studentId, createdAt, transactionId, page = 1, pageSize = 10, customerName } = req.body;
 
         // Montar os critérios de busca dinamicamente
         const filters: any = {};
+
+        if (customerName) {
+            filters.customerName = customerName; // Busca exata por nome do estudante
+        }
 
         if (studentId) {
             filters.studentId = studentId; // Busca exata por ID do estudante
@@ -29,7 +33,7 @@ export const getFilteredTransactions = async (req: Request, res: Response): Prom
         // Busca no banco com os filtros e paginação
         const { rows: transactions, count: totalRecords } = await Transactions.findAndCountAll({
             where: filters,
-            attributes: ['transactionId', 'amount', 'studentId', 'status', 'createdAt'], // Seleciona apenas os campos necessários
+            attributes: ['transactionId', 'amount', 'studentId', 'status', 'createdAt', 'customerName'], // Seleciona apenas os campos necessários
             order: [['createdAt', 'DESC']], // Ordena pelas transações mais recentes
             limit,
             offset,
@@ -40,6 +44,7 @@ export const getFilteredTransactions = async (req: Request, res: Response): Prom
             transactionId: transaction.transactionId,
             amount: transaction.amount,
             studentId: transaction.studentId,
+            customerName: transaction.customerName,
             status: transaction.status,
             createdAt: new Date(transaction.createdAt).toLocaleDateString('pt-BR'), // Formata a data
         }));
