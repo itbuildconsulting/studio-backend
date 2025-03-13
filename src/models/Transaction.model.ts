@@ -17,6 +17,9 @@ interface TransactionAttributes {
   customerName: string;
   customerEmail: string;
   customerDocument: string;
+  discountType: number;
+  discountPercent: number;
+  discountAmount: number;
   createdAt: Date;
   updatedAt: Date;
   closedAt: Date;
@@ -41,6 +44,9 @@ class Transactions extends Model<TransactionAttributes, TransactionCreationAttri
   public customerName!: string;
   public customerEmail!: string;
   public customerDocument!: string;
+  public discountType!: number;
+  public discountPercent!: number;
+  public discountAmount!: number;
   public createdAt!: Date;
   public updatedAt!: Date;
   public closedAt!: Date;
@@ -104,6 +110,18 @@ Transactions.init({
   customerDocument: {
     type: DataTypes.STRING,
     allowNull: false,
+  },
+  discountType: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+  },
+  discountPercent: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+  },
+  discountAmount: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
   },
   createdAt: {
     type: DataTypes.DATEONLY,

@@ -183,14 +183,16 @@ interface CashPaymentRequest {
 interface CheckoutRequest {
     personId: string;
     products: ProductRequest[];
+    discountType: string;
+    discountPercent: string;
     cashPayment: CashPaymentRequest;
 }
 
-// Função de checkout com pagamento em dinheiro
 export const checkoutCash = async (req: Request, res: Response): Promise<Response | void> => {
     try {
         authenticateToken(req, res, async () => {
-            const { personId, products, cashPayment }: CheckoutRequest = req.body;
+            const { personId, products, cashPayment, discountType, discountPercent }: CheckoutRequest = req.body;
+            
             try {
                 const personData = await Person.findByPk(personId);
                 if (!personData) {
@@ -210,6 +212,7 @@ export const checkoutCash = async (req: Request, res: Response): Promise<Respons
                 }
 
                 let creditTotal = 0;
+                let totalAmount = 0;
 
                 // Verificação do limite de compras
                 for (const item of products) {
@@ -224,23 +227,33 @@ export const checkoutCash = async (req: Request, res: Response): Promise<Respons
 
                 // Mapear produtos para o formato de itens do checkout
                 const items = products.map(item => {
-                    const product = productInfo.find(p => p.id.toString() === item.productId);
+                    const product = productInfo.find(p => p.id === Number(item.productId));
                     if (!product) {
                         throw new Error(`Produto com ID ${item.productId} não encontrado`);
                     }
                     creditTotal += product.credit;
                     const total = product.value * item.quantity; 
-                    const totalForCheckout = Math.round(total * 100); // 10500
+                    totalAmount += total;  // Soma o valor total dos produtos
+
+                    const totalForCheckout = Math.round(total * 100); // Converte para centavos
                     return {
                         itemId: product.id,
-                        amount: totalForCheckout,  // Multiplica o preço pela quantidade
+                        amount: totalForCheckout,
                         credit: product.credit,
-                        description: product.name.replace(/[^a-zA-Z0-9 ]/g, ''),  // Remover caracteres especiais
+                        description: product.name.replace(/[^a-zA-Z0-9 ]/g, ''),
                         quantity: Number(item.quantity),
                         code: "EX123",
                     };
                 });
 
+                // Aplicar o desconto baseado no tipo de desconto
+                if (Number(discountType) === 1 && discountPercent !== undefined) {
+                    // Aplicar desconto percentual
+                    const discountValue = (totalAmount * Number(discountPercent)) / 100;
+                    totalAmount -= discountValue; // Subtrai o desconto do valor total
+                }
+
+                // Criar o objeto do checkout
                 const checkout = {
                     closed: true,
                     customer: {
@@ -250,7 +263,7 @@ export const checkoutCash = async (req: Request, res: Response): Promise<Respons
                         document: personData.identity,
                         address: {
                             line_1: personData.address,
-                            line_2: 'Casa',  // Assumindo que line_2 não está disponível
+                            line_2: 'Casa',
                             zip_code: personData.zipCode,
                             city: personData.city,
                             state: personData.state,
@@ -269,9 +282,9 @@ export const checkoutCash = async (req: Request, res: Response): Promise<Respons
                         {
                             payment_method: 'cash',
                             cash: {
-                                description: cashPayment.description || 'Pagamento em dinheiro', // Descrição do pagamento
-                                confirm: cashPayment.confirm || false, // Confirmado ou não
-                                metadata: cashPayment.metadata || {}  // Informações adicionais sobre o pagamento
+                                description: cashPayment.description || 'Pagamento em dinheiro',
+                                confirm: cashPayment.confirm || false,
+                                metadata: cashPayment.metadata || {}
                             }
                         }
                     ]
@@ -281,7 +294,7 @@ export const checkoutCash = async (req: Request, res: Response): Promise<Respons
                 const result = await createTransaction(checkout);
                 if (!result.success || result.data.status !== 'paid') {
                     console.error('Falha ao criar transação:', result.message);
-                    return res.status(500).json({ success: false, error: 'Falha ao criar transação:', details: result.message });
+                    return res.status(500).json({ success: false, error: 'Falha ao criar transação:', details: result.message, data: result.data });
                 }
 
                 // Salvar transação e atualizar o saldo
@@ -316,8 +329,10 @@ export const checkoutCash = async (req: Request, res: Response): Promise<Respons
 };
 
 
+
 // Função para criar transação
 async function createTransaction(checkout: any) {
+    
     try {
         const response = await fetch('https://api.pagar.me/core/v5/orders', {
             method: 'POST',
@@ -329,14 +344,14 @@ async function createTransaction(checkout: any) {
         });
   
         const data = await response.json();
-        console.log(response)
   
         if (!response.ok) {
+            console.log(data)
             // Retornando erro como parte do objeto de resposta
             return {
                 success: false,
                 message: data.message || 'Erro na transação',
-                data: data.erros
+                data: data
             };
         }
   
