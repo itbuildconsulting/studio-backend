@@ -12,6 +12,7 @@ interface ItemAttributes {
   amount: number;
   balance: number;
   status: string;
+  studentId?: number;
   created_at?: Date;
   updated_at?: Date;
 }
@@ -30,6 +31,7 @@ class Item extends Model<ItemAttributes, ItemCreationAttributes> implements Item
   public amount!: number;
   public balance!: number;
   public status!: string;
+  public studentId!: number
   public created_at?: Date;
   public updated_at?: Date;
 }
@@ -77,6 +79,10 @@ Item.init({
   },
   status: {
     type: DataTypes.STRING,
+    allowNull: false,
+  },
+  studentId: {
+    type: DataTypes.INTEGER,
     allowNull: false,
   },
   created_at: DataTypes.DATE,

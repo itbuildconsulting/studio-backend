@@ -24,6 +24,7 @@ interface PersonAttributes {
   frequency?: string;
   employee: number;
   employee_level?: string;
+  student_level?: string;
 }
 
 // Definir atributos opcionais para criação
@@ -51,6 +52,7 @@ class Person extends Model<PersonAttributes, PersonCreationAttributes> implement
   public frequency?: string;
   public employee!: number;
   public employee_level?: string;
+  public student_level?: string;
 
   // Timestamps
   public readonly createdAt!: Date;
@@ -145,6 +147,10 @@ Person.init(
       type: DataTypes.STRING,
       allowNull: true,
     },
+    student_level: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
   },
   {
     sequelize,
@@ -158,5 +164,6 @@ Person.init(
   }
 );
 
+//Person.sync({ alter: true });
 
 export default Person;

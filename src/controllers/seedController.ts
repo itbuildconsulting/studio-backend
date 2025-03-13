@@ -9,6 +9,7 @@ import Class from '../models/Class.model';
 import ClassStudent from '../models/ClassStudent.model';
 import Item from '../models/Item.model';
 import Transactions from '../models/Transaction.model';
+import Level from '../models/Level.model';
 
 // Definir funções do controlador
 export const seedController = {
@@ -25,6 +26,7 @@ export const seedController = {
             await ClassStudent.sync();            
             await Transactions.sync();
             await Item.sync();
+            await Level.sync();
             
             return res.status(201).send('Todas as tabelas sincronizadas com o banco de dados');
         } catch (err) {
@@ -55,7 +57,7 @@ export const seedController = {
                 rule: "",
                 frequency: "",
                 employee: 1,
-                employee_level: "admin"
+                employee_level: "admin",
             });
 
             return res.status(201).send('Usuário criado com sucesso' + person);

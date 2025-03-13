@@ -12,6 +12,7 @@ interface ProductAttributes {
   value: number;
   active: number;
   productTypeId: number; // Relacionamento com ProductType
+  purchaseLimit: number;
 }
 
 // Definição dos atributos opcionais ao criar um novo Product
@@ -26,6 +27,7 @@ class Product extends Model<ProductAttributes, ProductCreationAttributes> implem
   public value!: number;
   public active!: number;
   public productTypeId!: number;
+  public purchaseLimit!: number;
 
   // Timestamps do Sequelize (createdAt, updatedAt)
   public readonly createdAt!: Date;
@@ -66,7 +68,12 @@ Product.init(
         model: ProductType, // Relacionamento com ProductType
         key: 'id',
       },
-    }
+    },
+    purchaseLimit: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 0, // 0 significa sem limite, 1 significa que pode ser comprado apenas uma vez
+    },
   },
   {
     sequelize,
@@ -78,5 +85,6 @@ Product.init(
 // Configurando as associações
 Product.belongsTo(ProductType, { foreignKey: 'productTypeId', as: 'productType' });-  
 Product.belongsTo(Place, { foreignKey: 'placeId', as: 'place' });
+//Product.sync({ alter: true });
 
 export default Product;

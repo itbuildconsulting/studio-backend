@@ -8,6 +8,7 @@ import { Op } from 'sequelize';
 import Person from '../models/Person.model';
 import ProductType from '../models/ProductType.model';
 import Balance from '../models/Balance.model';
+import { updateCustomerBalance } from './balanceController';
 
 // CREATE
 export const createClass = async (req: Request, res: Response): Promise<Response> => {
@@ -86,6 +87,93 @@ export const createClass = async (req: Request, res: Response): Promise<Response
         });
     }
 };
+
+// CREATE MULTIPLE AULAS
+export const createMultipleClasses = async (req: Request, res: Response): Promise<Response> => {
+    try {
+        const validation = validateClassDataRecorring(req.body);
+
+        // Verificar se os dados são válidos
+        if (!validation.isValid) {
+            return res.status(400).json({ success: false, message: validation.message });
+        }
+
+        const {
+            date, // Array de dias da semana (ex: ['Monday', 'Tuesday'])
+            time, // Array de horários (ex: ['09:00', '10:00'])
+            teacherId,
+            limit,
+            hasCommission,
+            kickbackRule,
+            kickback,
+            productTypeId,
+            bikes,
+            active,
+        } = req.body;
+
+        // Criar as aulas para cada combinação de dia e horário
+        const createdClasses = [];
+
+        // Iterar sobre os dias e horários
+        for (const day of date) {
+            for (const h of time) {
+                // Criar a aula para o dia e horário atuais
+                const newClass = await Class.create({
+                    date: day, // O dia da semana deve ser convertido em uma data, se necessário
+                    time: h, // Usar o horário fornecido
+                    teacherId,
+                    limit,
+                    hasCommission,
+                    kickbackRule,
+                    kickback,
+                    productTypeId,
+                    active,
+                });
+
+                // Processar cada bike do array `bikes` e associar as bikes à aula
+                if (bikes && bikes.length > 0) {
+                    const classId = newClass.id;
+
+                    for (const bike of bikes) {
+                        const { studentId, bikeNumber } = bike;
+
+                        let bikeRecord = await Bike.findOne({ where: { bikeNumber } });
+                        if (!bikeRecord) {
+                            bikeRecord = await Bike.create({ bikeNumber, status: 'in_use', studentId });
+                        } else {
+                            bikeRecord.status = 'in_use';
+                            await bikeRecord.save();
+                        }
+
+                        await ClassStudent.create({
+                            classId,
+                            PersonId: teacherId,
+                            studentId,
+                            bikeId: bikeRecord.bikeNumber,
+                        });
+                    }
+                }
+
+                // Adicionar a aula criada ao array de resultados
+                createdClasses.push(newClass);
+            }
+        }
+
+        return res.status(201).json({
+            success: true,
+            message: 'Aulas e bikes associadas criadas com sucesso',
+            createdClasses,
+        });
+    } catch (createError) {
+        console.error('Erro ao criar aulas:', createError);
+        return res.status(500).json({
+            success: false,
+            data: createError,
+            error: 'Erro ao criar aulas',
+        });
+    }
+};
+
 
 export const getAllClasses = async (req: Request, res: Response): Promise<void | Response> => {
     try {
@@ -354,6 +442,44 @@ export const deleteClass = async (req: Request, res: Response): Promise<Response
 };
 
 
+export const cancelClass = async (req: Request, res: Response): Promise<Response> => {
+    try {
+        const id = req.params.id;
+        const classData = await Class.findByPk(id);
+
+        if (!classData) {
+            return res.status(404).send('Aula não encontrada');
+        }
+
+        // Alterando o status da aula para 2 (cancelada)
+        classData.active = false;
+        await classData.save();
+
+        // Buscando todos os alunos que estão inscritos na aula
+        const classStudents = await ClassStudent.findAll({ where: { classId: id } });
+
+        // Atualizando os status dos alunos na tabela ClassStudent e devolvendo crédito
+        for (const classStudent of classStudents) {
+            // Atualizando o status do aluno (ex: 'cancelado')
+            classStudent.status = false; // Exemplo de status
+            await classStudent.save();
+
+            // Devolver 1 crédito usando a função updateCustomerBalance
+            const student = await Person.findByPk(classStudent.studentId);
+            if (student) {
+                // Atualiza o saldo de crédito do aluno (devolve 1 crédito)
+                await updateCustomerBalance(student.id, 1, true); // true indicando que é um crédito devolvido
+            }
+        }
+
+        return res.status(200).send('Aula cancelada com sucesso e créditos devolvidos');
+    } catch (error) {
+        console.error('Erro ao cancelar aula:', error);
+        return res.status(500).send('Erro ao cancelar aula');
+    }
+};
+
+
 export const validateClassData = (data: any): { isValid: boolean; message?: string } => {
     const { date, time, teacherId, productTypeId } = data;
 
@@ -365,6 +491,39 @@ export const validateClassData = (data: any): { isValid: boolean; message?: stri
     // Validação do horário
     if (!time) {
         return { isValid: false, message: 'Horário é obrigatório.' };
+    }
+
+    // Validação do professor
+    if (!teacherId) {
+        return { isValid: false, message: 'ID do professor é obrigatório.' };
+    }
+
+    // Validação do tipo de produto
+    if (!productTypeId) {
+        return { isValid: false, message: 'Tipo de produto é obrigatório.' };
+    }
+
+    // Se todas as validações passarem
+    return { isValid: true };
+};
+
+
+export const validateClassDataRecorring = (data: any): { isValid: boolean; message?: string } => {
+    const { date, time, teacherId, productTypeId } = data;
+
+    // Validação dos dias
+    if (!date || !Array.isArray(date) || date.length === 0) {
+        return { isValid: false, message: 'Dias da semana são obrigatórios.' };
+    }
+  
+    // Validação dos horários
+    if (!time || !Array.isArray(time) || time.length === 0) {
+        return { isValid: false, message: 'Horários são obrigatórios.' };
+    }
+    for (const h of time) {
+        if (!moment(h, 'HH:mm', true).isValid()) {
+            return { isValid: false, message: `Horário inválido: ${time}.` };
+        }
     }
 
     // Validação do professor

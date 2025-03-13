@@ -6,7 +6,8 @@ import {
     getProductById, 
     updateProduct, 
     deleteProduct, 
-    getDropdownProducts 
+    getDropdownProducts, 
+    getFilteredProducts
 } from '../controllers/productController';
 
 const router = Router();
@@ -66,6 +67,8 @@ router.post('/', authenticateToken, createProduct);
  *         description: Erro ao listar produtos
  */
 router.get('/', authenticateToken, getAllProducts);
+
+router.get('/filtered/', authenticateToken, getFilteredProducts);
 
 /**
  * @swagger

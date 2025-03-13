@@ -72,6 +72,63 @@ export const getAllProducts = async (req: Request, res: Response): Promise<Respo
     }
 };
 
+
+export const getFilteredProducts = async (req: Request, res: Response): Promise<Response> => {
+    try {
+        const { page = 1, pageSize = 10, productTypeId } = req.query;
+
+        // Configurar paginação
+        const limit = parseInt(pageSize as string, 10); // Número de registros por página
+        const offset = (parseInt(page as string, 10) - 1) * limit; // Deslocamento
+
+        // Construir a consulta de filtro
+        const whereClause: any = {};
+        if (productTypeId) {
+            whereClause.productTypeId = productTypeId; // Adiciona filtro para ProductType se passado
+        }
+
+        // Busca com paginação e relacionamentos
+        const { rows: products, count: totalRecords } = await Product.findAndCountAll({
+            where: whereClause, // Filtra os produtos pelo ProductType se necessário
+            include: [
+                {
+                    model: ProductType,
+                    as: 'productType',
+                    attributes: ['name'], // Inclui apenas o nome do ProductType
+                    include: [
+                        {
+                            model: Place,
+                            as: 'place', // Usa o alias correto para Place, se definido
+                            attributes: ['name'], // Inclui apenas o nome do Place
+                        },
+                    ],
+                },
+            ],
+            limit,
+            offset,
+        });
+
+        // Retornar resultado com paginação
+        return res.status(200).json({
+            success: true,
+            data: products,
+            pagination: {
+                totalRecords,
+                totalPages: Math.ceil(totalRecords / limit),
+                currentPage: parseInt(page as string, 10),
+                pageSize: limit,
+            },
+        });
+    } catch (error) {
+        console.error('Erro ao buscar produtos:', error);
+        return res.status(500).json({
+            success: false,
+            error: 'Erro ao buscar produtos',
+        });
+    }
+};
+
+
 // READ BY ID
 export const getProductById = async (req: Request, res: Response): Promise<Response> => {
     try {
