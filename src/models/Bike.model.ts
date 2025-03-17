@@ -50,11 +50,7 @@ Bike.init(
     },
     classId: {
       type: DataTypes.INTEGER.UNSIGNED,
-      allowNull: true,
-      references: {
-        model: ClassA,  // Referencia o modelo Class
-        key: 'id',
-      },
+      allowNull: true,      
     },
   },
   {
@@ -65,7 +61,6 @@ Bike.init(
 );
 
 // Relacionamento com o modelo `Class`
-Bike.belongsTo(ClassA, { foreignKey: 'classId'});
 //Bike.sync({ alter: true });
 
 export default Bike;

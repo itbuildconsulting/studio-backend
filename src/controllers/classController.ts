@@ -287,6 +287,7 @@ export const getClassById = async (req: Request, res: Response): Promise<Respons
                 return {
                     bikeNumber: bike.bikeNumber,
                     status: bike.status, // Status da bicicleta (ex.: disponível, em uso, manutenção)
+                    studentId: bike.studentId,
                     studentName, // Nome do aluno associado (ou null se não houver)
                 };
             })
@@ -356,10 +357,11 @@ export const updateClass = async (req: Request, res: Response): Promise<Response
             for (const bike of bikes) {
                 const { studentId, bikeNumber, deductCredits = true } = bike;
 
-                // Verifica se a bike já existe na tabela 'Bike'
-                let bikeRecord = await Bike.findOne({ where: { bikeNumber } });
+                // Verifica se a bike já existe na tabela 'Bike' associada àquela aula específica
+                let bikeRecord = await Bike.findOne({ where: { bikeNumber, classId } });
+
                 if (!bikeRecord) {
-                    // Cria a bike se ela não existir
+                    // Cria a bike se ela não existir para essa aula
                     bikeRecord = await Bike.create({ bikeNumber, status: 'in_use', studentId, classId });
                 } else {
                     // Atualiza o status da bike para 'in_use'
@@ -370,7 +372,7 @@ export const updateClass = async (req: Request, res: Response): Promise<Response
 
                 // Verificar se a associação já existe
                 const existingAssociation = existingClassStudents.find(
-                    (cs) => cs.bikeId === bikeRecord.bikeNumber
+                    (cs) => cs.bikeId === bikeRecord.id
                 );
 
                 if (!existingAssociation) {
@@ -394,7 +396,7 @@ export const updateClass = async (req: Request, res: Response): Promise<Response
                     // Atualizar associação existente
                     await existingAssociation.update({
                         studentId,
-                        bikeId: bikeRecord.bikeNumber,
+                        bikeId: bikeRecord.id,
                     });
                 }
             }
@@ -402,8 +404,8 @@ export const updateClass = async (req: Request, res: Response): Promise<Response
             // Remover associações que não estão mais presentes no array `bikes`
             const bikesToKeep = bikes.map((bike: any) => bike.bikeNumber);
             for (const cs of existingClassStudents) {
-                if (!bikesToKeep.includes(cs.bikeId)) {
-                    // Remover a associação
+                const bikeInDb = await Bike.findOne({ where: { id: cs.bikeId, classId } });
+                if (!bikeInDb || !bikesToKeep.includes(bikeInDb.bikeNumber)) {
                     await cs.destroy();
                 }
             }
