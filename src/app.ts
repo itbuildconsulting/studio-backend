@@ -16,6 +16,7 @@ import appRoute from './routes/appRoutes';
 import financialRoutes from './routes/financialRoutes';
 import dashboardRoutes from './routes/dashboardRoutes';
 import levelRoutes from './routes/levelRoutes';
+import waitingRoutes from './routes/waitingListRoutes';
 
 const app: Application = express();
 
@@ -47,6 +48,7 @@ app.use('/app', appRoute);
 app.use('/financial', financialRoutes);
 app.use('/dashboard', dashboardRoutes);
 app.use('/level', levelRoutes);
+app.use('/waiting', waitingRoutes);
 
 // Configuração do Swagger
 swaggerSetup(app);
