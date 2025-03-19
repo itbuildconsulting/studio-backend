@@ -2,8 +2,8 @@ import { Request, Response } from 'express';
 import WaitingList from '../models/WaitingList.model';
 import ClassStudent from '../models/ClassStudent.model';
 import Class from '../models/Class.model';
-import sequelize from 'sequelize/types/sequelize';
-import { Op } from 'sequelize/types';
+import sequelize from '../config/database';
+import { Op } from 'sequelize';
 
 export const addToWaitingList = async (req: Request, res: Response): Promise<Response> => {
     try {

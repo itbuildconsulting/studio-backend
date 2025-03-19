@@ -8,6 +8,7 @@ import ClassStudent from '../models/ClassStudent.model';
 import Bike from '../models/Bike.model';
 import sequelize from '../config/database';
 import Transactions from '../models/Transaction.model'; // Importando o modelo de transações
+import Level from '../models/Level.model';
 
 export const balance = async (req: Request, res: Response): Promise<Response | void> => {
     const personId = req.body.user?.id;    
@@ -50,10 +51,39 @@ export const balance = async (req: Request, res: Response): Promise<Response | v
 
 export const schedule = async (req: Request, res: Response): Promise<Response> => {
     try {
-        const { month, year } = req.body;
-        const startDate = month && year ? new Date(year, month - 1, 1) : new Date();
-        const endDate = month && year ? new Date(year, month, 0) : undefined;
+        const { studentId, month, year } = req.body;
 
+        // Buscar o nível do estudante
+        const student = await Person.findByPk(studentId);
+        if (!student) {
+            return res.status(404).json({ message: 'Estudante não encontrado' });
+        }
+
+        // Buscar o level do estudante e verificar o antecedence
+        const studentLevel = await Level.findOne({
+            where: { id: student.student_level }
+        });
+
+        // Se o estudante não tiver um nível, o antecedence será 7
+        let antecedence = 7;  // Valor padrão
+        if (studentLevel) {
+            antecedence = studentLevel.antecedence || 7;
+        }
+
+        // O startDate será a data de hoje, e o endDate será calculado com base na antecedência
+        const startDate = new Date(); // Data de hoje
+        const endDate = new Date(startDate); 
+        endDate.setDate(startDate.getDate() + antecedence); // Adiciona a antecedência à data de hoje
+
+        // Se `month` e `year` forem fornecidos, atualiza a data de início
+        if (month && year) {
+            startDate.setMonth(month - 1); // Muda para o mês informado (0-indexed)
+            startDate.setFullYear(year); // Muda para o ano informado
+            endDate.setMonth(month - 1); 
+            endDate.setFullYear(year); 
+        }
+
+        // Critérios de busca para aulas
         const whereCondition: any = { date: { [Op.gte]: startDate } };
         if (endDate) whereCondition.date[Op.lte] = endDate;
 

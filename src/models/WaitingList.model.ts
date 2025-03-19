@@ -52,7 +52,7 @@ WaitingList.init(
   },
   {
     sequelize,
-    tableName: 'waiting_list',
+    tableName: 'waitingList',
     timestamps: true,
   }
 );
@@ -60,5 +60,6 @@ WaitingList.init(
 // Definição das associações
 WaitingList.belongsTo(Person, { foreignKey: 'studentId', as: 'student' });
 WaitingList.belongsTo(Class, { foreignKey: 'classId', as: 'class' });
+//WaitingList.sync({ alter: true });
 
 export default WaitingList;

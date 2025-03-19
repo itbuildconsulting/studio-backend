@@ -9,6 +9,7 @@ import Person from '../models/Person.model';
 import ProductType from '../models/ProductType.model';
 import Balance from '../models/Balance.model';
 import { updateCustomerBalance } from './balanceController';
+import { parse, format } from 'date-fns'; // Importar o `parse` e `format` de `date-fns`
 
 // CREATE
 export const createClass = async (req: Request, res: Response): Promise<Response> => {
@@ -185,7 +186,9 @@ export const getAllClasses = async (req: Request, res: Response): Promise<void |
                 const criteria: any = {};
 
                 if (date) {
-                    criteria.date = date; // Busca por data exata
+                    // Formatando a data recebida no formato 'DD/MM/YYYY' para 'YYYY-MM-DD'
+                    const parsedDate = parse(date, 'dd/MM/yyyy', new Date());
+                    criteria.date = format(parsedDate, 'yyyy-MM-dd'); // Formata para 'YYYY-MM-DD'
                 }
 
                 if (time) {
@@ -229,7 +232,7 @@ export const getAllClasses = async (req: Request, res: Response): Promise<void |
                         return {
                             ...classItem.toJSON(),
                             productType: productType ? productType.name : null,
-                            teacher: teacher ?  teacher.name : null,
+                            teacher: teacher ? teacher.name : null,
                         };
                     })
                 );
