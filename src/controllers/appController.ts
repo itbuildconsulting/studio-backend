@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import Balance from '../models/Balance.model';
 import { authenticateToken } from '../core/token/authenticateToken';
 import { Op } from 'sequelize';
+import { format } from 'date-fns';
 import Class from '../models/Class.model';
 import Person from '../models/Person.model';
 import ClassStudent from '../models/ClassStudent.model';
@@ -67,26 +68,35 @@ export const schedule = async (req: Request, res: Response): Promise<Response> =
         // Se o estudante não tiver um nível, o antecedence será 7
         let antecedence = 7;  // Valor padrão
         if (studentLevel) {
-            antecedence = studentLevel.antecedence || 7;
+            antecedence = Number(studentLevel.antecedence) || 7;
         }
 
-        // O startDate será a data de hoje, e o endDate será calculado com base na antecedência
+        // O startDate será a data de hoje
         const startDate = new Date(); // Data de hoje
-        const endDate = new Date(startDate); 
-        endDate.setDate(startDate.getDate() + antecedence); // Adiciona a antecedência à data de hoje
+        let endDate = new Date(startDate); 
 
-        // Se `month` e `year` forem fornecidos, atualiza a data de início
+        // Adiciona a antecedência ao endDate (para quando o estudante pode agendar)
+        endDate.setDate(startDate.getDate() + antecedence);
+
+        // Se `month` e `year` forem fornecidos, ajusta o mês e ano de startDate e endDate
         if (month && year) {
-            startDate.setMonth(month - 1); // Muda para o mês informado (0-indexed)
-            startDate.setFullYear(year); // Muda para o ano informado
-            endDate.setMonth(month - 1); 
+            startDate.setMonth(month - 1); // Ajusta para o mês informado (0-indexed)
+            startDate.setFullYear(year); // Ajusta para o ano informado
+
+            // Ajusta o endDate baseado nas alterações de month e year
+            endDate.setMonth(month); 
             endDate.setFullYear(year); 
         }
 
+        // Formatar as datas para o formato 'YYYY-MM-DD' que o Sequelize espera
+        const formattedStartDate = format(startDate, 'yyyy-MM-dd');
+        //const formattedEndDate = format(endDate, 'yyyy-MM-dd');
+
         // Critérios de busca para aulas
-        const whereCondition: any = { date: { [Op.gte]: startDate } };
+        const whereCondition: any = { date: { [Op.gte]: formattedStartDate } };
         if (endDate) whereCondition.date[Op.lte] = endDate;
 
+        // Buscar aulas com base nos critérios de data e antecedência
         const availableClasses = await Class.findAll({
             attributes: ['date'],
             where: whereCondition,
@@ -98,6 +108,7 @@ export const schedule = async (req: Request, res: Response): Promise<Response> =
             return res.status(404).json({ message: 'Nenhuma aula disponível para o período' });
         }
 
+        // Remover duplicados e retornar os dias disponíveis
         const availableDays = [...new Set(availableClasses.map(classData => classData.date))];
 
         return res.status(200).json({
@@ -106,9 +117,7 @@ export const schedule = async (req: Request, res: Response): Promise<Response> =
         });
     } catch (error) {
         console.error('Erro ao validar token:', error);
-
         const errorMessage = error instanceof Error ? error.message : 'Token inválido';
-
         return res.status(401).json({
             success: false,
             message: errorMessage
