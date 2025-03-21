@@ -358,18 +358,18 @@ export const updateClass = async (req: Request, res: Response): Promise<Response
 
             // Processar as novas associações
             for (const bike of bikes) {
-                const { studentId, bikeNumber, deductCredits = true } = bike;
+                const { studentId = 0, bikeNumber, deductCredits = true, status = 'in_use' } = bike;
 
                 // Verifica se a bike já existe na tabela 'Bike' associada àquela aula específica
                 let bikeRecord = await Bike.findOne({ where: { bikeNumber, classId } });
 
                 if (!bikeRecord) {
                     // Cria a bike se ela não existir para essa aula
-                    bikeRecord = await Bike.create({ bikeNumber, status: 'in_use', studentId, classId });
+                    bikeRecord = await Bike.create({ bikeNumber, status, studentId, classId });
                 } else {
                     // Atualiza o status da bike para 'in_use'
-                    bikeRecord.status = 'in_use';
-                    bikeRecord.studentId = studentId || null; // Atualiza o aluno associado, se houver
+                    bikeRecord.status = status;
+                    bikeRecord.studentId = studentId || 0; // Atualiza o aluno associado, se houver
                     await bikeRecord.save();
                 }
 

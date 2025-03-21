@@ -6,7 +6,7 @@ import ClassA from './Class.model';
 class ClassStudent extends Model {
   public id!: number;
   public classId!: number;
-  public studentId!: number;
+  public studentId!: number | null;
   public bikeId!: number | null;
   public checkin!: number | null;
   public createdAt!: Date;
@@ -33,7 +33,7 @@ ClassStudent.init(
     },
     studentId: {
       type: DataTypes.INTEGER,
-      allowNull: false,
+      allowNull: true,
     },
     checkin: {
       type: DataTypes.INTEGER,
