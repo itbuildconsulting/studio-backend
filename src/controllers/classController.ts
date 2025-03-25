@@ -307,7 +307,6 @@ export const getClassById = async (req: Request, res: Response): Promise<Respons
     }
 };
 
-// UPDATE
 export const updateClass = async (req: Request, res: Response): Promise<Response> => {
     try {
         const id = req.params.id; // ID da aula a ser editada
@@ -365,7 +364,7 @@ export const updateClass = async (req: Request, res: Response): Promise<Response
 
                 if (!bikeRecord) {
                     // Cria a bike se ela não existir para essa aula
-                    bikeRecord = await Bike.create({ bikeNumber, status: 'in_use', studentId, classId });
+                    bikeRecord = await Bike.create({ bikeNumber, status: 'in_use', studentId: studentId || null, classId });
                 } else {
                     // Atualiza o status da bike para 'in_use'
                     bikeRecord.status = 'in_use';
@@ -378,8 +377,8 @@ export const updateClass = async (req: Request, res: Response): Promise<Response
                     (cs) => cs.bikeId === bikeRecord.id
                 );
 
-                if (!existingAssociation) {
-                    // Criar nova associação em ClassStudent
+                if (!existingAssociation && studentId) {
+                    // Criar nova associação em ClassStudent se o studentId estiver presente
                     await ClassStudent.create({
                         classId,
                         PersonId: teacherId,
@@ -395,12 +394,15 @@ export const updateClass = async (req: Request, res: Response): Promise<Response
                             await balance.save();
                         }
                     }
-                } else {
-                    // Atualizar associação existente
+                } else if (existingAssociation && studentId) {
+                    // Atualizar associação existente se o studentId estiver presente
                     await existingAssociation.update({
                         studentId,
                         bikeId: bikeRecord.id,
                     });
+                } else if (existingAssociation && !studentId) {
+                    // Remover a associação se o studentId for null
+                    await existingAssociation.destroy();
                 }
             }
 
@@ -428,6 +430,7 @@ export const updateClass = async (req: Request, res: Response): Promise<Response
         });
     }
 };
+
 
 
 // DELETE
