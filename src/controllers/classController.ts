@@ -185,10 +185,17 @@ export const getAllClasses = async (req: Request, res: Response): Promise<void |
                 // Critérios de busca dinâmica para aulas
                 const criteria: any = {};
 
+                // Definir data de hoje
+                const today = new Date();
+                const formattedToday = format(today, 'yyyy-MM-dd'); // Formatar a data de hoje para 'YYYY-MM-DD'
+
                 if (date) {
                     // Formatando a data recebida no formato 'DD/MM/YYYY' para 'YYYY-MM-DD'
                     const parsedDate = parse(date, 'dd/MM/yyyy', new Date());
                     criteria.date = format(parsedDate, 'yyyy-MM-dd'); // Formata para 'YYYY-MM-DD'
+                } else {
+                    // Se não for passada data, buscar a partir de hoje
+                    criteria.date = { [Op.gte]: formattedToday };
                 }
 
                 if (time) {
@@ -357,18 +364,18 @@ export const updateClass = async (req: Request, res: Response): Promise<Response
 
             // Processar as novas associações
             for (const bike of bikes) {
-                const { studentId, bikeNumber, deductCredits = true } = bike;
+                const { studentId = 0, bikeNumber, deductCredits = true, status = 'in_use' } = bike;
 
                 // Verifica se a bike já existe na tabela 'Bike' associada àquela aula específica
                 let bikeRecord = await Bike.findOne({ where: { bikeNumber, classId } });
 
                 if (!bikeRecord) {
                     // Cria a bike se ela não existir para essa aula
-                    bikeRecord = await Bike.create({ bikeNumber, status: 'in_use', studentId: studentId || null, classId });
+                    bikeRecord = await Bike.create({ bikeNumber, status, studentId: studentId || null, classId });
                 } else {
                     // Atualiza o status da bike para 'in_use'
-                    bikeRecord.status = 'in_use';
-                    bikeRecord.studentId = studentId || null; // Atualiza o aluno associado, se houver
+                    bikeRecord.status = status;
+                    bikeRecord.studentId = studentId || 0; // Atualiza o aluno associado, se houver
                     await bikeRecord.save();
                 }
 

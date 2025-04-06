@@ -1,0 +1,32 @@
+name: Deploy Fullstack
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  backend:
+    name: Deploy Backend to VPS
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.DEPLOY_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H 212.85.2.8 >> ~/.ssh/known_hosts
+
+      - name: Deploy Backend
+        run: |
+          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no root@212.85.2.8 << 'EOF'
+            cd /var/www/studio/studio-backend
+            git pull origin main
+            npm install
+            npm run build
+            pm2 restart studio-backend || pm2 start dist/index.js --name studio-backend
+            pm2 save
+          EOF

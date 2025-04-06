@@ -78,16 +78,7 @@ export const schedule = async (req: Request, res: Response): Promise<Response> =
         // Adiciona a antecedência ao endDate (para quando o estudante pode agendar)
         endDate.setDate(startDate.getDate() + antecedence);
 
-        // Se `month` e `year` forem fornecidos, ajusta o mês e ano de startDate e endDate
-        if (month && year) {
-            startDate.setMonth(month - 1); // Ajusta para o mês informado (0-indexed)
-            startDate.setFullYear(year); // Ajusta para o ano informado
-
-            // Ajusta o endDate baseado nas alterações de month e year
-            endDate.setMonth(month); 
-            endDate.setFullYear(year); 
-        }
-
+     
         // Formatar as datas para o formato 'YYYY-MM-DD' que o Sequelize espera
         const formattedStartDate = format(startDate, 'yyyy-MM-dd');
         //const formattedEndDate = format(endDate, 'yyyy-MM-dd');
