@@ -24,7 +24,7 @@ export const balance = async (req: Request, res: Response): Promise<Response | v
                 const balanceData = await Balance.findOne({
                     where: { idCustomer: personId }
                 });
-
+                //AQUI TEM UM COMENTARIO
                 if (!balanceData) {
                     return res.status(200).json({
                         success: true,
