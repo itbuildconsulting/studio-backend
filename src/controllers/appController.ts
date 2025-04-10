@@ -26,7 +26,11 @@ export const balance = async (req: Request, res: Response): Promise<Response | v
                 });
 
                 if (!balanceData) {
-                    return res.status(404).json({ message: 'Saldo não encontrado para este usuário' });
+                    return res.status(200).json({
+                        success: true,
+                        message: 'Saldo não encontrado para este usuário',
+                        balance: 0
+                    });
                 }
 
                 return res.status(200).json({

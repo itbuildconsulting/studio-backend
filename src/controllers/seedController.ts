@@ -57,7 +57,7 @@ export const seedController = {
                 rule: "",
                 frequency: "",
                 employee: 1,
-                employee_level: "admin",
+                employee_level: '1',
             });
 
             return res.status(201).send('Usuário criado com sucesso' + person);
