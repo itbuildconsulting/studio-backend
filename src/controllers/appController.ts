@@ -302,6 +302,8 @@ export const cancelStudentPresenceInClass = async (req: Request, res: Response):
             return res.status(404).json({ message: 'Aula não encontrada' });
         }
 
+      
+
         // 2. Verificar se o horário atual está dentro do limite de cancelamento (2 horas antes da aula)
         const classDateTime = new Date(`${classData.date}T${classData.time}`);
         const now = new Date();
@@ -323,6 +325,10 @@ export const cancelStudentPresenceInClass = async (req: Request, res: Response):
 
         if (!classStudent) {
             return res.status(404).json({ message: 'Aluno não está registrado nesta aula' });
+        }
+
+        if (classStudent.status === false) {
+            return res.status(400).json({ message: 'Aula não disponível para cancelamento' });
         }
 
         // 4. Buscar a bike associada ao aluno na aula

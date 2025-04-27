@@ -4,15 +4,41 @@ import Level from '../models/Level.model';
 // Criar um novo nível
 export const createLevel = async (req: Request, res: Response): Promise<Response> => {
   try {
-    const { name, numberOfClasses, title, benefit, color,  antecedence } = req.body;
+    const { name, numberOfClasses, title, benefit, color, antecedence } = req.body;
 
+    // Verificar se já existe um nível com o mesmo numberOfClasses
+    const existingLevelByClasses = await Level.findOne({
+      where: { numberOfClasses },
+    });
+
+    // Verificar se já existe um nível com a mesma cor
+    const existingLevelByColor = await Level.findOne({
+      where: { color },
+    });
+
+    // Se existir um nível com o mesmo número de aulas ou cor, retornamos um erro
+    if (existingLevelByClasses) {
+      return res.status(400).json({
+        success: false,
+        message: `Já existe um nível com ${numberOfClasses} aulas.`,
+      });
+    }
+
+    if (existingLevelByColor) {
+      return res.status(400).json({
+        success: false,
+        message: `Já existe um nível com a cor ${color}.`,
+      });
+    }
+
+    // Se não houver duplicação, cria o novo nível
     const newLevel = await Level.create({
       name,
       numberOfClasses,
       title,
       benefit,
       color,
-      antecedence
+      antecedence,
     });
 
     return res.status(201).json({

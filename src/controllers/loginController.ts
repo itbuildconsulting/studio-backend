@@ -75,7 +75,7 @@ export const requestPasswordReset = async (req: Request, res: Response): Promise
         const resetToken = generateResetToken({ id: person.id, email: person.email });
 
         // Gerar URL de redefinição de senha com o token
-        const resetUrl = `https://localhost:3001/resetar-senha?token=${resetToken}`;
+        const resetUrl = `https://admin.studiostaging.xyz/resetar-senha/${resetToken}`;
 
         // Enviar e-mail para o usuário com o link
         await sendEmail(

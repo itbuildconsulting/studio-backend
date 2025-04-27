@@ -72,7 +72,6 @@ export const getAllProducts = async (req: Request, res: Response): Promise<Respo
     }
 };
 
-
 export const getFilteredProducts = async (req: Request, res: Response): Promise<Response> => {
     try {
         const { page = 1, pageSize = 10, productTypeId } = req.query;
@@ -83,13 +82,15 @@ export const getFilteredProducts = async (req: Request, res: Response): Promise<
 
         // Construir a consulta de filtro
         const whereClause: any = {};
-        if (productTypeId) {
-            whereClause.productTypeId = productTypeId; // Adiciona filtro para ProductType se passado
+
+        // Se o productTypeId for passado e não for null ou undefined, adiciona o filtro
+        if (productTypeId !== undefined && productTypeId !== 'null') {
+            whereClause.productTypeId = productTypeId; // Adiciona o filtro para o tipo de produto
         }
 
         // Busca com paginação e relacionamentos
         const { rows: products, count: totalRecords } = await Product.findAndCountAll({
-            where: whereClause, // Filtra os produtos pelo ProductType se necessário
+            where: whereClause, // Filtro condicional
             include: [
                 {
                     model: ProductType,
@@ -127,6 +128,7 @@ export const getFilteredProducts = async (req: Request, res: Response): Promise<
         });
     }
 };
+
 
 
 // READ BY ID
