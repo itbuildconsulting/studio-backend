@@ -211,8 +211,6 @@ export const getClassById = async (req: Request, res: Response): Promise<Respons
 export const addStudentToClassWithBikeNumber = async (req: Request, res: Response): Promise<Response> => {
     const { classId, studentId, bikeNumber } = req.body;
 
-    // Iniciar uma transação para garantir a consistência dos dados
-    const transaction = await sequelize.transaction();
     try {
         // 1. Verificar se a aula existe
         const classData = await Class.findByPk(classId);
@@ -224,62 +222,70 @@ export const addStudentToClassWithBikeNumber = async (req: Request, res: Respons
         const existingEnrollment = await ClassStudent.findOne({
             where: { classId, studentId }
         });
-
         if (existingEnrollment) {
             return res.status(400).json({ message: 'Aluno já está inscrito nesta aula' });
         }
 
-        // 3. Verificar o saldo de créditos do aluno na tabela Balance
+        // 3. Verificar o saldo de créditos do aluno
         const studentBalance = await Balance.findOne({
             where: { idCustomer: studentId }
         });
-
         if (!studentBalance || studentBalance.balance <= 0) {
             return res.status(400).json({ message: 'Créditos insuficientes para o aluno' });
         }
 
-        // 4. Verificar se a bike está disponível para essa aula e número específico
+        // 4. Verificar se a bike está disponível
         const existingBike = await Bike.findOne({
             where: { classId, bikeNumber }
         });
-
         if (existingBike && existingBike.status !== 'available') {
             return res.status(400).json({ message: 'Bike não está disponível' });
         }
 
-        // 5. Criar a bike para a aula e aluno, se ainda não existir
-        const bike = existingBike || await Bike.create({
-            classId,
-            studentId,
-            bikeNumber,
-            status: 'in_use'
-        }, { transaction });
+        // 🔥 Agora começa a transação (só depois de todas as validações)
+        const transaction = await sequelize.transaction();
 
-        // 6. Associar o aluno à aula em `ClassStudent`
-        await ClassStudent.create({
-            classId,
-            PersonId: studentId,
-            studentId,
-            bikeId: bike.id
-        }, { transaction });
+        try {
+            // 5. Criar a bike se necessário
+            const bike = existingBike || await Bike.create({
+                classId,
+                studentId,
+                bikeNumber,
+                status: 'in_use'
+            }, { transaction });
 
-        // 7. Descontar 1 crédito do saldo do aluno
-        studentBalance.balance -= 1;
-        await studentBalance.save({ transaction });
+            // 6. Associar o aluno à aula
+            await ClassStudent.create({
+                classId,
+                PersonId: studentId,
+                studentId,
+                bikeId: bike.id
+            }, { transaction });
 
-        // Confirmar transação
-        await transaction.commit();
+            // 7. Atualizar o saldo do aluno
+            studentBalance.balance -= 1;
+            await studentBalance.save({ transaction });
 
-        return res.status(200).json({
-            success: true,
-            message: 'Aluno adicionado à aula e bike atribuída com sucesso'
-        });
+            // 8. Confirmar a transação
+            await transaction.commit();
+
+            return res.status(200).json({
+                success: true,
+                message: 'Aluno adicionado à aula e bike atribuída com sucesso'
+            });
+
+        } catch (error) {
+            await transaction.rollback();
+            console.error('Erro durante a transação:', error);
+            return res.status(500).json({
+                success: false,
+                message: 'Erro durante a operação',
+                error: error instanceof Error ? error.message : 'Erro desconhecido'
+            });
+        }
 
     } catch (error) {
-        // Reverter transação em caso de erro
-        await transaction.rollback();
         console.error('Erro ao adicionar aluno à aula:', error);
-
         return res.status(500).json({
             success: false,
             message: 'Erro ao adicionar aluno à aula',
