@@ -5,6 +5,8 @@ import { authenticateToken } from '../core/token/authenticateToken';
 import { saveTransaction } from './transactionController';
 import { updateCustomerBalance } from './balanceController';
 import { checkPurchaseLimit, createItemsAfterTransaction } from './itemsController';
+import Item from '../models/Item.model';
+import Transactions from '../models/Transaction.model';
 
 interface ProductRequest {
     productId: string;
@@ -371,3 +373,78 @@ async function createTransaction(checkout: any) {
         };
     }
 }
+
+// Função de cancelamento de pagamento e reembolso integral
+export const cancelPaymentAndRefund = async (req: Request, res: Response): Promise<Response> => {
+    try {
+      const { paymentId } = req.body; // O ID do pagamento que queremos cancelar e reembolsar
+  
+      // Verifica se o paymentId foi fornecido
+      if (!paymentId) {
+        return res.status(400).json({ success: false, message: 'O ID do pagamento é obrigatório' });
+      }
+  
+      // 1. Buscar transação na tabela Transaction
+      const transaction = await Transactions.findOne({ where: { transactionId: paymentId } });
+  
+      if (!transaction) {
+        return res.status(404).json({ success: false, message: 'Transação não encontrada' });
+      }
+  
+      // 2. Chama a função que cancela o pagamento e realiza o reembolso
+      const cancelPaymentResult = await cancelPayment(paymentId);
+  
+      if (!cancelPaymentResult.success) {
+        return res.status(500).json({ success: false, message: cancelPaymentResult.message });
+      }
+  
+      // 3. Marcar a transação como "refunded" no banco de dados
+      await transaction.update({ status: 'refunded' });
+  
+      // 4. Atualizar os itens associados à transação
+      const items = await Item.findAll({ where: { transactionId: paymentId } });
+  
+      if (items.length) {
+        // Atualiza os itens associados com status "cancelado"
+        await Promise.all(
+          items.map(item => item.update({ status: 'cancelado' }))
+        );
+      }
+  
+      return res.status(200).json({
+        success: true,
+        message: 'Pagamento cancelado e reembolsado com sucesso, e itens atualizados para "cancelado"',
+      });
+  
+    } catch (error) {
+      console.error('Erro ao cancelar pagamento:', error);
+      return res.status(500).json({ success: false, message: 'Erro ao processar cancelamento de pagamento' });
+    }
+  };
+  
+  // Função que chama a API Pagar.me para cancelar o pagamento
+  const cancelPayment = async (paymentId: string) => {
+    try {
+      const response = await fetch(`https://api.pagar.me/core/v5/charges/${paymentId}`, {
+        method: 'POST',
+        headers: {
+          'Authorization': 'Basic ' + Buffer.from("sk_test_ff6bdd05222244b48cf7a8544a86584c:").toString('base64'),
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          status: 'refunded' // O status de reembolso completo
+        }),
+      });
+  
+      const data = await response.json();
+  
+      if (response.ok && data.status === 'refunded') {
+        return { success: true, data }; // Retorna o resultado da resposta com sucesso
+      } else {
+        return { success: false, message: data.message || 'Erro ao tentar reembolsar o pagamento' };
+      }
+    } catch (error) {
+      console.error('Erro ao chamar a API de cancelamento de pagamento:', error);
+      return { success: false, message: 'Erro ao chamar API de cancelamento' };
+    }
+  };

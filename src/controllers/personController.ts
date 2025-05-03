@@ -377,6 +377,50 @@ export const deletePerson = async (req: Request, res: Response): Promise<Respons
     }
 };
 
+export const validateUserExists = async (req: Request, res: Response): Promise<Response> => {
+    try {
+        const { email, identity } = req.body;  // Recebendo email e CPF (identity)
+
+        // Verificar se o email já está cadastrado
+        const existingEmail = await Person.findOne({
+            where: { email }
+        });
+
+        if (existingEmail) {
+            return res.status(400).json({
+                success: false,
+                message: 'O email informado já está cadastrado.'
+            });
+        }
+
+        // Verificar se o CPF já está cadastrado
+        const existingIdentity = await Person.findOne({
+            where: { identity }
+        });
+
+        if (existingIdentity) {
+            return res.status(400).json({
+                success: false,
+                message: 'O CPF informado já está cadastrado.'
+            });
+        }
+
+        // Caso nenhum dos dados existam, continuar com o cadastro
+        return res.status(200).json({
+            success: true,
+            message: 'Email e CPF disponíveis para cadastro.'
+        });
+
+    } catch (error) {
+        console.error('Erro ao validar email ou CPF:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Erro ao validar email ou CPF.'
+        });
+    }
+};
+
+
 export const validatePersonData = (data: any): string | null => {
     const {
         name,

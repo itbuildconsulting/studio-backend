@@ -1,5 +1,5 @@
 import express, { Router } from 'express';
-import { checkout, checkoutCash } from '../controllers/checkoutController';
+import { cancelPaymentAndRefund, checkout, checkoutCash } from '../controllers/checkoutController';
 import { authenticateToken } from '../core/token/authenticateToken'; // Importe o middleware de autenticação
 
 const router: Router = express.Router();
@@ -10,5 +10,7 @@ const router: Router = express.Router();
 router.post('/', authenticateToken, checkout);
 
 router.post('/dashboard', authenticateToken, checkoutCash);
+
+router.post('/cancelPaymentAndRefund', authenticateToken, cancelPaymentAndRefund);
 
 export default router;

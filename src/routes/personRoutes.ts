@@ -9,7 +9,8 @@ import {
     getDropdownStudent, 
     getPersonById, 
     updatePerson, 
-    deletePerson 
+    deletePerson, 
+    validateUserExists
 } from '../controllers/personController';
 
 const router = Router();
@@ -255,5 +256,7 @@ router.put('/:id', authenticateToken, updatePerson);
  *         description: Erro ao deletar pessoa
  */
 router.post('/remove/:id', authenticateToken, deletePerson);
+
+router.post('/validateUserExists', authenticateToken, validateUserExists);
 
 export default router;
