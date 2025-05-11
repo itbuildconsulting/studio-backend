@@ -259,6 +259,7 @@ router.put('/:id', authenticateToken, updatePerson);
 router.post('/remove/:id', authenticateToken, deletePerson);
 
 router.post('/validateUserExistsEmail', validateUserExistsEmail);
+
 router.post('/validateUserExistsIdentity', validateUserExistsIdentity);
 
 export default router;
