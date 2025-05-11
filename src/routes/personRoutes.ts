@@ -10,7 +10,8 @@ import {
     getPersonById, 
     updatePerson, 
     deletePerson, 
-    validateUserExists
+    validateUserExistsEmail,
+    validateUserExistsIdentity
 } from '../controllers/personController';
 
 const router = Router();
@@ -257,6 +258,7 @@ router.put('/:id', authenticateToken, updatePerson);
  */
 router.post('/remove/:id', authenticateToken, deletePerson);
 
-router.post('/validateUserExists', authenticateToken, validateUserExists);
+router.post('/validateUserExistsEmail', validateUserExistsEmail);
+router.post('/validateUserExistsIdentity', validateUserExistsIdentity);
 
 export default router;

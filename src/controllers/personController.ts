@@ -377,7 +377,7 @@ export const deletePerson = async (req: Request, res: Response): Promise<Respons
     }
 };
 
-export const validateUserExists = async (req: Request, res: Response): Promise<Response> => {
+export const validateUserExistsEmail = async (req: Request, res: Response): Promise<Response> => {
     try {
         const { email, identity } = req.body;  // Recebendo email e CPF (identity)
 
@@ -393,7 +393,28 @@ export const validateUserExists = async (req: Request, res: Response): Promise<R
             });
         }
 
-        // Verificar se o CPF já está cadastrado
+      
+
+        // Caso nenhum dos dados existam, continuar com o cadastro
+        return res.status(200).json({
+            success: true,
+            message: 'Email disponível para cadastro.'
+        });
+
+    } catch (error) {
+        console.error('Erro ao validar email:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Erro ao validar email.'
+        });
+    }
+};
+
+export const validateUserExistsIdentity = async (req: Request, res: Response): Promise<Response> => {
+    try {
+        const { identity } = req.body;  // Recebendo email e CPF (identity)
+
+              // Verificar se o CPF já está cadastrado
         const existingIdentity = await Person.findOne({
             where: { identity }
         });
@@ -408,17 +429,18 @@ export const validateUserExists = async (req: Request, res: Response): Promise<R
         // Caso nenhum dos dados existam, continuar com o cadastro
         return res.status(200).json({
             success: true,
-            message: 'Email e CPF disponíveis para cadastro.'
+            message: 'CPF disponível para cadastro.'
         });
 
     } catch (error) {
-        console.error('Erro ao validar email ou CPF:', error);
+        console.error('Erro ao validar CPF:', error);
         return res.status(500).json({
             success: false,
-            message: 'Erro ao validar email ou CPF.'
+            message: 'Erro ao validar CPF.'
         });
     }
 };
+
 
 
 export const validatePersonData = (data: any): string | null => {
