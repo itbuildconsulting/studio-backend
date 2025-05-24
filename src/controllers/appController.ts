@@ -10,39 +10,48 @@ import Bike from '../models/Bike.model';
 import sequelize from '../config/database';
 import Transactions from '../models/Transaction.model'; // Importando o modelo de transações
 import Level from '../models/Level.model';
+import Credit from '../models/Credit.model';
 
 export const balance = async (req: Request, res: Response): Promise<Response | void> => {
     const personId = req.body.user?.id;    
+
     try {
         return authenticateToken(req, res, async () => {
-           
             if (!personId) {
                 return res.status(401).json({ message: 'Token inválido' });
             }
 
             try {
-                const balanceData = await Balance.findOne({
-                    where: { idCustomer: personId }
+                // Buscar todos os créditos válidos do usuário
+                const credits = await Credit.findAll({
+                    where: {
+                        idCustomer: personId,
+                        status: 'valid', // Considera apenas os créditos válidos
+                        expirationDate: {
+                            [Op.gte]: new Date() // Apenas créditos que não expiraram
+                        }
+                    }
                 });
-                //AQUI TEM UM COMENTARIO
-                if (!balanceData) {
+
+                // Calcular o total de créditos disponíveis
+                const availableCredits = credits.reduce((total, credit) => total + credit.availableCredits, 0);
+
+                if (availableCredits === 0) {
                     return res.status(200).json({
                         success: true,
-                        message: 'Saldo não encontrado para este usuário',
+                        message: 'Nenhum crédito disponível ou todos expiraram.',
                         balance: 0
                     });
                 }
 
                 return res.status(200).json({
                     success: true,
-                    balance: balanceData
+                    balance: availableCredits
                 });
             } catch (error) {
                 console.error('Erro ao validar token:', error);
-
-                const errorMessage = error instanceof Error ? error.message : 'Token inválido';
-
-                return res.status(401).json({
+                const errorMessage = error instanceof Error ? error.message : 'Erro ao verificar saldo';
+                return res.status(500).json({
                     success: false,
                     message: errorMessage
                 });
@@ -227,11 +236,23 @@ export const addStudentToClassWithBikeNumber = async (req: Request, res: Respons
         }
 
         // 3. Verificar o saldo de créditos do aluno
-        const studentBalance = await Balance.findOne({
-            where: { idCustomer: studentId }
+        const studentCredits = await Credit.findAll({
+            where: {
+                idCustomer: studentId,
+                status: 'valid',  // Somente créditos válidos
+                expirationDate: { [Op.gte]: new Date() }, // Somente créditos não expirados
+            }
         });
-        if (!studentBalance || studentBalance.balance <= 0) {
-            return res.status(400).json({ message: 'Créditos insuficientes para o aluno' });
+
+        if (studentCredits.length <= 0) {
+            return res.status(400).json({ message: 'Créditos insuficientes para o aluno ou créditos expirados' });
+        }
+
+        // Somar os créditos disponíveis
+        const totalCreditsAvailable = studentCredits.reduce((total, credit) => total + credit.availableCredits, 0);
+
+        if (totalCreditsAvailable <= 0) {
+            return res.status(400).json({ message: 'Nenhum crédito disponível para o aluno' });
         }
 
         // 4. Verificar se a bike está disponível
@@ -262,9 +283,20 @@ export const addStudentToClassWithBikeNumber = async (req: Request, res: Respons
                 bikeId: bike.id
             }, { transaction });
 
-            // 7. Atualizar o saldo do aluno
-            studentBalance.balance -= 1;
-            await studentBalance.save({ transaction });
+            // Aqui você seleciona o primeiro crédito disponível (ou pode escolher um específico se necessário)
+            const creditToUse = studentCredits[0]; // Pegando o primeiro crédito disponível
+
+            // Atualiza o crédito
+            creditToUse.availableCredits -= 1; // Subtrai 1 do crédito disponível
+            creditToUse.usedCredits += 1; // Adiciona 1 no crédito usado
+
+            // Se o crédito não tiver mais disponível, você pode atualizar o status para 'used'
+            if (creditToUse.availableCredits <= 0) {
+                creditToUse.status = 'used';
+            }
+
+            // Salvar as alterações
+            await creditToUse.save();
 
             // 8. Confirmar a transação
             await transaction.commit();

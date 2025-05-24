@@ -1,68 +1,67 @@
-import Balance from '../models/Balance.model'; // Importando o modelo de saldo
+import Credit from '../models/Credit.model';
+import { Op } from 'sequelize';
 
 interface BalanceResponse {
     success: boolean;
-    message: string;
+    message: string; 
 }
 
 export const updateCustomerBalance = async (
     idCustomer: number,
     transactionAmount: number,
+    transactionId: string,
     add: boolean
 ): Promise<BalanceResponse> => {
     try {
-        const existingBalance = await Balance.findByPk(idCustomer);
-        
-        if (existingBalance) {
-            // Ajusta o saldo baseado no tipo de operação (adição ou subtração)
-            if (add) {
-                existingBalance.balance += transactionAmount;
-            } else {
-                existingBalance.balance -= transactionAmount;
-            }
-
-            existingBalance.lastUpdated = new Date();  // Atualiza a data de última modificação
-            await existingBalance.save();
-
-            if (!existingBalance) {
-                console.error('Falha ao salvar saldo:', existingBalance);
-                return {
-                    success: false,
-                    message: 'Falha ao salvar saldo:',
-                };
-            } else {
-                return {
-                    success: true,
-                    message: 'Saldo atualizado com sucesso',
-                };
-            }
-        } else {
-            // Se o saldo não existir, cria um novo registro com o saldo inicial
-            const initialBalance = add ? transactionAmount : -transactionAmount;
-            const newBalance = await Balance.create({
+        // 1. Verificar se o usuário já possui créditos registrados
+        const existingCredits = await Credit.findAll({
+            where: {
                 idCustomer,
-                balance: initialBalance,
-                lastUpdated: new Date()
+                status: 'valid', // Somente créditos válidos
+                expirationDate: { [Op.gte]: new Date() }, // Apenas créditos que não expiraram
+            },
+        });
+
+        if (existingCredits.length > 0) {
+            // 2. Se houver créditos válidos, ajustar o saldo dos créditos
+            for (const credit of existingCredits) {
+                if (add) {
+                    credit.availableCredits += transactionAmount; // Adicionar créditos
+                } else {
+                    credit.availableCredits -= transactionAmount; // Subtrair créditos
+                }
+
+                credit.status = credit.availableCredits <= 0 ? 'used' : 'valid'; // Atualiza o status para 'used' caso os créditos acabem
+                credit.lastUpdated = new Date();  // Atualiza a data de última modificação
+                await credit.save();
+            }
+
+            return {
+                success: true,
+                message: 'Créditos atualizados com sucesso',
+            };
+        } else {
+            // 3. Se o cliente não tiver créditos válidos, criar um novo crédito
+            const newCredit = await Credit.create({
+                idCustomer,
+                availableCredits: add ? transactionAmount : -transactionAmount,  // Definir valor positivo ou negativo
+                usedCredits: 0, // Créditos ainda não utilizados
+                status: 'valid',  // Status inicial é 'valid'
+                expirationDate: new Date(new Date().setFullYear(new Date().getFullYear() + 1)), // Exemplo: validade de 1 ano
+                creditBatch: transactionId, // Lote de créditos (pode ser gerado de acordo com a lógica de cada transação)
+                origin: 'Compra',  // Exemplo: origem do crédito (pode ser adaptado conforme necessário)
             });
 
-            if (!newBalance) {
-                console.error('Falha ao salvar saldo inicial:', newBalance);
-                return {
-                    success: false,
-                    message: 'Falha ao salvar saldo inicial:',
-                };
-            } else {
-                return {
-                    success: true,
-                    message: 'Saldo inicial criado com sucesso',
-                };
-            }
+            return {
+                success: true,
+                message: 'Novo crédito criado com sucesso',
+            };
         }
     } catch (error: any) {
-        console.error('Erro ao atualizar saldo:', error);
+        console.error('Erro ao atualizar créditos do usuário:', error);
         return {
             success: false,
-            message: error.message || 'Erro ao atualizar saldo',
+            message: error.message || 'Erro ao atualizar créditos',
         };
     }
 };

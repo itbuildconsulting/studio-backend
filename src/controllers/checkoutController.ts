@@ -143,7 +143,7 @@ export const checkout = async (req: Request, res: Response, ): Promise<Response 
 
                 const save = await saveTransaction(result.data, creditTotal, personData.id);
                 if (save.success) {
-                    const updateBalanceResult = await updateCustomerBalance(personData.id, creditTotal, true);
+                    const updateBalanceResult = await updateCustomerBalance(personData.id, creditTotal, result.data.id, true);
 
                     try {
                         await createItemsAfterTransaction(result.data.id, personData.id, items);
@@ -302,7 +302,7 @@ export const checkoutCash = async (req: Request, res: Response): Promise<Respons
                 // Salvar transação e atualizar o saldo
                 const save = await saveTransaction(result.data, creditTotal, personData.id);
                 if (save.success) {
-                    const updateBalanceResult = await updateCustomerBalance(personData.id, creditTotal, true);
+                    const updateBalanceResult = await updateCustomerBalance(personData.id, creditTotal, result.data.id, true);
 
                     try {
                         await createItemsAfterTransaction(result.data.id, personData.id, items);

@@ -4,9 +4,13 @@ import sequelize from '../config/database';
 class Credit extends Model {
   public id!: number;
   public idCustomer!: number;
-  public expirationDate!: Date;
-  public used!: boolean;
-  public origin?: string; // opcional, se quiser controlar a origem do crédito (ex: compra, bônus, etc.)
+  public availableCredits!: number;  // Crédits disponíveis
+  public usedCredits!: number;       // Créditos já usados
+  public status!: string;            // Status do crédito: 'valid', 'used', 'expired'
+  public expirationDate!: Date;     // Data de validade do crédito
+  public creditBatch!: string;      // Lote de créditos (por exemplo, ID da transação)
+  public origin?: string;           // Origem do crédito (compra, bônus, etc.)
+  public lastUpdated?: Date;           // Origem do crédito (compra, bônus, etc.)
 }
 
 Credit.init(
@@ -20,34 +24,50 @@ Credit.init(
       type: DataTypes.INTEGER.UNSIGNED,
       allowNull: false,
     },
+    availableCredits: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 0, // Créditos disponíveis inicialmente
+    },
+    usedCredits: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 0, // Nenhum crédito usado inicialmente
+    },
+    status: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      defaultValue: 'valid', // O crédito começa com status válido
+      comment: 'Status do crédito: valid, used, expired',
+    },
     expirationDate: {
       type: DataTypes.DATE,
       allowNull: false,
     },
-    used: {
-      type: DataTypes.BOOLEAN,
+    creditBatch: {
+      type: DataTypes.STRING,
       allowNull: false,
-      defaultValue: false,
+      comment: 'Lote de créditos (ex: ID da transação)',
     },
     origin: {
       type: DataTypes.STRING,
       allowNull: true,
-      comment: 'Origem do crédito: compra, bônus, manual, etc.'
+      comment: 'Origem do crédito: compra, bônus, manual, etc.',
     },
   },
   {
     tableName: 'credits',
-    sequelize, // conexão
-    timestamps: true, // createdAt, updatedAt
+    sequelize, // Conexão com o banco
+    timestamps: true, // Para criar createdAt e updatedAt automaticamente
     indexes: [
       {
-        fields: ['idCustomer'], // facilita buscar todos créditos de um aluno
+        fields: ['idCustomer'], // Facilita busca por todos os créditos de um usuário
       },
       {
-        fields: ['expirationDate'], // facilita buscar créditos que vencem
+        fields: ['expirationDate'], // Facilita busca por créditos próximos à expiração
       },
       {
-        fields: ['used'], // facilita buscar apenas créditos não usados
+        fields: ['status'], // Facilita busca por status do crédito
       },
     ],
   }

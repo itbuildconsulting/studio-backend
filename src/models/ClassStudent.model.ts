@@ -12,6 +12,7 @@ class ClassStudent extends Model {
   public createdAt!: Date;
   public updatedAt!: Date;
   public status!: boolean;
+  public transactionId!: string;
 }
 
 // Definindo o modelo com as associações necessárias
@@ -45,6 +46,10 @@ ClassStudent.init(
     },
     status: {
       type: DataTypes.BOOLEAN,
+      allowNull: true,
+    },
+    transactionId: {
+      type: DataTypes.STRING,
       allowNull: true,
     }
   },

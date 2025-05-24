@@ -6,31 +6,54 @@ import Person from '../models/Person.model';
 import generateAuthToken from '../core/token/generateAuthToken';
 import generateResetToken from '../core/token/generateResetToken';
 import { sendEmail } from '../core/email/emailService';
+import Level from '../models/Level.model';
 
 export const login = async (req: Request, res: Response): Promise<Response> => {
     const { email, password } = req.body;
 
     try {
+        // Buscar a pessoa pelo e-mail
         const person = await Person.findOne({ where: { email } });
 
         if (!person) {
             return res.status(404).json({ error: 'Pessoa não encontrada' });
         }
 
+        // Comparar a senha fornecida com a armazenada
         const passwordMatch = await bcrypt.compare(password, person.password);
 
         if (!passwordMatch) {
             return res.status(401).json({ error: 'Credenciais inválidas' });
         }
 
-        // Aqui passamos id, nome e role ao token
+        // Agora, vamos buscar o nível da pessoa usando o employee_level
+        const level = await Level.findOne({
+            where: { id: person.employee_level },
+        });
+
+        if (!level) {
+            return res.status(404).json({ error: 'Nível não encontrado para o usuário' });
+        }
+
+        // Aqui passamos id, nome, e nível ao token
         const token = generateAuthToken({
             id: person.id,
             name: person.name,
             employee_level: person.employee_level, // Usamos employee_level
         });
 
-        return res.status(200).json({ token, expiresIn: '1h', name: person.name, id: person.id, email: person.email, level: person.employee_level });
+        // Retornamos o token e informações do usuário, incluindo o nome do nível
+        return res.status(200).json({
+            token,
+            expiresIn: '1h',
+            name: person.name,
+            id: person.id,
+            email: person.email,
+            level: level.name, // Agora enviamos o nome do nível ao invés do ID
+            color: level.color,
+            student_level: person.student_level,
+            
+        });
     } catch (error) {
         console.error('Erro durante o login:', error);
         return res.status(500).json({ error: 'Erro interno do servidor' });
