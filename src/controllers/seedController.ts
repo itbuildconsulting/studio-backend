@@ -10,6 +10,8 @@ import ClassStudent from '../models/ClassStudent.model';
 import Item from '../models/Item.model';
 import Transactions from '../models/Transaction.model';
 import Level from '../models/Level.model';
+import Credit from '../models/Credit.model';
+import Config from '../models/Config.model';
 
 // Definir funções do controlador
 export const seedController = {
@@ -27,6 +29,8 @@ export const seedController = {
             await Transactions.sync();
             await Item.sync();
             await Level.sync();
+            await Credit.sync(); 
+            await Config.sync(); 
             
             return res.status(201).send('Todas as tabelas sincronizadas com o banco de dados');
         } catch (err) {
