@@ -31,10 +31,6 @@ export const login = async (req: Request, res: Response): Promise<Response> => {
             where: { id: person.employee_level },
         });
 
-        if (!level) {
-            return res.status(404).json({ error: 'Nível não encontrado para o usuário' });
-        }
-
         // Aqui passamos id, nome, e nível ao token
         const token = generateAuthToken({
             id: person.id,
@@ -49,8 +45,8 @@ export const login = async (req: Request, res: Response): Promise<Response> => {
             name: person.name,
             id: person.id,
             email: person.email,
-            level: level.name, // Agora enviamos o nome do nível ao invés do ID
-            color: level.color,
+            level: !level ? null : level.name, // Agora enviamos o nome do nível ao invés do ID
+            color: !level ? null : level.color,
             student_level: person.student_level,
             
         });
