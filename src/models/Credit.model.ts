@@ -24,6 +24,11 @@ Credit.init(
       type: DataTypes.INTEGER.UNSIGNED,
       allowNull: false,
     },
+    productTypeId: {
+      type: DataTypes.INTEGER.UNSIGNED,
+      allowNull: false,
+      comment: 'Tipo de produto ao qual os créditos pertencem',
+    },
     availableCredits: {
       type: DataTypes.INTEGER,
       allowNull: false,

@@ -11,8 +11,12 @@ import sequelize from '../config/database';
 import Transactions from '../models/Transaction.model'; // Importando o modelo de transações
 import Level from '../models/Level.model';
 import Credit from '../models/Credit.model';
+import Config from '../models/Config.model';
+import Product from '../models/Product.model';
+import ProductType from '../models/ProductType.model';
+import Place from '../models/Place.model';
 
-export const balance = async (req: Request, res: Response): Promise<Response | void> => {
+/*export const balance = async (req: Request, res: Response): Promise<Response | void> => {
     const personId = req.body.user?.id;    
 
     try {
@@ -61,68 +65,127 @@ export const balance = async (req: Request, res: Response): Promise<Response | v
         console.error('Erro ao validar token:', error);
         return res.status(401).send('Token inválido');
     }
-};
+};*/
 
-export const schedule = async (req: Request, res: Response): Promise<Response> => {
+export const balance = async (req: Request, res: Response): Promise<Response> => {
+    const personId = req.body.user?.id;
+  
+    if (!personId) {
+      return res.status(401).json({ message: 'Token inválido' });
+    }
+  
     try {
-        const { studentId, month, year } = req.body;
+      // Buscar a configuração "app_product"
+      const config = await Config.findOne({ where: { configKey: 'app_product' } });
+  
+      let productFilter: any = {}; // Filtro opcional para tipo de produto
+  
+      if (config?.configValue) {
+        const allowedProductTypes = config.configValue.split(',').map(id => parseInt(id.trim(), 10)).filter(Boolean);
+        productFilter = { productTypeId: { [Op.in]: allowedProductTypes } };
+      }
+  
+      // Buscar créditos válidos, não expirados e compatíveis com o tipo de produto
+      const credits = await Credit.findAll({
+        where: {
+          idCustomer: personId,
+          status: 'valid',
+          expirationDate: { [Op.gte]: new Date() },
+          ...productFilter // aplica o filtro se existir
+        }
+      });
+  
+      const availableCredits = credits.reduce((total, credit) => total + credit.availableCredits, 0);
+  
+      return res.status(200).json({
+        success: true,
+        balance: availableCredits,
+        message: availableCredits === 0 ? 'Nenhum crédito disponível ou todos expiraram.' : undefined
+      });
+    } catch (error) {
+      console.error('Erro ao verificar saldo:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Erro ao verificar saldo';
+      return res.status(500).json({
+        success: false,
+        message: errorMessage
+      });
+    }
+  };
 
-        // Buscar o nível do estudante
+  export const schedule = async (req: Request, res: Response): Promise<Response> => {
+    try {
+        const { studentId } = req.body;
+
         const student = await Person.findByPk(studentId);
         if (!student) {
             return res.status(404).json({ message: 'Estudante não encontrado' });
         }
 
-        // Buscar o level do estudante e verificar o antecedence
-        const studentLevel = await Level.findOne({
-            where: { id: student.student_level }
-        });
+        const studentLevel = await Level.findOne({ where: { id: student.student_level } });
+        const antecedence = studentLevel ? Number(studentLevel.antecedence) || 7 : 7;
 
-        // Se o estudante não tiver um nível, o antecedence será 7
-        let antecedence = 7;  // Valor padrão
-        if (studentLevel) {
-            antecedence = Number(studentLevel.antecedence) || 7;
-        }
-
-        // O startDate será a data de hoje
-        const startDate = new Date(); // Data de hoje
-        let endDate = new Date(startDate); 
-
-        // Adiciona a antecedência ao endDate (para quando o estudante pode agendar)
+        const startDate = new Date();
+        const endDate = new Date(startDate);
         endDate.setDate(startDate.getDate() + antecedence);
 
-     
-        // Formatar as datas para o formato 'YYYY-MM-DD' que o Sequelize espera
         const formattedStartDate = format(startDate, 'yyyy-MM-dd');
-        //const formattedEndDate = format(endDate, 'yyyy-MM-dd');
+        const formattedEndDate = format(endDate, 'yyyy-MM-dd');
 
-        // Critérios de busca para aulas
-        const whereCondition: any = { date: { [Op.gte]: formattedStartDate } };
-        if (endDate) whereCondition.date[Op.lte] = endDate;
+        // Buscar config de produtos permitidos no app
+        const config = await Config.findOne({ where: { configKey: 'app_product' } });
+        let allowedProductTypes: number[] = [];
 
-        // Buscar aulas com base nos critérios de data e antecedência
+        if (config?.configValue) {
+            allowedProductTypes = config.configValue
+                .split(',')
+                .map((id) => parseInt(id.trim(), 10))
+                .filter(Boolean);
+        }
+
+        // Filtro de data
+        const whereCondition: any = {
+            date: {
+                [Op.gte]: formattedStartDate,
+                [Op.lte]: formattedEndDate
+            }
+        };
+
+        // Filtro adicional para tipos de produto, se necessário
+        if (allowedProductTypes.length > 0) {
+            whereCondition['$product.productTypeId$'] = {
+                [Op.in]: allowedProductTypes
+            };
+        }
+
         const availableClasses = await Class.findAll({
             attributes: ['date'],
             where: whereCondition,
+            include: [
+                {
+                    model: Product,
+                    as: 'product',
+                    attributes: [], // Não precisa retornar os dados do produto
+                }
+            ],
             group: ['date'],
-            order: [['date', 'ASC']]
+            order: [['date', 'ASC']],
         });
 
         if (!availableClasses.length) {
             return res.status(404).json({ message: 'Nenhuma aula disponível para o período' });
         }
 
-        // Remover duplicados e retornar os dias disponíveis
         const availableDays = [...new Set(availableClasses.map(classData => classData.date))];
 
         return res.status(200).json({
             success: true,
             availableDays
         });
+
     } catch (error) {
-        console.error('Erro ao validar token:', error);
-        const errorMessage = error instanceof Error ? error.message : 'Token inválido';
-        return res.status(401).json({
+        console.error('Erro ao buscar agenda:', error);
+        const errorMessage = error instanceof Error ? error.message : 'Erro interno';
+        return res.status(500).json({
             success: false,
             message: errorMessage
         });
@@ -588,5 +651,68 @@ export const getUserTransactions = async (req: Request, res: Response): Promise<
     } catch (error) {
         console.error('Erro ao buscar transações do usuário:', error);
         return res.status(500).json({ success: false, message: 'Erro ao buscar transações do usuário' });
+    }
+};
+
+export const getAllProducts = async (req: Request, res: Response): Promise<Response> => {
+    try {
+        const { page = 1, pageSize = 10 } = req.query;
+        const limit = parseInt(pageSize as string, 10);
+        const offset = (parseInt(page as string, 10) - 1) * limit;
+
+        // 1. Buscar configKey 'app_product'
+        const config = await Config.findOne({ where: { configKey: 'app_product' } });
+
+        // 2. Se existir, montar filtro de tipos permitidos
+        let productTypeFilter: any = {};
+        if (config?.configValue) {
+            const allowedProductTypes = config.configValue
+                .split(',')
+                .map((id) => parseInt(id.trim(), 10))
+                .filter(Boolean);
+
+            productTypeFilter = {
+                productTypeId: { [Op.in]: allowedProductTypes }
+            };
+        }
+
+        // 3. Buscar produtos com ou sem filtro
+        const { rows: products, count: totalRecords } = await Product.findAndCountAll({
+            where: productTypeFilter,
+            include: [
+                {
+                    model: ProductType,
+                    as: 'productType',
+                    attributes: ['name'],
+                    include: [
+                        {
+                            model: Place,
+                            as: 'place',
+                            attributes: ['name'],
+                        },
+                    ],
+                },
+            ],
+            limit,
+            offset,
+        });
+
+        // 4. Retornar resultado com paginação
+        return res.status(200).json({
+            success: true,
+            data: products,
+            pagination: {
+                totalRecords,
+                totalPages: Math.ceil(totalRecords / limit),
+                currentPage: parseInt(page as string, 10),
+                pageSize: limit,
+            },
+        });
+    } catch (error) {
+        console.error('Erro ao buscar produtos:', error);
+        return res.status(500).json({
+            success: false,
+            error: 'Erro ao buscar produtos',
+        });
     }
 };
