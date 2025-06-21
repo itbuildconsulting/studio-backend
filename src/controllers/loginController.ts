@@ -106,7 +106,7 @@ export const requestPasswordReset = async (req: Request, res: Response): Promise
         return res.status(200).send('Se o e-mail existir no sistema, um link de redefinição será enviado.');
     } catch (error) {
         console.error('Erro ao solicitar redefinição de senha:', error);
-        return res.status(500).json({ error: 'Erro interno do servidor' });
+        return res.status(500).json({ error: 'Erro interno do servidor', message: error });
     }
 };
 
