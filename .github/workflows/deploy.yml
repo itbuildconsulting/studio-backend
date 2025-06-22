@@ -28,6 +28,8 @@ jobs:
             DB_NAME=${{ vars.DB_NAME }}
             DB_USER=${{ vars.DB_USER }}
             DB_PASS=${{ vars.DB_PASS }}
+            EMAIL_USER=${{ vars.EMAIL_USER }}
+            EMAIL_PASS=${{ vars.EMAIL_PASS }}
           EOF"
 
       - name: Deploy Backend
