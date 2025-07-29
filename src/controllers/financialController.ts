@@ -102,8 +102,6 @@ export const getTransactionById = async (req: Request, res: Response): Promise<R
             customerName: transaction.customerName,
             customerEmail: transaction.customerEmail,
             customerDocument: transaction.customerDocument,
-            createdAt: new Date(transaction.createdAt).toLocaleDateString('pt-BR'),
-            updatedAt: new Date(transaction.updatedAt).toLocaleDateString('pt-BR'),
             closedAt: transaction.closedAt ? new Date(transaction.closedAt).toLocaleDateString('pt-BR') : null,
         };
 

@@ -483,7 +483,7 @@ export const cancelClass = async (req: Request, res: Response): Promise<Response
             const student = await Person.findByPk(classStudent.studentId);
             if (student) {
                 // Atualiza o saldo de crédito do aluno (devolve 1 crédito)
-                await updateCustomerBalance(student.id, 1, classStudent.transactionId, true); // true indicando que é um crédito devolvido
+                await updateCustomerBalance(student.id, 1, classStudent.transactionId, true, classData.productTypeId); // true indicando que é um crédito devolvido
             }
         }
 

@@ -67,7 +67,7 @@ export const getMonthlySales = async (req: Request, res: Response): Promise<Resp
                 [fn('MONTH', col('createdAt')), 'month'], // Extrai o mês da data
                 [fn('SUM', col('amount')), 'totalSales'], // Soma o total de vendas por mês
             ],
-            where: {
+            /*where: {
                 createdAt: {
                     [Op.between]: [
                         new Date(`${currentYear}-01-01`), // Início do ano
@@ -75,7 +75,7 @@ export const getMonthlySales = async (req: Request, res: Response): Promise<Resp
                     ],
                 },
                 status: 'paid', // Considere apenas vendas concluídas (opcional)
-            },
+            },*/
             group: [fn('MONTH', col('createdAt'))], // Agrupa por mês
             order: [[literal('month'), 'ASC']], // Ordena os resultados pelos meses
         });

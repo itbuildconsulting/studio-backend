@@ -62,9 +62,11 @@ export const checkout = async (req: Request, res: Response, ): Promise<Response 
                         });
                     }
                 }
+                let productType = null
 
                 // Mapear produtos para o formato de itens do checkout
                 const items = products.map(item => {
+                    
                     const product = productInfo.find(p => p.id.toString() === item.productId);
                     if (!product) {
                         throw new Error(`Produto com ID ${item.productId} não encontrado`);
@@ -72,11 +74,13 @@ export const checkout = async (req: Request, res: Response, ): Promise<Response 
                     creditTotal += product.credit;
                     const total = product.value * item.quantity; 
                     const totalForCheckout = Math.round(total * 100); // 10500
+                    productType = product.productTypeId
                     return {
                         itemId: product.id,
                         amount: totalForCheckout,  // Multiplica o preço pela quantidade
                         credit: product.credit,
                         description: product.name.replace(/[^a-zA-Z0-9 ]/g, ''),
+                        productTypeId: product.productTypeId,
                         quantity: Number(item.quantity),
                         code: "EX123",
                     };
@@ -106,6 +110,7 @@ export const checkout = async (req: Request, res: Response, ): Promise<Response 
                         }
                     },
                     items: items,
+                    createdAt: new Date(),
                     payments: [
                         {
                             payment_method: 'credit_card',
@@ -135,7 +140,7 @@ export const checkout = async (req: Request, res: Response, ): Promise<Response 
                 // Chamar o paymentController para processar a transação
                 //console.log("Checkout Payload:", JSON.stringify(checkout, null, 2));
                 const result = await createTransaction(checkout);
-                console.log("Result Payload:", JSON.stringify(result, null, 2));
+                //console.log("Result Payload:", JSON.stringify(result, null, 2));
                 if (!result.success || result.data.status !== 'paid') {
                     console.error('Falha ao criar transação2:', result.message);
                     return res.status(500).json({ success: false, error: 'Falha ao criar transação:', details: result.message });
@@ -143,7 +148,7 @@ export const checkout = async (req: Request, res: Response, ): Promise<Response 
 
                 const save = await saveTransaction(result.data, creditTotal, personData.id);
                 if (save.success) {
-                    const updateBalanceResult = await updateCustomerBalance(personData.id, creditTotal, result.data.id, true);
+                    const updateBalanceResult = await updateCustomerBalance(personData.id, creditTotal, result.data.id, true, productType);
 
                     try {
                         await createItemsAfterTransaction(result.data.id, personData.id, items);
@@ -227,6 +232,8 @@ export const checkoutCash = async (req: Request, res: Response): Promise<Respons
                     }
                 }
 
+                let productType = null
+
                 // Mapear produtos para o formato de itens do checkout
                 const items = products.map(item => {
                     const product = productInfo.find(p => p.id === Number(item.productId));
@@ -238,11 +245,13 @@ export const checkoutCash = async (req: Request, res: Response): Promise<Respons
                     totalAmount += total;  // Soma o valor total dos produtos
 
                     const totalForCheckout = Math.round(total * 100); // Converte para centavos
+                    productType = product.productTypeId
                     return {
                         itemId: product.id,
                         amount: totalForCheckout,
                         credit: product.credit,
                         description: product.name.replace(/[^a-zA-Z0-9 ]/g, ''),
+                        productTypeId: product.productTypeId,
                         quantity: Number(item.quantity),
                         code: "EX123",
                     };
@@ -302,7 +311,7 @@ export const checkoutCash = async (req: Request, res: Response): Promise<Respons
                 // Salvar transação e atualizar o saldo
                 const save = await saveTransaction(result.data, creditTotal, personData.id);
                 if (save.success) {
-                    const updateBalanceResult = await updateCustomerBalance(personData.id, creditTotal, result.data.id, true);
+                    const updateBalanceResult = await updateCustomerBalance(personData.id, creditTotal, result.data.id, true, result.data.items[0].productTypeId);
 
                     try {
                         await createItemsAfterTransaction(result.data.id, personData.id, items);
@@ -348,7 +357,6 @@ async function createTransaction(checkout: any) {
         const data = await response.json();
   
         if (!response.ok) {
-            console.log(data)
             // Retornando erro como parte do objeto de resposta
             return {
                 success: false,

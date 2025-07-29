@@ -10,7 +10,8 @@ export const updateCustomerBalance = async (
     idCustomer: number,
     transactionAmount: number,
     transactionId: string,
-    add: boolean
+    add: boolean,
+    productItems: number
 ): Promise<BalanceResponse> => {
     try {
         // 1. Verificar se o usuário já possui créditos registrados
@@ -41,12 +42,14 @@ export const updateCustomerBalance = async (
                 message: 'Créditos atualizados com sucesso',
             };
         } else {
+            productItems
             // 3. Se o cliente não tiver créditos válidos, criar um novo crédito
             const newCredit = await Credit.create({
                 idCustomer,
                 availableCredits: add ? transactionAmount : -transactionAmount,  // Definir valor positivo ou negativo
                 usedCredits: 0, // Créditos ainda não utilizados
                 status: 'valid',  // Status inicial é 'valid'
+                productTypeId: productItems,
                 expirationDate: new Date(new Date().setFullYear(new Date().getFullYear() + 1)), // Exemplo: validade de 1 ano
                 creditBatch: transactionId, // Lote de créditos (pode ser gerado de acordo com a lógica de cada transação)
                 origin: 'Compra',  // Exemplo: origem do crédito (pode ser adaptado conforme necessário)

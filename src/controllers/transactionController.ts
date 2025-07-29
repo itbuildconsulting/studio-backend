@@ -28,7 +28,7 @@ export const saveTransaction = async (data: TransactionData, credit: number, stu
     try {
         //console.log('SAVE TRANSACTION');
         //console.log(data.charges[0].payment_method);
-        //console.log(data);
+        //console.log('[Data]', data);
 
         // Criar o objeto de transação
         const objectTransaction = {
@@ -46,8 +46,6 @@ export const saveTransaction = async (data: TransactionData, credit: number, stu
             customerEmail: data.customer.email,
             customerDocument: data.customer.document,
             balance: credit,
-            createdAt: new Date(data.created_at),
-            updatedAt: new Date(data.updated_at),
             closedAt: new Date(data.closed_at),
         };
 
