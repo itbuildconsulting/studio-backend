@@ -294,6 +294,6 @@ router.put('/:id', authenticateToken, updatePlace);
  *                   type: string
  *                   example: "Erro ao excluir local"
  */
-router.post('/:id', authenticateToken, deletePlace);
+router.post('/remove/:id', authenticateToken, deletePlace);
 
 export default router;

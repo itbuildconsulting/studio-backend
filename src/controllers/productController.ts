@@ -246,6 +246,7 @@ const validateProductData = (productData: any) => {
 
     if (!name || name.trim() === '') return 'O campo name é obrigatório';
     if (!credit) return 'O campo credit é obrigatório';
+    if (credit < 0) return 'O valor de crédito não pode ser negativo.';
     if (!validateDate) return 'O campo validateDate é obrigatório';
     if (!productTypeId) return 'O campo productTypeId é obrigatório';
     if (!value) return 'O campo value é obrigatório';

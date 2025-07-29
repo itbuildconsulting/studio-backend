@@ -35,7 +35,7 @@ export const checkout = async (req: Request, res: Response, ): Promise<Response 
             try {
                 const personData = await Person.findByPk(personId);
                 if (!personData) {
-                    return res.status(404).json({ message: 'Pessoa não encontrada' });
+                    return res.status(404).json({ error: 'Pessoa não encontrada' });
                 }
 
                 // Buscar informações dos produtos
@@ -47,7 +47,7 @@ export const checkout = async (req: Request, res: Response, ): Promise<Response 
                 });
 
                 if (!productInfo.length) {
-                    return res.status(404).json({ message: 'Produtos não encontrados' });
+                    return res.status(404).json({ error: 'Produtos não encontrados' });
                 }
 
                 let creditTotal = 0;
@@ -198,7 +198,7 @@ export const checkoutCash = async (req: Request, res: Response): Promise<Respons
             try {
                 const personData = await Person.findByPk(personId);
                 if (!personData) {
-                    return res.status(404).json({ message: 'Pessoa não encontrada' });
+                    return res.status(404).json({ error: 'Pessoa não encontrada' });
                 }
 
                 // Buscar informações dos produtos
@@ -210,7 +210,7 @@ export const checkoutCash = async (req: Request, res: Response): Promise<Respons
                 });
 
                 if (!productInfo.length) {
-                    return res.status(404).json({ message: 'Produtos não encontrados' });
+                    return res.status(404).json({ error: 'Produtos não encontrados' });
                 }
 
                 let creditTotal = 0;

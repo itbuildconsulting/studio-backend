@@ -147,6 +147,6 @@ router.put('/:id', authenticateToken, updateProductType);
  *       401:
  *         description: Erro ao deletar Tipo de Produto
  */
-router.post('/:id', authenticateToken, deleteProductType);
+router.post('/remove/:id', authenticateToken, deleteProductType);
 
 export default router;

@@ -46,7 +46,8 @@ export const getFilteredTransactions = async (req: Request, res: Response): Prom
             studentId: transaction.studentId,
             customerName: transaction.customerName,
             status: transaction.status,
-            createdAt: new Date(transaction.createdAt).toLocaleDateString('pt-BR'), // Formata a data
+            //createdAt: new Date(transaction.createdAt).toLocaleDateString('pt-BR'), // Formata a data
+            createdAt: transaction.createdAt
         }));
 
         // Retorna o resultado com paginação
