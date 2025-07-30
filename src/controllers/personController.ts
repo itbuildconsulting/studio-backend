@@ -524,8 +524,8 @@ export const validatePersonData = (data: any): string | null => {
     }
 
     // Ativo
-    if (active !== undefined && typeof active !== 'boolean') {
-        return 'O campo active deve ser um valor booleano.';
+    if (active !== undefined && typeof active !== 'number') {
+        return 'O campo active deve ser um valor 0 / 1.';
     }
 
     // Se todas as validações passarem
