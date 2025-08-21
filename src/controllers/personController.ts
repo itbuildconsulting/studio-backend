@@ -28,8 +28,6 @@ export const createPerson = async (req: Request, res: Response): Promise<Respons
             active,
         } = req.body;
 
-        console.log(req.body);
-
         // Validação de dados
         const validationError = validatePersonData(req.body);
         if (validationError) {

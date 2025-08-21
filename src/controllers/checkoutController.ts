@@ -72,8 +72,7 @@ export const checkout = async (req: Request, res: Response, ): Promise<Response 
                         throw new Error(`Produto com ID ${item.productId} não encontrado`);
                     }
                     creditTotal += product.credit;
-                    const total = product.value * item.quantity; 
-                    const totalForCheckout = Math.round(total * 100); // 10500
+                    const totalForCheckout = Math.round(product.value * 100); // 10500
                     productType = product.productTypeId
                     return {
                         itemId: product.id,
@@ -244,14 +243,13 @@ export const checkoutCash = async (req: Request, res: Response): Promise<Respons
                     const total = product.value * item.quantity; 
                     totalAmount += total;  // Soma o valor total dos produtos
 
-                    const totalForCheckout = Math.round(total * 100); // Converte para centavos
+                    const totalForCheckout = Math.round(product.value * 100); // Converte para centavos
                     productType = product.productTypeId
                     return {
                         itemId: product.id,
                         amount: totalForCheckout,
                         credit: product.credit,
                         description: product.name.replace(/[^a-zA-Z0-9 ]/g, ''),
-                        productTypeId: product.productTypeId,
                         quantity: Number(item.quantity),
                         code: "EX123",
                     };
@@ -311,7 +309,7 @@ export const checkoutCash = async (req: Request, res: Response): Promise<Respons
                 // Salvar transação e atualizar o saldo
                 const save = await saveTransaction(result.data, creditTotal, personData.id);
                 if (save.success) {
-                    const updateBalanceResult = await updateCustomerBalance(personData.id, creditTotal, result.data.id, true, result.data.items[0].productTypeId);
+                    const updateBalanceResult = await updateCustomerBalance(personData.id, creditTotal, result.data.id, true, productType);
 
                     try {
                         await createItemsAfterTransaction(result.data.id, personData.id, items);

@@ -62,6 +62,6 @@ ClassStudent.init(
 
 // Definindo associações
 ClassStudent.belongsTo(ClassA, { foreignKey: 'classId',});
-//ClassStudent.sync({ alter: true });
+ClassStudent.sync({ alter: true });
 
 export default ClassStudent;

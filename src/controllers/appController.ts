@@ -68,128 +68,116 @@ import Place from '../models/Place.model';
 };*/
 
 export const balance = async (req: Request, res: Response): Promise<Response> => {
-    const personId = req.body.user?.id;
-  
-    if (!personId) {
-      return res.status(401).json({ message: 'Token inválido' });
-    }
-  
-    try {
-      // Buscar a configuração "app_product"
-      const config = await Config.findOne({ where: { configKey: 'app_product' } });
-  
-      let productFilter: any = {}; // Filtro opcional para tipo de produto
-  
-      if (config?.configValue) {
-        const allowedProductTypes = config.configValue.split(',').map(id => parseInt(id.trim(), 10)).filter(Boolean);
-        productFilter = { productTypeId: { [Op.in]: allowedProductTypes } };
-      }
-  
-      // Buscar créditos válidos, não expirados e compatíveis com o tipo de produto
-      const credits = await Credit.findAll({
-        where: {
-          idCustomer: personId,
-          status: 'valid',
-          expirationDate: { [Op.gte]: new Date() },
-          ...productFilter // aplica o filtro se existir
-        }
-      });
-  
-      const availableCredits = credits.reduce((total, credit) => total + credit.availableCredits, 0);
-  
-      return res.status(200).json({
-        success: true,
-        balance: availableCredits,
-        message: availableCredits === 0 ? 'Nenhum crédito disponível ou todos expiraram.' : undefined
-      });
-    } catch (error) {
-      console.error('Erro ao verificar saldo:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Erro ao verificar saldo';
-      return res.status(500).json({
-        success: false,
-        message: errorMessage
+  const personId = req.body.user?.id;  
+  if (!personId) return res.status(401).json({ message: 'Token inválido' });
+
+  try {
+    const config = await Config.findOne({ where: { configKey: 'app_product' } });
+
+    const allowedProductTypes =
+      (config?.configValue || '')
+        .split(',')
+        .map(s => parseInt(s.trim(), 10))
+        .filter(n => Number.isFinite(n));
+
+    // DATEONLY: compare com string YYYY-MM-DD para incluir o "hoje"
+    const today = format(new Date(), 'yyyy-MM-dd');
+
+    const where: any = {
+      idCustomer: personId,         // confira o nome da coluna
+      status: 'valid',              // confira o valor real salvo
+      expirationDate: { [Op.gte]: today },
+    };
+
+    const include: any[] = [];
+    if (allowedProductTypes.length > 0) {
+      include.push({
+        model: Product,
+        attributes: [], // não precisamos dos campos
+        where: { productTypeId: { [Op.in]: allowedProductTypes } },
+        required: true, // vira INNER JOIN (filtra mesmo)
       });
     }
-  };
+
+    // se preferir fazer em SQL direto:
+    // const availableCredits = await Credit.sum('availableCredits', { where, include });
+
+    const credits = await Credit.findAll({ where, include, attributes: ['availableCredits'] });
+
+    const availableCredits = credits.reduce(
+      (sum, c: any) => sum + (c.availableCredits ?? 0),
+      0
+    );
+
+    return res.status(200).json({
+      success: true,
+      balance: availableCredits,
+      message: availableCredits === 0 ? 'Nenhum crédito disponível ou todos expiraram.' : undefined,
+    });
+  } catch (error) {
+    console.error('Erro ao verificar saldo:', error);
+    return res.status(500).json({
+      success: false,
+      message: error instanceof Error ? error.message : 'Erro ao verificar saldo',
+    });
+  }
+};
 
   export const schedule = async (req: Request, res: Response): Promise<Response> => {
-    try {
-        const { studentId } = req.body;
+  try {
+    const { studentId } = req.body;
 
-        const student = await Person.findByPk(studentId);
-        if (!student) {
-            return res.status(404).json({ message: 'Estudante não encontrado' });
-        }
+    const student = await Person.findByPk(studentId);
+    if (!student) return res.status(404).json({ message: 'Estudante não encontrado' });
 
-        const studentLevel = await Level.findOne({ where: { id: student.student_level } });
-        const antecedence = studentLevel ? Number(studentLevel.antecedence) || 7 : 7;
+    const studentLevel = await Level.findOne({ where: { id: student.student_level } });
+    const antecedence = studentLevel ? Number(studentLevel.antecedence) || 7 : 7;
 
-        const startDate = new Date();
-        const endDate = new Date(startDate);
-        endDate.setDate(startDate.getDate() + antecedence);
+    const startDate = new Date();
+    const endDate = new Date(startDate);
+    endDate.setDate(startDate.getDate() + antecedence);
 
-        const formattedStartDate = format(startDate, 'yyyy-MM-dd');
-        const formattedEndDate = format(endDate, 'yyyy-MM-dd');
+    const formattedStartDate = format(startDate, 'yyyy-MM-dd');
+    const formattedEndDate = format(endDate, 'yyyy-MM-dd');
 
-        // Buscar config de produtos permitidos no app
-        const config = await Config.findOne({ where: { configKey: 'app_product' } });
-        let allowedProductTypes: number[] = [];
-
-        if (config?.configValue) {
-            allowedProductTypes = config.configValue
-                .split(',')
-                .map((id) => parseInt(id.trim(), 10))
-                .filter(Boolean);
-        }
-
-        // Filtro de data
-        const whereCondition: any = {
-            date: {
-                [Op.gte]: formattedStartDate,
-                [Op.lte]: formattedEndDate
-            }
-        };
-
-        // Filtro adicional para tipos de produto, se necessário
-        if (allowedProductTypes.length > 0) {
-            whereCondition['$product.productTypeId$'] = {
-                [Op.in]: allowedProductTypes
-            };
-        }
-
-        const availableClasses = await Class.findAll({
-            attributes: ['date'],
-            where: whereCondition,
-            include: [
-                {
-                    model: Product,
-                    as: 'product',
-                    attributes: [], // Não precisa retornar os dados do produto
-                }
-            ],
-            group: ['date'],
-            order: [['date', 'ASC']],
-        });
-
-        if (!availableClasses.length) {
-            return res.status(404).json({ message: 'Nenhuma aula disponível para o período' });
-        }
-
-        const availableDays = [...new Set(availableClasses.map(classData => classData.date))];
-
-        return res.status(200).json({
-            success: true,
-            availableDays
-        });
-
-    } catch (error) {
-        console.error('Erro ao buscar agenda:', error);
-        const errorMessage = error instanceof Error ? error.message : 'Erro interno';
-        return res.status(500).json({
-            success: false,
-            message: errorMessage
-        });
+    // Buscar config de produtos permitidos no app
+    const config = await Config.findOne({ where: { configKey: 'app_product' } });
+    let allowedProductTypes: number[] = [];
+    if (config?.configValue) {
+      allowedProductTypes = config.configValue
+        .split(',')
+        .map((id) => parseInt(id.trim(), 10))
+        .filter(Boolean);
     }
+
+    // Filtro de data + (opcional) tipo de produto
+    const whereCondition: any = {
+      date: { [Op.gte]: formattedStartDate, [Op.lte]: formattedEndDate },
+    };
+    if (allowedProductTypes.length > 0) {
+      whereCondition.productTypeId = { [Op.in]: allowedProductTypes };
+    }
+
+    const availableClasses = await Class.findAll({
+      attributes: ['date'],
+      where: whereCondition,
+      // ❌ remove o include do Product
+      group: ['date'],
+      order: [['date', 'ASC']],
+    });
+
+    if (!availableClasses.length) {
+      return res.status(404).json({ message: 'Nenhuma aula disponível para o período' });
+    }
+
+    const availableDays = [...new Set(availableClasses.map((c) => c.date))];
+
+    return res.status(200).json({ success: true, availableDays });
+  } catch (error) {
+    console.error('Erro ao buscar agenda:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Erro interno';
+    return res.status(500).json({ success: false, message: errorMessage });
+  }
 };
 
 export const hours = async (req: Request, res: Response): Promise<Response> => {
@@ -280,6 +268,50 @@ export const getClassById = async (req: Request, res: Response): Promise<Respons
     }
 };
 
+export const getClassWithSingleStudent = async (req: Request, res: Response): Promise<Response> => {
+  try {
+       const { classId, studentId } = req.body;
+
+        if (!classId || !studentId) {
+            return res.status(400).json({ success: false, message: "classId e studentId são obrigatórios." });
+        }
+
+        const classData = await Class.findByPk(classId, {
+            attributes: ['id', 'date', 'time', 'teacherId']
+        });
+
+        if (!classData) {
+            return res.status(404).json({ message: 'Aula não encontrada' });
+        }
+
+        const teacher = classData.teacherId 
+            ? await Person.findByPk(classData.teacherId, { attributes: ['name'] }) 
+            : null;
+
+        const  studentBike = await Bike.findOne({
+            where: { classId: classId, studentId },
+            attributes: ["id", "bikeNumber" , "status"], // <- mesmo ajuste aqui
+        });
+        
+
+        return res.status(200).json({
+            success: true,
+            class: {
+                id: classData.id,
+                date: classData.date,
+                time: classData.time,
+                teacherId: classData.teacherId || '',
+                teacherName: teacher ? teacher.name : '',
+                bikes: [studentBike]
+            }
+        });
+    } catch (error) {
+        console.error("Erro ao buscar aula/aluno:", error);
+        return res.status(500).json({ success: false, message: "Erro ao buscar aula/aluno." });
+  }
+}
+
+
 export const addStudentToClassWithBikeNumber = async (req: Request, res: Response): Promise<Response> => {
     const { classId, studentId, bikeNumber } = req.body;
 
@@ -343,7 +375,8 @@ export const addStudentToClassWithBikeNumber = async (req: Request, res: Respons
                 classId,
                 PersonId: studentId,
                 studentId,
-                bikeId: bike.id
+                bikeId: bike.id,
+                transactionId: studentCredits[0].creditBatch 
             }, { transaction });
 
             // Aqui você seleciona o primeiro crédito disponível (ou pode escolher um específico se necessário)
@@ -552,14 +585,41 @@ export const getStudentSummary = async (req: Request, res: Response): Promise<Re
 
         const idCustomer = studentId;
 
-        // Buscar o saldo do aluno na tabela balance
-        const balanceRecords = await Balance.findAll({
-            where: { idCustomer },
-            attributes: ['balance'],
-        });
+        const config = await Config.findOne({ where: { configKey: 'app_product' } });
 
-        // Calcular o saldo total
-        const credits = balanceRecords.reduce((total, record) => total + record.balance, 0);
+        const allowedProductTypes =
+        (config?.configValue || '')
+            .split(',')
+            .map(s => parseInt(s.trim(), 10))
+            .filter(n => Number.isFinite(n));
+
+        // DATEONLY: compare com string YYYY-MM-DD para incluir o "hoje"
+        const today = format(new Date(), 'yyyy-MM-dd');
+
+        const include: any[] = [];
+        if (allowedProductTypes.length > 0) {
+        include.push({
+            model: Product,
+            attributes: [], // não precisamos dos campos
+            where: { productTypeId: { [Op.in]: allowedProductTypes } },
+            required: true, // vira INNER JOIN (filtra mesmo)
+        });
+        }
+
+        const where: any = {
+            idCustomer: studentId,         // confira o nome da coluna
+            status: 'valid',              // confira o valor real salvo
+            expirationDate: { [Op.gte]: today },
+        };
+
+        // Buscar o saldo do aluno na tabela balance
+        const credits = await Credit.findAll({ where, include, attributes: ['availableCredits'] });
+
+        const availableCredits = credits.reduce(
+            (sum, c: any) => sum + (c.availableCredits ?? 0),
+            0
+        );
+        
 
         // Buscar todas as aulas relacionadas ao aluno na tabela ClassStudent
         const classStudentRecords = await ClassStudent.findAll({
@@ -576,7 +636,7 @@ export const getStudentSummary = async (req: Request, res: Response): Promise<Re
         const summary = {
             studentId: student.id,
             name: student.name,
-            credits,
+            credits: availableCredits,
             scheduledClasses: scheduledClassesCount,
             completedClasses: completedClassesCount,
         };
@@ -590,35 +650,61 @@ export const getStudentSummary = async (req: Request, res: Response): Promise<Re
 
 
 export const getLatestClassesByStudent = async (req: Request, res: Response): Promise<Response> => {
-    try {
-        const { studentId } = req.params;
+  try {
+    const { studentId } = req.params;
 
-        // Validar se o ID do aluno foi fornecido
-        if (!studentId) {
-            return res.status(400).json({ success: false, message: 'ID do aluno é obrigatório' });
+    if (!studentId) {
+      return res.status(400).json({ success: false, message: 'ID do aluno é obrigatório' });
+    }
+
+    // pega as últimas aulas do aluno
+    const latestClasses = await ClassStudent.findAll({
+      where: { studentId },
+      include: [
+        {
+          model: Class,
+          attributes: ['id', 'date', 'time', 'productTypeId'],
+        },
+      ],
+      order: [
+        [Class, 'date', 'DESC'],
+        [Class, 'time', 'DESC'],
+      ],
+      limit: 10,
+    });
+
+    // mapeia e busca o número da bike de cada aula
+    const classesWithBike = await Promise.all(
+      latestClasses.map(async (cs: any) => {
+        let bikeNumber: number | null = null;
+
+        if (cs.bikeId) {
+          const bike = await Bike.findByPk(cs.bikeId, {
+            attributes: ['bikeNumber'], // ou bikeNumber
+          });
+          bikeNumber = bike ? bike.bikeNumber : null;
         }
 
-        // Buscar as aulas mais recentes associadas ao aluno
-        const latestClasses = await ClassStudent.findAll({
-            where: { studentId },
-            include: [
-                {
-                    model: Class,
-                    attributes: ['id', 'date', 'time', 'productTypeId'], // Ajuste os campos conforme necessário
-                },                
-            ],
-            order: [['createdAt', 'DESC']], // Ordenar pelas mais recentes
-            limit: 10, // Limitar às últimas 10 aulas
-        });
+        return {
+          id: cs.Class.id,
+          date: cs.Class.date,
+          time: cs.Class.time,
+          status: cs.status,
+          productTypeId: cs.Class.productTypeId,
+          bikeId: cs.bikeId,
+          bikeNumber,
+        };
+      })
+    );
 
-        return res.status(200).json({
-            success: true,
-            data: latestClasses,
-        });
-    } catch (error) {
-        console.error('Erro ao buscar últimas aulas do aluno:', error);
-        return res.status(500).json({ success: false, message: 'Erro ao buscar últimas aulas do aluno' });
-    }
+    return res.status(200).json({
+      success: true,
+      data: classesWithBike,
+    });
+  } catch (error) {
+    console.error('Erro ao buscar últimas aulas do aluno:', error);
+    return res.status(500).json({ success: false, message: 'Erro ao buscar últimas aulas do aluno' });
+  }
 };
 
 export const getUserTransactions = async (req: Request, res: Response): Promise<Response> => {
