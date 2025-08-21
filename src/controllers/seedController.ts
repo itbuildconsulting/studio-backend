@@ -12,6 +12,8 @@ import Transactions from '../models/Transaction.model';
 import Level from '../models/Level.model';
 import Credit from '../models/Credit.model';
 import Config from '../models/Config.model';
+import WaitingList from '../models/WaitingList.model';
+import sequelize from '../config/database';
 
 // Definir funções do controlador
 export const seedController = {
@@ -31,6 +33,9 @@ export const seedController = {
             await Level.sync();
             await Credit.sync(); 
             await Config.sync(); 
+            await WaitingList.sync();
+
+            await sequelize.sync({ alter: true });
             
             return res.status(201).send('Todas as tabelas sincronizadas com o banco de dados');
         } catch (err) {
