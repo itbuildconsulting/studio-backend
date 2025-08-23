@@ -19,6 +19,7 @@ import dashboardRoutes from './routes/dashboardRoutes';
 import levelRoutes from './routes/levelRoutes';
 import waitingRoutes from './routes/waitingListRoutes';
 import configRoutes from './routes/configRoutes';
+import adminRoutes from './routes/adminRoutes';
 
 const app: Application = express();
 
@@ -53,6 +54,7 @@ app.use('/dashboard', dashboardRoutes);
 app.use('/level', levelRoutes);
 app.use('/waiting', waitingRoutes);
 app.use('/config', configRoutes);
+app.use("/admin", adminRoutes);
 
 // Configuração do Swagger
 swaggerSetup(app);
