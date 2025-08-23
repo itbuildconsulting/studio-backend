@@ -29,7 +29,7 @@ export const createPerson = async (req: Request, res: Response): Promise<Respons
         } = req.body;
 
         // Validação de dados
-        const validationError = validatePersonData(req.body);
+        const validationError = validatePersonData(req.body, false);
         if (validationError) {
             return res.status(400).json({ success: false, error: validationError });
         }
@@ -263,7 +263,6 @@ export const updatePerson = async (req: Request, res: Response): Promise<Respons
             birthday,
             height,
             weight,
-            password,
             employee_level,
             zipCode,
             state,
@@ -279,7 +278,7 @@ export const updatePerson = async (req: Request, res: Response): Promise<Respons
         }
 
         // Validação dos dados de atualização
-        const validationError = validatePersonData(req.body);
+        const validationError = validatePersonData(req.body, true);
         if (validationError) {
             return res.status(400).json({ success: false, error: validationError });
         }
@@ -300,7 +299,6 @@ export const updatePerson = async (req: Request, res: Response): Promise<Respons
         person.country = country;
         person.height = height;
         person.weight = weight;
-        person.password = password;
         person.employee_level = employee_level;
 
         // Salva as mudanças
@@ -441,7 +439,7 @@ export const validateUserExistsIdentity = async (req: Request, res: Response): P
 
 
 
-export const validatePersonData = (data: any): string | null => {
+export const validatePersonData = (data: any, edit: boolean): string | null => {
     const {
         name,
         identity,
@@ -486,10 +484,14 @@ export const validatePersonData = (data: any): string | null => {
         return 'Data de nascimento é obrigatória e deve estar no formato YYYY-MM-DD.';
     }
 
+    if(!edit){
     // Senha
-    if (!password || typeof password !== 'string' || password.length < 6) {
-        return 'Senha é obrigatória e deve ter pelo menos 6 caracteres.';
+        if (!password || typeof password !== 'string' || password.length < 6) {
+            return 'Senha é obrigatória e deve ter pelo menos 6 caracteres.';
+        }
     }
+
+    
 
     // Funcionário e Nível de Funcionário
     if (employee !== undefined && typeof employee !== 'boolean') {
