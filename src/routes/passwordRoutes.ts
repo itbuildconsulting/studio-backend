@@ -1,5 +1,6 @@
 import { Router } from 'express';
-import { requestPasswordReset, resetPassword } from '../controllers/loginController';
+import { changePassword, requestPasswordReset, resetPassword } from '../controllers/loginController';
+import { authenticateToken } from '../core/token/authenticateToken';
 
 const router = Router();
 
@@ -64,5 +65,7 @@ router.post('/request-reset', requestPasswordReset);
  *         description: Erro interno do servidor.
  */
 router.post('/reset', resetPassword);
+
+router.post('/reset/change-password', authenticateToken, changePassword);
 
 export default router;

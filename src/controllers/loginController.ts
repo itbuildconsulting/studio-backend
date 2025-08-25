@@ -111,3 +111,97 @@ export const requestPasswordReset = async (req: Request, res: Response): Promise
 };
 
 
+function validatePasswordStrength(pwd: string) {
+  // mín 8 chars, pelo menos 1 maiúscula, 1 minúscula, 1 dígito e 1 especial
+  const re =
+    /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[ !"#$%&'()*+,\-./:;<=>?@[\\\]^_`{|}~]).{8,}$/;
+  return re.test(pwd);
+}
+
+/**
+ * Troca de senha autenticada: precisa da senha atual e da nova senha
+ * Body: { currentPassword: string, newPassword: string, confirmPassword?: string }
+ * Auth: usar authenticateToken; se ele não popular req.user.id, a função tenta ler do Bearer Token.
+ */
+export const changePassword = async (req: Request, res: Response): Promise<Response> => {
+  try {
+    const { currentPassword, newPassword, confirmPassword } = req.body as {
+      currentPassword?: string;
+      newPassword?: string;
+      confirmPassword?: string;
+    };
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ success: false, message: 'Informe a senha atual e a nova senha.' });
+    }
+
+    if (confirmPassword !== undefined && newPassword !== confirmPassword) {
+      return res.status(400).json({ success: false, message: 'Confirmação de senha não confere.' });
+    }
+
+    // pega userId do middleware (recomendado)
+    let userId = (req as any).user?.id as number | undefined;
+
+    // fallback: decodifica o Bearer Token se necessário
+    if (!userId) {
+      const auth = req.headers.authorization;
+      const token = auth?.startsWith('Bearer ') ? auth.slice(7) : undefined;
+      if (!token) {
+        return res.status(401).json({ success: false, message: 'Não autenticado.' });
+      }
+      try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET as string) as jwt.JwtPayload;
+        userId = Number(decoded?.id);
+        if (!userId) throw new Error('Token sem id.');
+      } catch {
+        return res.status(401).json({ success: false, message: 'Token inválido.' });
+      }
+    }
+
+    // carrega o usuário
+    const person = await Person.findByPk(userId, {
+      attributes: ['id', 'password' /*, 'tokenVersion' , 'passwordChangedAt'*/],
+    });
+    if (!person) {
+      return res.status(404).json({ success: false, message: 'Usuário não encontrado.' });
+    }
+
+    // confere senha atual
+    const ok = await bcrypt.compare(String(currentPassword), String((person as any).password));
+    if (!ok) {
+      return res.status(400).json({ success: false, message: 'Senha atual incorreta.' });
+    }
+
+    // evita reciclar a mesma senha
+    const sameAsOld = await bcrypt.compare(String(newPassword), String((person as any).password));
+    if (sameAsOld) {
+      return res.status(400).json({ success: false, message: 'A nova senha não pode ser igual à atual.' });
+    }
+
+    // força mínima
+    if (!validatePasswordStrength(newPassword)) {
+      return res.status(400).json({
+        success: false,
+        message:
+          'Senha fraca. Use no mínimo 8 caracteres, com letra maiúscula, minúscula, número e símbolo.',
+      });
+    }
+
+    // hash e salva
+    const hash = await bcrypt.hash(newPassword, 10);
+    (person as any).password = hash;
+    // (opcional) marca quando trocou a senha
+    // (person as any).passwordChangedAt = new Date();
+
+    // (opcional forte) invalida tokens antigos se você versiona tokens:
+    // (person as any).tokenVersion = Number((person as any).tokenVersion ?? 0) + 1;
+
+    await person.save();
+
+    return res.status(200).json({ success: true, message: 'Senha alterada com sucesso.' });
+  } catch (err) {
+    console.error('Erro ao trocar senha:', err);
+    return res.status(500).json({ success: false, message: 'Erro ao trocar senha.' });
+  }
+};
+

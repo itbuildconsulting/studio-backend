@@ -447,7 +447,6 @@ export const addStudentToClassWithBikeNumber = async (req: Request, res: Respons
 };
 
 
-
 export const cancelStudentPresenceInClass = async (req: Request, res: Response): Promise<Response> => {
   const { classId, studentId } = req.body;
 
@@ -487,12 +486,10 @@ export const cancelStudentPresenceInClass = async (req: Request, res: Response):
       transaction: t,
       lock: t.LOCK.UPDATE,
     });
-
     if (!classStudent) {
       await t.rollback();
       return res.status(404).json({ success: false, message: 'Aluno não está registrado nesta aula.' });
     }
-
     if (classStudent.status === false) {
       await t.rollback();
       return res.status(400).json({ success: false, message: 'A presença já foi cancelada para este aluno.' });
@@ -504,60 +501,48 @@ export const cancelStudentPresenceInClass = async (req: Request, res: Response):
       await bike.destroy({ transaction: t });
     }
 
-    // 5) Reverter 1 crédito no MESMO LOTE (via transactionId do vínculo)
+    // 5) Tentar reembolsar 1 crédito se houve consumo (transactionId no vínculo)
     const creditBatch = (classStudent as any).transactionId;
-    if (!creditBatch) {
-      await t.rollback();
-      return res.status(409).json({
-        success: false,
-        message: 'Não foi possível identificar o lote de origem (transactionId) para reembolso.',
+    let refundMessage = 'Nenhum crédito para devolver.';
+    let refundData: any = null;
+
+    if (creditBatch) {
+      const productTypeId = (classData as any).productTypeId;
+      const lotWhere: any = { idCustomer: studentId, creditBatch };
+      if (productTypeId) lotWhere.productTypeId = productTypeId;
+
+      const lot = await Credit.findOne({
+        where: lotWhere,
+        transaction: t,
+        lock: t.LOCK.UPDATE,
       });
+
+      if (!lot) {
+        refundMessage = 'Lote de crédito original não encontrado; nenhum crédito devolvido.';
+      } else if (lot.expirationDate && lot.expirationDate < now) {
+        refundMessage = 'Lote expirado; nenhum crédito devolvido.';
+      } else if ((lot.usedCredits ?? 0) <= 0) {
+        refundMessage = 'Sem consumo registrado no lote; nenhum crédito devolvido.';
+      } else {
+        // ✅ Reverte 1 unidade
+        lot.availableCredits += 1;
+        lot.usedCredits -= 1;
+        if (lot.status === 'used' && lot.availableCredits > 0) lot.status = 'valid';
+        await lot.save({ transaction: t });
+
+        refundMessage = '1 crédito devolvido ao lote de origem.';
+        refundData = {
+          creditLotId: lot.id,
+          creditBatch: lot.creditBatch,
+          availableCredits: lot.availableCredits,
+          usedCredits: lot.usedCredits,
+          status: lot.status,
+        };
+      }
+    } else {
+      // não houve consumo (inscrição sem débito de crédito)
+      refundMessage = 'Inscrição sem débito de crédito; nada a devolver.';
     }
-
-    // (Recomendado) restringir também por productTypeId da aula, se existir
-    const productTypeId = (classData as any).productTypeId;
-    const lotWhere: any = { idCustomer: studentId, creditBatch };
-    if (productTypeId) lotWhere.productTypeId = productTypeId;
-
-    const lot = await Credit.findOne({
-      where: lotWhere,
-      transaction: t,
-      lock: t.LOCK.UPDATE,
-    });
-
-    if (!lot) {
-      await t.rollback();
-      return res.status(404).json({
-        success: false,
-        message: 'Lote de crédito original não encontrado para este cancelamento.',
-      });
-    }
-
-    // (política) bloquear devolução se lote expirou
-    if (lot.expirationDate && lot.expirationDate < now) {
-      await t.rollback();
-      return res.status(409).json({
-        success: false,
-        message: 'O lote de crédito original expirou; não é possível devolver o crédito.',
-      });
-    }
-
-    // precisa haver consumo para reverter
-    if ((lot.usedCredits ?? 0) <= 0) {
-      await t.rollback();
-      return res.status(409).json({
-        success: false,
-        message: 'Não há consumo registrado neste lote para ser revertido.',
-      });
-    }
-
-    // ✅ Reverte 1 unidade
-    lot.availableCredits += 1;
-    lot.usedCredits -= 1;
-    if (lot.status === 'used' && lot.availableCredits > 0) {
-      lot.status = 'valid';
-    }
-    await lot.save({ transaction: t });
 
     // 6) Marcar vínculo como cancelado e zerar checkin (0/1)
     await classStudent.update({ status: 0, checkin: 0 }, { transaction: t });
@@ -565,14 +550,10 @@ export const cancelStudentPresenceInClass = async (req: Request, res: Response):
     await t.commit();
     return res.status(200).json({
       success: true,
-      message: 'Presença cancelada e 1 crédito devolvido ao lote de origem.',
+      message: `Presença cancelada. ${refundMessage}`,
       data: {
         classStudentId: classStudent.id,
-        creditLotId: lot.id,
-        creditBatch: lot.creditBatch,
-        availableCredits: lot.availableCredits,
-        usedCredits: lot.usedCredits,
-        status: lot.status,
+        refund: refundData, // null quando não há devolução
       },
     });
   } catch (error: any) {
