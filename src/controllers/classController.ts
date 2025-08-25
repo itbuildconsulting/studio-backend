@@ -10,6 +10,7 @@ import ProductType from '../models/ProductType.model';
 import Balance from '../models/Balance.model';
 import { updateCustomerBalance } from './balanceController';
 import { parse, format } from 'date-fns'; // Importar o `parse` e `format` de `date-fns`
+import sequelize from '../config/database';
 
 // CREATE
 export const createClass = async (req: Request, res: Response): Promise<Response> => {
@@ -554,3 +555,166 @@ export const validateClassDataRecorring = (data: any): { isValid: boolean; messa
     // Se todas as validações passarem
     return { isValid: true };
 };
+
+export async function checkinClassStudent(req: Request, res: Response): Promise<Response> {
+  try {
+    const id = Number(req.params.id);
+    if (!id || Number.isNaN(id)) {
+      return res.status(400).json({ success: false, message: "Parâmetro id inválido." });
+    }
+
+    // Tenta marcar checkin=1 (apenas se estiver NULL ou 0)
+    const [affected] = await ClassStudent.update(
+      {
+        checkin: 1,
+        // Se tiver essa coluna no schema, registre o momento do check-in:
+        // checkinAt: fn('NOW'),
+      },
+      {
+        where: {
+          id,
+          [Op.or]: [
+            { checkin: { [Op.is]: null } }, // pega NULL
+            { checkin: { [Op.eq]: 0 } },    // pega 0
+          ],
+        },
+        silent: false,
+        // limit: 1, // (Postgres ignora; em MySQL 8+ dá para usar, senão re-fecth abaixo já resolve)
+      }
+    );
+
+    if (affected === 0) {
+      // Pode ser porque já estava 1 ou porque não existe
+      const cs = await ClassStudent.findByPk(id, {
+        attributes: ["id", "studentId", "classId", "checkin", "createdAt", "updatedAt"],
+      });
+
+      if (!cs) {
+        return res.status(404).json({ success: false, message: "ClassStudent não encontrado." });
+      }
+
+      if (cs.checkin === 1) {
+        return res.status(200).json({
+          success: true,
+          message: "Check-in já estava efetuado.",
+          data: cs,
+        });
+      }
+
+      // Se chegou aqui e não é 1, algo impediu o update (ex.: race condition). Tente forçar:
+      await cs.update({ checkin: 1 /*, checkinAt: fn("NOW")*/ });
+      const updated = await ClassStudent.findByPk(id, {
+        attributes: ["id", "studentId", "classId", "checkin", "createdAt", "updatedAt"],
+      });
+      return res.status(200).json({
+        success: true,
+        message: "Check-in efetuado com sucesso.",
+        data: updated,
+      });
+    }
+
+    // Atualizou de 0/NULL -> 1
+    const updated = await ClassStudent.findByPk(id, {
+      attributes: ["id", "studentId", "classId", "checkin", "createdAt", "updatedAt"],
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Check-in efetuado com sucesso.",
+      data: updated,
+    });
+  } catch (error: any) {
+    console.error("Erro ao efetuar check-in:", error);
+    return res.status(500).json({ success: false, message: "Erro ao efetuar check-in." });
+  }
+}
+
+
+export async function checkinClassStudentByPair(req: Request, res: Response): Promise<Response> {
+  try {
+    // aceita via params (GET) ou body (POST)
+    const classId = req.body.classId;
+    const studentId = req.body.studentId;
+
+    if (!classId || !studentId) {
+      return res.status(400).json({ success: false, message: 'classId e studentId são obrigatórios.' });
+    }
+
+    // (opcional) validar se a aula existe
+    // const cls = await Class.findByPk(classId, { attributes: ['id'] });
+    // if (!cls) return res.status(404).json({ success: false, message: 'Aula não encontrada.' });
+
+    // transação + lock para idempotência em concorrência
+    const t = await sequelize.transaction();
+    try {
+      // encontre o vínculo; se existir mais de um (não deveria), escolha o mais recente
+      const cs = await ClassStudent.findOne({
+        where: { classId, studentId },
+        order: [['createdAt', 'DESC']],
+        transaction: t,
+        lock: t.LOCK.UPDATE,
+      });
+
+      if (!cs) {
+        await t.rollback();
+        return res.status(404).json({ success: false, message: 'Aluno não está registrado nesta aula.' });
+      }
+
+      // já checado? idempotente
+      if (cs.checkin === 1) {
+        await t.commit();
+        return res.status(200).json({
+          success: true,
+          message: 'Check-in já estava efetuado.',
+          data: {
+            id: cs.id,
+            classId: cs.classId,
+            studentId: cs.studentId,
+            checkin: cs.checkin,
+            // checkinAt: cs.checkinAt,
+          },
+        });
+      }
+
+      // marque checkin=1 apenas se estiver 0/NULL
+      const [affected] = await ClassStudent.update(
+        { checkin: 1 /*, checkinAt: fn('NOW')*/ },
+        {
+          where: {
+            id: cs.id,
+            [Op.or]: [
+              { checkin: { [Op.is]: null } },
+              { checkin: { [Op.eq]: 0 } },
+            ],
+          },
+          transaction: t,
+        }
+      );
+
+      // se não atualizou, provavelmente houve corrida; refetch
+      const updated = await ClassStudent.findByPk(cs.id, {
+        attributes: ['id', 'classId', 'studentId', 'checkin', 'createdAt', 'updatedAt' /*, 'checkinAt'*/],
+        transaction: t,
+      });
+
+      await t.commit();
+
+      if (affected === 0 && updated?.checkin !== 1) {
+        // não mudou por algum motivo inesperado
+        return res.status(409).json({ success: false, message: 'Não foi possível efetivar o check-in.' });
+      }
+
+      return res.status(200).json({
+        success: true,
+        message: 'Check-in efetuado com sucesso.',
+        data: updated,
+      });
+    } catch (err) {
+      await t.rollback();
+      throw err;
+    }
+  } catch (error: any) {
+    console.error('Erro ao efetuar check-in (pair):', error);
+    return res.status(500).json({ success: false, message: 'Erro ao efetuar check-in.' });
+  }
+}

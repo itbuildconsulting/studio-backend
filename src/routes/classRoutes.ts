@@ -1,5 +1,5 @@
 import express from 'express';
-import { createClass, getAllClasses, getClassById, updateClass, deleteClass, createMultipleClasses, cancelClass } from '../controllers/classController';
+import { createClass, getAllClasses, getClassById, updateClass, deleteClass, createMultipleClasses, cancelClass, checkinClassStudent, checkinClassStudentByPair } from '../controllers/classController';
 import { authenticateToken } from '../core/token/authenticateToken';
 
 const router = express.Router();
@@ -215,5 +215,11 @@ router.put('/:id', authenticateToken, updateClass);
  *         description: Erro ao deletar classe
  */
 router.delete('/:id', authenticateToken, deleteClass);
+
+
+router.post("/class-students/:id/checkin", checkinClassStudent);
+
+
+router.post("/class-students/checkin", authenticateToken, checkinClassStudentByPair);
 
 export default router;

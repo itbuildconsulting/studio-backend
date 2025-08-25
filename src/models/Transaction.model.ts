@@ -7,6 +7,7 @@ interface TransactionAttributes {
   transactionType: number;
   transactionId: string;
   transactionCode: string;
+  chargeId: string;
   balance: number;
   amount: number;
   currency: string;
@@ -31,6 +32,7 @@ class Transactions extends Model<TransactionAttributes, TransactionCreationAttri
   public status!: string;
   public transactionType!: number;
   public transactionId!: string;
+  public chargeId!: string;
   public transactionCode!: string;
   public balance!: number;
   public amount!: number;
@@ -68,6 +70,10 @@ Transactions.init({
     primaryKey: true,
   },
   transactionCode: {
+    type: DataTypes.STRING,
+    allowNull: false,
+  },
+  chargeId: {
     type: DataTypes.STRING,
     allowNull: false,
   },
@@ -133,6 +139,6 @@ Transactions.init({
   timestamps: true,  // Inclui os campos createdAt e updatedAt automaticamente
 });
 
-//Transactions.sync({ alter: true });
+Transactions.sync({ alter: true });
 
 export default Transactions;

@@ -288,6 +288,13 @@ export const getClassWithSingleStudent = async (req: Request, res: Response): Pr
             ? await Person.findByPk(classData.teacherId, { attributes: ['name'] }) 
             : null;
 
+        // >>> VÍNCULO DO ALUNO NA AULA (queremos o ID do ClassStudent)
+        // Se na sua tabela a coluna for PersonId, troque `studentId` por `PersonId` aqui.
+        const enrollment = await ClassStudent.findOne({
+        where: { classId, studentId },
+        attributes: ['id', 'classId', 'studentId', 'checkin'] // precisamos do id
+        });
+
         const  studentBike = await Bike.findOne({
             where: { classId: classId, studentId },
             attributes: ["id", "bikeNumber" , "status"], // <- mesmo ajuste aqui
@@ -302,6 +309,8 @@ export const getClassWithSingleStudent = async (req: Request, res: Response): Pr
                 time: classData.time,
                 teacherId: classData.teacherId || '',
                 teacherName: teacher ? teacher.name : '',
+                classStudentId: enrollment ? enrollment.id : null,
+                checkin: enrollment ? enrollment.checkin : null,
                 bikes: [studentBike]
             }
         });
@@ -312,204 +321,284 @@ export const getClassWithSingleStudent = async (req: Request, res: Response): Pr
 }
 
 
+
 export const addStudentToClassWithBikeNumber = async (req: Request, res: Response): Promise<Response> => {
-    const { classId, studentId, bikeNumber } = req.body;
+  const { classId, studentId, bikeNumber, productTypeId: productTypeIdFromBody } = req.body;
 
-    try {
-        // 1. Verificar se a aula existe
-        const classData = await Class.findByPk(classId);
-        if (!classData) {
-            return res.status(404).json({ message: 'Aula não encontrada' });
-        }
-
-        // 2. Verificar se o aluno já está inscrito na aula
-        const existingEnrollment = await ClassStudent.findOne({
-            where: { classId, studentId }
-        });
-        if (existingEnrollment) {
-            return res.status(400).json({ message: 'Aluno já está inscrito nesta aula' });
-        }
-
-        // 3. Verificar o saldo de créditos do aluno
-        const studentCredits = await Credit.findAll({
-            where: {
-                idCustomer: studentId,
-                status: 'valid',  // Somente créditos válidos
-                expirationDate: { [Op.gte]: new Date() }, // Somente créditos não expirados
-            }
-        });
-
-        if (studentCredits.length <= 0) {
-            return res.status(400).json({ message: 'Créditos insuficientes para o aluno ou créditos expirados' });
-        }
-
-        // Somar os créditos disponíveis
-        const totalCreditsAvailable = studentCredits.reduce((total, credit) => total + credit.availableCredits, 0);
-
-        if (totalCreditsAvailable <= 0) {
-            return res.status(400).json({ message: 'Nenhum crédito disponível para o aluno' });
-        }
-
-        // 4. Verificar se a bike está disponível
-        const existingBike = await Bike.findOne({
-            where: { classId, bikeNumber }
-        });
-        if (existingBike && existingBike.status !== 'available') {
-            return res.status(400).json({ message: 'Bike não está disponível' });
-        }
-
-        // 🔥 Agora começa a transação (só depois de todas as validações)
-        const transaction = await sequelize.transaction();
-
-        try {
-            // 5. Criar a bike se necessário
-            const bike = existingBike || await Bike.create({
-                classId,
-                studentId,
-                bikeNumber,
-                status: 'in_use'
-            }, { transaction });
-
-            // 6. Associar o aluno à aula
-            await ClassStudent.create({
-                classId,
-                PersonId: studentId,
-                studentId,
-                bikeId: bike.id,
-                transactionId: studentCredits[0].creditBatch 
-            }, { transaction });
-
-            // Aqui você seleciona o primeiro crédito disponível (ou pode escolher um específico se necessário)
-            const creditToUse = studentCredits[0]; // Pegando o primeiro crédito disponível
-
-            // Atualiza o crédito
-            creditToUse.availableCredits -= 1; // Subtrai 1 do crédito disponível
-            creditToUse.usedCredits += 1; // Adiciona 1 no crédito usado
-
-            // Se o crédito não tiver mais disponível, você pode atualizar o status para 'used'
-            if (creditToUse.availableCredits <= 0) {
-                creditToUse.status = 'used';
-            }
-
-            // Salvar as alterações
-            await creditToUse.save();
-
-            // 8. Confirmar a transação
-            await transaction.commit();
-
-            return res.status(200).json({
-                success: true,
-                message: 'Aluno adicionado à aula e bike atribuída com sucesso'
-            });
-
-        } catch (error) {
-            await transaction.rollback();
-            console.error('Erro durante a transação:', error);
-            return res.status(500).json({
-                success: false,
-                message: 'Erro durante a operação',
-                error: error instanceof Error ? error.message : 'Erro desconhecido'
-            });
-        }
-
-    } catch (error) {
-        console.error('Erro ao adicionar aluno à aula:', error);
-        return res.status(500).json({
-            success: false,
-            message: 'Erro ao adicionar aluno à aula',
-            error: error instanceof Error ? error.message : 'Erro desconhecido'
-        });
+  try {
+    // 1) Verificar se a aula existe
+    const classData = await Class.findByPk(classId);
+    if (!classData) {
+      return res.status(404).json({ message: 'Aula não encontrada' });
     }
+
+    // 2) Descobrir o productTypeId exigido para essa aula
+    const productTypeId = classData.productTypeId ?? productTypeIdFromBody;
+    if (!productTypeId) {
+      return res.status(400).json({ message: 'productTypeId da aula não definido. Envie no body ou registre na Class.' });
+    }
+
+    // 3) Verificar se o aluno já está inscrito (checagem rápida fora da tx)
+    const existingEnrollment = await ClassStudent.findOne({ where: { classId, studentId } });
+    if (existingEnrollment) {
+      return res.status(400).json({ message: 'Aluno já está inscrito nesta aula' });
+    }
+
+    // 4) Verificar se a bike está disponível (checagem rápida)
+    const existingBike = await Bike.findOne({ where: { classId, bikeNumber } });
+    if (existingBike && existingBike.status !== 'available') {
+      return res.status(400).json({ message: 'Bike não está disponível' });
+    }
+
+    // ---------- Transação para garantir atomicidade ----------
+    const t = await sequelize.transaction();
+    try {
+      const now = new Date();
+
+      // (Re)verificações sob lock para evitar corrida:
+      const alreadyEnrolled = await ClassStudent.findOne({
+        where: { classId, studentId },
+        transaction: t,
+        lock: t.LOCK.UPDATE,
+      });
+      if (alreadyEnrolled) {
+        await t.rollback();
+        return res.status(400).json({ message: 'Aluno já está inscrito nesta aula' });
+      }
+
+      // FEFO: pegar o LOTE mais antigo, válido e com saldo, do TIPO correto
+      const creditLot = await Credit.findOne({
+        where: {
+          idCustomer: studentId,
+          productTypeId,            // *** tipo correto ***
+          status: 'valid',          // apenas válidos
+          expirationDate: { [Op.gte]: now }, // não vencidos
+          availableCredits: { [Op.gt]: 0 },
+        },
+        order: [
+          ['expirationDate', 'ASC'],
+          ['id', 'ASC'],
+        ],
+        transaction: t,
+        lock: t.LOCK.UPDATE, // row lock
+      });
+
+      if (!creditLot) {
+        await t.rollback();
+        return res.status(400).json({ message: 'Créditos insuficientes para esse tipo de aula (ou todos vencidos).' });
+      }
+
+      // Criar/atribuir a bike dentro da tx (re-checa disponibilidade sob lock)
+      const bike = existingBike
+        ? existingBike
+        : await Bike.create(
+            { classId, studentId, bikeNumber, status: 'in_use' },
+            { transaction: t }
+          );
+
+      if (existingBike) {
+        // se já existia e estava "available", travar e marcar em uso
+        await existingBike.update(
+          { studentId, status: 'in_use' },
+          { transaction: t }
+        );
+      }
+
+      // Criar vínculo do aluno com a aula (salvando de qual LOTE consumimos via creditBatch)
+      await ClassStudent.create(
+        {
+          classId,
+          PersonId: studentId,
+          studentId,
+          bikeId: bike.id,
+          transactionId: creditLot.creditBatch, // rastreabilidade do lote consumido
+        },
+        { transaction: t }
+      );
+
+      // Consumir 1 crédito do LOTE FEFO
+      creditLot.availableCredits -= 1;
+      creditLot.usedCredits += 1;
+      if (creditLot.availableCredits === 0) creditLot.status = 'used';
+      await creditLot.save({ transaction: t });
+
+      await t.commit();
+      return res.status(200).json({
+        success: true,
+        message: 'Aluno adicionado à aula, bike atribuída e 1 crédito consumido (FEFO).',
+      });
+    } catch (err) {
+      await t.rollback();
+      console.error('Erro durante a transação:', err);
+      return res.status(500).json({
+        success: false,
+        message: 'Erro durante a operação',
+        error: err instanceof Error ? err.message : 'Erro desconhecido',
+      });
+    }
+  } catch (error) {
+    console.error('Erro ao adicionar aluno à aula:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erro ao adicionar aluno à aula',
+      error: error instanceof Error ? error.message : 'Erro desconhecido',
+    });
+  }
 };
+
 
 
 export const cancelStudentPresenceInClass = async (req: Request, res: Response): Promise<Response> => {
-    const { classId, studentId } = req.body;
+  const { classId, studentId } = req.body;
 
-    // Iniciar uma transação para garantir consistência
-    const transaction = await sequelize.transaction();
-
-    try {
-        // 1. Verificar se a aula existe
-        const classData = await Class.findByPk(classId);
-        if (!classData) {
-            return res.status(404).json({ message: 'Aula não encontrada' });
-        }
-
-      
-
-        // 2. Verificar se o horário atual está dentro do limite de cancelamento (2 horas antes da aula)
-        const classDateTime = new Date(`${classData.date}T${classData.time}`);
-        const now = new Date();
-
-        const twoHoursBeforeClass = new Date(classDateTime);
-        twoHoursBeforeClass.setHours(twoHoursBeforeClass.getHours() - 2);
-
-        if (now >= twoHoursBeforeClass) {
-            return res.status(400).json({
-                success: false,
-                message: 'O cancelamento só é permitido até 2 horas antes da aula.',
-            });
-        }
-
-        // 3. Verificar se o aluno está associado à aula
-        const classStudent = await ClassStudent.findOne({
-            where: { classId, studentId },
-        });
-
-        if (!classStudent) {
-            return res.status(404).json({ message: 'Aluno não está registrado nesta aula' });
-        }
-
-        if (classStudent.status === false) {
-            return res.status(400).json({ message: 'Aula não disponível para cancelamento' });
-        }
-
-        // 4. Buscar a bike associada ao aluno na aula
-        const bike = await Bike.findOne({
-            where: { classId, studentId },
-        });
-
-        if (bike) {
-            // Remover a bike da aula
-            await bike.destroy({ transaction });
-        }
-
-        // 5. Atualizar o status do registro no ClassStudent para false
-        await classStudent.update(
-            { status: false },
-            { transaction }
-        );
-
-        // 6. Devolver 1 crédito ao saldo do aluno
-        const studentBalance = await Balance.findOne({
-            where: { idCustomer: studentId },
-        });
-
-        if (studentBalance) {
-            studentBalance.balance += 1; // Adicionar 1 crédito
-            await studentBalance.save({ transaction });
-        }
-
-        // Confirmar a transação
-        await transaction.commit();
-
-        return res.status(200).json({
-            success: true,
-            message: 'Presença do aluno cancelada e crédito devolvido com sucesso',
-        });
-    } catch (error) {
-        // Reverter a transação em caso de erro
-        await transaction.rollback();
-        console.error('Erro ao cancelar presença do aluno:', error);
-
-        return res.status(500).json({
-            success: false,
-            message: 'Erro ao cancelar presença do aluno',
-            error: error instanceof Error ? error.message : 'Erro desconhecido',
-        });
+  const t = await sequelize.transaction();
+  try {
+    if (!classId || !studentId) {
+      await t.rollback();
+      return res.status(400).json({ success: false, message: 'classId e studentId são obrigatórios.' });
     }
+
+    // 1) Aula (lock)
+    const classData = await Class.findByPk(classId, { transaction: t, lock: t.LOCK.UPDATE });
+    if (!classData) {
+      await t.rollback();
+      return res.status(404).json({ success: false, message: 'Aula não encontrada.' });
+    }
+
+    // 2) Janela de cancelamento: até 2h antes
+    const classDateStr = String((classData as any).date); // 'YYYY-MM-DD'
+    const classTimeStr = String((classData as any).time); // 'HH:mm:ss'
+    const classDateTime = new Date(`${classDateStr}T${classTimeStr}`);
+    const now = new Date();
+    const twoHoursBefore = new Date(classDateTime);
+    twoHoursBefore.setHours(twoHoursBefore.getHours() - 2);
+
+    if (now >= twoHoursBefore) {
+      await t.rollback();
+      return res.status(400).json({
+        success: false,
+        message: 'O cancelamento só é permitido até 2 horas antes da aula.',
+      });
+    }
+
+    // 3) Vínculo do aluno na aula (lock)
+    const classStudent = await ClassStudent.findOne({
+      where: { classId, studentId },
+      transaction: t,
+      lock: t.LOCK.UPDATE,
+    });
+
+    if (!classStudent) {
+      await t.rollback();
+      return res.status(404).json({ success: false, message: 'Aluno não está registrado nesta aula.' });
+    }
+
+    if (classStudent.status === false) {
+      await t.rollback();
+      return res.status(400).json({ success: false, message: 'A presença já foi cancelada para este aluno.' });
+    }
+
+    // 4) Soltar a bike (se houver)
+    const bike = await Bike.findOne({ where: { classId, studentId }, transaction: t, lock: t.LOCK.UPDATE });
+    if (bike) {
+      await bike.destroy({ transaction: t });
+    }
+
+    // 5) Reverter 1 crédito no MESMO LOTE (via transactionId do vínculo)
+    const creditBatch = (classStudent as any).transactionId;
+    if (!creditBatch) {
+      await t.rollback();
+      return res.status(409).json({
+        success: false,
+        message: 'Não foi possível identificar o lote de origem (transactionId) para reembolso.',
+      });
+    }
+
+    // (Recomendado) restringir também por productTypeId da aula, se existir
+    const productTypeId = (classData as any).productTypeId;
+    const lotWhere: any = { idCustomer: studentId, creditBatch };
+    if (productTypeId) lotWhere.productTypeId = productTypeId;
+
+    const lot = await Credit.findOne({
+      where: lotWhere,
+      transaction: t,
+      lock: t.LOCK.UPDATE,
+    });
+
+    if (!lot) {
+      await t.rollback();
+      return res.status(404).json({
+        success: false,
+        message: 'Lote de crédito original não encontrado para este cancelamento.',
+      });
+    }
+
+    // (política) bloquear devolução se lote expirou
+    if (lot.expirationDate && lot.expirationDate < now) {
+      await t.rollback();
+      return res.status(409).json({
+        success: false,
+        message: 'O lote de crédito original expirou; não é possível devolver o crédito.',
+      });
+    }
+
+    // precisa haver consumo para reverter
+    if ((lot.usedCredits ?? 0) <= 0) {
+      await t.rollback();
+      return res.status(409).json({
+        success: false,
+        message: 'Não há consumo registrado neste lote para ser revertido.',
+      });
+    }
+
+    // ✅ Reverte 1 unidade
+    lot.availableCredits += 1;
+    lot.usedCredits -= 1;
+    if (lot.status === 'used' && lot.availableCredits > 0) {
+      lot.status = 'valid';
+    }
+    await lot.save({ transaction: t });
+
+    // 6) Marcar vínculo como cancelado e zerar checkin (0/1)
+    await classStudent.update({ status: 0, checkin: 0 }, { transaction: t });
+
+    await t.commit();
+    return res.status(200).json({
+      success: true,
+      message: 'Presença cancelada e 1 crédito devolvido ao lote de origem.',
+      data: {
+        classStudentId: classStudent.id,
+        creditLotId: lot.id,
+        creditBatch: lot.creditBatch,
+        availableCredits: lot.availableCredits,
+        usedCredits: lot.usedCredits,
+        status: lot.status,
+      },
+    });
+  } catch (error: any) {
+    await t.rollback();
+    console.error('Erro ao cancelar presença do aluno:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erro ao cancelar presença do aluno',
+      error: error?.message ?? 'Erro desconhecido',
+    });
+  }
 };
+
+function pad(n: number) { return n.toString().padStart(2, '0'); }
+function formatDateYYYYMMDD(d: Date) {
+  const y = d.getFullYear();
+  const m = pad(d.getMonth() + 1);
+  const day = pad(d.getDate());
+  return `${y}-${m}-${day}`;
+}
+function formatTimeHHmmSS(d: Date) {
+  const h = pad(d.getHours());
+  const m = pad(d.getMinutes());
+  const s = pad(d.getSeconds());
+  return `${h}:${m}:${s}`; // compatível com TIME do MySQL/Postgres
+}
 
 export const nextClass = async (req: Request, res: Response): Promise<Response> => {
     try {

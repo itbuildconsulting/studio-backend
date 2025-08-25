@@ -9,6 +9,7 @@ interface TransactionData {
     amount: number;
     currency: string;
     charges: {
+        id: any;
         payment_method: string;
     }[];
     closed: boolean;
@@ -27,7 +28,7 @@ interface TransactionData {
 export const saveTransaction = async (data: TransactionData, credit: number, studentId: number): Promise<{ success: boolean; message: string }> => {
     try {
         //console.log('SAVE TRANSACTION');
-        //console.log(data.charges[0].payment_method);
+        //console.log(data.charges[0].id);
         //console.log('[Data]', data);
 
         // Criar o objeto de transação
@@ -36,6 +37,7 @@ export const saveTransaction = async (data: TransactionData, credit: number, stu
             transactionType: 1,  // Assumindo que seja crédito
             transactionId: data.id,
             transactionCode: data.code,
+            chargeId: data.charges[0].id,
             amount: data.amount,
             currency: data.currency,
             payment_method: data.charges[0].payment_method,
