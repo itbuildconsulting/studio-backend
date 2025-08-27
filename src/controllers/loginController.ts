@@ -125,86 +125,46 @@ function validatePasswordStrength(pwd: string) {
  */
 export const changePassword = async (req: Request, res: Response): Promise<Response> => {
   try {
-    const { currentPassword, newPassword, confirmPassword, userId: userIdFromBody } = req.body as {
+    const { currentPassword, newPassword, confirmPassword, userId } = req.body as {
       currentPassword?: string;
       newPassword?: string;
       confirmPassword?: string;
-      userId?: number | string; // <- agora aceitamos pelo body também
+      userId?: number | string;
     };
 
+    
     if (!currentPassword || !newPassword) {
       return res.status(400).json({ success: false, message: 'Informe a senha atual e a nova senha.' });
     }
-
     if (confirmPassword !== undefined && newPassword !== confirmPassword) {
       return res.status(400).json({ success: false, message: 'Confirmação de senha não confere.' });
     }
 
-    // 1) Pegar userId do token (middleware)
-    let userIdFromToken = (req as any).user?.id as number | undefined;
-
-    // fallback: decodificar Bearer se middleware não colocou user
-    if (!userIdFromToken) {
-      const auth = req.headers.authorization;
-      const token = auth?.startsWith('Bearer ') ? auth.slice(7) : undefined;
-      if (!token) {
-        return res.status(401).json({ success: false, message: 'Não autenticado.' });
-      }
-      try {
-        const decoded = jwt.verify(token, process.env.JWT_SECRET as string) as jwt.JwtPayload;
-        userIdFromToken = Number(decoded?.id);
-        if (!userIdFromToken) throw new Error('Token sem id.');
-      } catch {
-        return res.status(401).json({ success: false, message: 'Token inválido.' });
-      }
-    }
-
-    // 2) Se vier userId no body, precisa ser o MESMO do token (evita troca de senha de terceiros)
-    const targetUserId = Number(userIdFromBody ?? userIdFromToken);
-    if (Number.isNaN(targetUserId)) {
-      return res.status(400).json({ success: false, message: 'userId inválido.' });
-    }
-    if (userIdFromBody !== undefined && targetUserId !== Number(userIdFromToken)) {
-      // Se você quiser permitir admin, troque este bloco por checagem de role:
-      // const isAdmin = (req as any).user?.role === 'admin';
-      // if (!isAdmin) return res.status(403)...
-      return res.status(403).json({ success: false, message: 'Operação não permitida para este usuário.' });
-    }
-
-    // 3) Carregar usuário
-    const person = await Person.findByPk(targetUserId, {
-      attributes: ['id', 'password' /*, 'tokenVersion', 'passwordChangedAt'*/],
-    });
+    const person = await Person.findByPk(userId, { attributes: ['id', 'password'] });
     if (!person) {
       return res.status(404).json({ success: false, message: 'Usuário não encontrado.' });
     }
 
-    // 4) Conferir senha atual
     const ok = await bcrypt.compare(String(currentPassword), String((person as any).password));
     if (!ok) {
       return res.status(400).json({ success: false, message: 'Senha atual incorreta.' });
     }
 
-    // 5) Evitar repetir a mesma senha
+    if (!validatePasswordStrength(newPassword)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Senha fraca. Use no mínimo 8 caracteres, com maiúscula, minúscula, número e símbolo.',
+      });
+    }
+
     const sameAsOld = await bcrypt.compare(String(newPassword), String((person as any).password));
     if (sameAsOld) {
       return res.status(400).json({ success: false, message: 'A nova senha não pode ser igual à atual.' });
     }
 
-    // 6) Força mínima
-    if (!validatePasswordStrength(newPassword)) {
-      return res.status(400).json({
-        success: false,
-        message: 'Senha fraca. Use no mínimo 8 caracteres, com letra maiúscula, minúscula, número e símbolo.',
-      });
-    }
-
-    // 7) Hash e salvar
     (person as any).password = await bcrypt.hash(newPassword, 10);
     // (opcional) (person as any).passwordChangedAt = new Date();
-    // (opcional) versão de token p/ invalidar logins antigos:
-    // (person as any).tokenVersion = Number((person as any).tokenVersion ?? 0) + 1;
-
+    // (opcional) (person as any).tokenVersion = Number((person as any).tokenVersion ?? 0) + 1;
     await person.save();
 
     return res.status(200).json({ success: true, message: 'Senha alterada com sucesso.' });
