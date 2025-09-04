@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import Config from '../models/Config.model';
+import sequelize from '../config/database';
 
 // Função para criar configuração
 export const createConfig = async (req: Request, res: Response): Promise<Response> => {
@@ -107,4 +108,61 @@ export const deleteConfig = async (req: Request, res: Response): Promise<Respons
         console.error('Erro ao excluir configuração:', error);
         return res.status(500).json({ success: false, message: 'Erro ao excluir configuração' });
     }
+};
+
+function pick<T extends object>(obj: any, fields: (keyof T)[]): Partial<T> {
+  const out: any = {};
+  for (const k of fields) if (obj[k] !== undefined) out[k] = obj[k];
+  return out;
+}
+
+export const upsertConfig = async (req: Request, res: Response): Promise<Response> => {
+  const t = await sequelize.transaction();
+  try {
+    const { configKey } = req.body as { configKey?: string };
+    if (!configKey || typeof configKey !== 'string') {
+      await t.rollback();
+      return res.status(400).json({ success: false, message: 'configKey é obrigatório.' });
+    }
+
+    // normalize opcional (ex.: sempre minúsculo e trim)
+    const key = configKey.trim();
+
+    // Só permita atualizar/crear esses campos:
+    const payload = pick<typeof req.body>(req.body, ['configValue', 'description', 'active']);
+
+    // Busca existente sob lock p/ evitar corrida
+    const existing = await Config.findOne({
+      where: { configKey: key },
+      transaction: t,
+      lock: t.LOCK.UPDATE,
+    });
+
+    if (existing) {
+      await existing.update(payload, { transaction: t });
+      await t.commit();
+      return res.status(200).json({
+        success: true,
+        action: 'updated',
+        data: existing,
+      });
+    }
+
+    const created = await Config.create(
+      { configKey: key, ...payload },
+      { transaction: t }
+    );
+
+    await t.commit();
+    return res.status(201).json({
+      success: true,
+      action: 'created',
+      data: created,
+    });
+  } catch (err: any) {
+    await t.rollback();
+    // erro de chave única duplicada etc.
+    console.error('Erro no upsert de config:', err);
+    return res.status(500).json({ success: false, message: err?.message ?? 'Erro no upsert de config.' });
+  }
 };

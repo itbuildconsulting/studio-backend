@@ -6,6 +6,7 @@ class Config extends Model {
   public configKey!: string; // Ex: "productTypesVisible", "paymentCancellationTime", "classCancellationTime"
   public configValue!: string; // O valor da configuração (pode ser um JSON ou um valor simples)
   public description?: string; // Uma descrição opcional sobre o que a configuração faz
+  public active!: number;
 }
 
 Config.init(
@@ -28,6 +29,10 @@ Config.init(
       type: DataTypes.STRING(255),
       allowNull: true,
     },
+    active: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+    },
   },
   {
     tableName: 'configurations',
@@ -35,5 +40,7 @@ Config.init(
     timestamps: false, // Não precisamos de createdAt ou updatedAt para configurações
   }
 );
+
+Config.sync({ alter: true });
 
 export default Config;

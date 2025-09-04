@@ -93,12 +93,12 @@ export const getAllPersons = async (_req: Request, res: Response): Promise<Respo
 // READ BY ID
 export const getPersonById = async (req: Request, res: Response): Promise<Response> => {
     try {
-        const { id } = req.params;
-        const person = await Person.findByPk(id);
-        if (!person) {
-            return res.status(404).send('Pessoa não encontrada');
-        }
-        return res.status(200).json(person);
+        const id = Number(req.params.id);
+        const person = await Person.findByPk(id, {
+            attributes: { exclude: ['password', 'resetToken', 'tokenVersion'] }, // ajuste a lista
+        });
+        if (!person) return res.status(404).send('Pessoa não encontrada');
+            return res.status(200).json(person);
     } catch (error) {
         console.error('Erro ao buscar pessoa:', error);
         return res.status(500).send('Erro ao buscar pessoa');

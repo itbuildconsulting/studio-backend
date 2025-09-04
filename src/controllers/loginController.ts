@@ -131,7 +131,6 @@ export const changePassword = async (req: Request, res: Response): Promise<Respo
       confirmPassword?: string;
       userId?: number | string;
     };
-
     
     if (!currentPassword || !newPassword) {
       return res.status(400).json({ success: false, message: 'Informe a senha atual e a nova senha.' });

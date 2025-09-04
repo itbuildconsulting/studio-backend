@@ -14,6 +14,7 @@ import Credit from '../models/Credit.model';
 import Config from '../models/Config.model';
 import WaitingList from '../models/WaitingList.model';
 import sequelize from '../config/database';
+import NotificationToken from '../models/NotificationToken.model';
 
 // Definir funções do controlador
 export const seedController = {
@@ -34,6 +35,7 @@ export const seedController = {
             await Credit.sync(); 
             await Config.sync(); 
             await WaitingList.sync();
+            await NotificationToken.sync();
 
             await sequelize.sync({ alter: true });
             
