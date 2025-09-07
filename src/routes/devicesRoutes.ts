@@ -34,7 +34,7 @@ router.post('/register', authenticateToken, async (req, res) => {
       defaults: {
         personId: id,
         token,
-        platform: platform,
+        platform: plat,
         deviceName: deviceName ?? null,
         enabled: true,
         lastSeenAt: new Date(),
