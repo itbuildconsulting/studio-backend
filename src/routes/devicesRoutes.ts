@@ -34,7 +34,7 @@ router.post('/register', authenticateToken, async (req, res) => {
       defaults: {
         personId: id,
         token,
-        platform: plat,
+        platform: platform,
         deviceName: deviceName ?? null,
         enabled: true,
         lastSeenAt: new Date(),
@@ -44,7 +44,7 @@ router.post('/register', authenticateToken, async (req, res) => {
     if (!created) {
       await row.update({
         personId: id,            // reatacha pra este usuário
-        platform: plat,
+        platform: platform,
         deviceName: deviceName ?? row.deviceName,
         enabled: true,
         lastSeenAt: new Date(),
