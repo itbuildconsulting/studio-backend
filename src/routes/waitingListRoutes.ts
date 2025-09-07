@@ -1,5 +1,6 @@
 import express from 'express';
-import { addToWaitingList, promoteFromWaitingList, removeFromWaitingList } from '../controllers/waitingListController';
+import { addToWaitingList, listMyWaitingListsPost, promoteFromWaitingList, removeFromWaitingList } from '../controllers/waitingListController';
+import { authenticateToken } from '../core/token/authenticateToken';
 
 const router = express.Router();
 
@@ -13,6 +14,8 @@ router.post('/promote/:classId', (req, res) => {
         .then(() => res.status(200).json({ message: "Aluno promovido com sucesso!" }))
         .catch(error => res.status(500).json({ error: "Erro ao promover aluno da lista de espera" }));
 });
+
+router.post('/mine', authenticateToken, listMyWaitingListsPost);
 
 // Rota para remover aluno da lista de espera
 router.delete('/remove', removeFromWaitingList);

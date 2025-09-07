@@ -78,6 +78,75 @@ export const promoteFromWaitingList = async (classId: number): Promise<void> => 
     }
 };
 
+type ListBody = {
+  page?: number;           // 1..
+  pageSize?: number;       // default 20
+  sort?: 'recent' | 'position'; // recent = createdAt desc; position = order asc
+  classStatus?: string;    // opcional: filtrar por status da aula
+  includeClass?: boolean;  // default true
+};
+
+export async function listMyWaitingListsPost(req: Request, res: Response) {
+  try {
+    const { personId } = req.body;
+    if (!personId) return res.status(401).json({ success: false, error: 'unauthorized' });
+
+    const {
+      page = 1,
+      pageSize = 20,
+      sort = 'recent',
+      classStatus,
+      includeClass = true,
+    } = (req.body || {}) as ListBody;
+
+    const order =
+      sort === 'position'
+        ? [['order', 'ASC'] as any]
+        : [
+            ['createdAt', 'DESC'] as any,
+            ['order', 'ASC'] as any,
+          ];
+
+    const include = includeClass
+      ? [{
+          model: Class,
+          as: 'class',
+          attributes: ['id', 'name', 'startAt', 'endAt', 'status'], // ajuste aos seus campos
+          ...(classStatus ? { where: { status: classStatus }, required: true } : { required: false }),
+        }]
+      : [];
+
+    const offset = (Math.max(1, page) - 1) * Math.max(1, pageSize);
+
+    const { rows, count } = await WaitingList.findAndCountAll({
+      where: { studentId: personId },
+      include,
+      order,
+      limit: Math.max(1, pageSize),
+      offset,
+    });
+
+    const data = rows.map(w => ({
+      id: w.id,
+      order: w.order,
+      joinedAt: w.createdAt,
+      class: includeClass ? w.get('class') : undefined,
+    }));
+
+    return res.json({
+      success: true,
+      total: count,
+      page,
+      pageSize,
+      pages: Math.ceil(count / Math.max(1, pageSize)),
+      data,
+    });
+  } catch (e: any) {
+    console.error('[waitingLists] listMyWaitingListsPost', e);
+    return res.status(500).json({ success: false, error: String(e?.message ?? e) });
+  }
+}
+
 
 export const removeFromWaitingList = async (req: Request, res: Response): Promise<Response> => {
     try {
