@@ -79,6 +79,7 @@ export const promoteFromWaitingList = async (classId: number): Promise<void> => 
 };
 
 type ListBody = {
+  personId: number,
   page?: number;           // 1..
   pageSize?: number;       // default 20
   sort?: 'recent' | 'position'; // recent = createdAt desc; position = order asc
@@ -86,67 +87,70 @@ type ListBody = {
   includeClass?: boolean;  // default true
 };
 
+type Body = { personId?: number | string };
+
 export async function listMyWaitingListsPost(req: Request, res: Response) {
   try {
-    const { personId } = req.body;
-    if (!personId) return res.status(401).json({ success: false, error: 'unauthorized' });
+    const { personId } = (req.body ?? {}) as Body;
+    const id = Number(personId);
+    if (!Number.isFinite(id) || id <= 0) {
+      return res.status(400).json({ success: false, error: 'personId inválido' });
+    }
 
-    const {
-      page = 1,
-      pageSize = 20,
-      sort = 'recent',
-      classStatus,
-      includeClass = true,
-    } = (req.body || {}) as ListBody;
-
-    const order =
-      sort === 'position'
-        ? [['order', 'ASC'] as any]
-        : [
-            ['createdAt', 'DESC'] as any,
-            ['order', 'ASC'] as any,
-          ];
-
-    const include = includeClass
-      ? [{
-          model: Class,
-          as: 'class',
-          attributes: ['id', 'name', 'startAt', 'endAt', 'status'], // ajuste aos seus campos
-          ...(classStatus ? { where: { status: classStatus }, required: true } : { required: false }),
-        }]
-      : [];
-
-    const offset = (Math.max(1, page) - 1) * Math.max(1, pageSize);
-
-    const { rows, count } = await WaitingList.findAndCountAll({
-      where: { studentId: personId },
-      include,
-      order,
-      limit: Math.max(1, pageSize),
-      offset,
+    const rows = await WaitingList.findAll({
+      where: { studentId: id },
+      include: [{ model: Class, as: 'class' }], // sem limitar atributos para evitar “unknown column”
+      order: [['createdAt', 'DESC']],
     });
 
-    const data = rows.map(w => ({
-      id: w.id,
-      order: w.order,
-      joinedAt: w.createdAt,
-      class: includeClass ? w.get('class') : undefined,
-    }));
+    const data = rows.map((w: any) => {
+      const cls = w.get('class') as any | undefined;
+
+      let date: string | null = null;
+      let time: string | null = null;
+
+      // Caso 1: startAt/endAt (datetime)
+      if (cls?.startAt) {
+        const s = new Date(cls.startAt);
+        date = s.toISOString().slice(0, 10);
+        time = s.toISOString().slice(11, 16);
+      }
+
+      // Caso 2: date + startTime/endTime (campos separados)
+      if (!date && cls?.date) {
+        const d = new Date(cls.date);
+        date = isNaN(d.getTime()) ? String(cls.date) : d.toISOString().slice(0, 10);
+      }
+      if (!time && cls?.time) time = String(cls.time).slice(0, 5);
+
+      return {
+        id: w.id,
+        studentId: w.studentId,
+        classId: w.classId,
+        order: w.order,
+        joinedAt: w.createdAt,
+        class: cls
+          ? {
+              id: cls.id ?? null,
+              // só o que você pediu:
+              date,
+              time,
+            }
+          : null,
+      };
+    });
 
     return res.json({
       success: true,
-      total: count,
-      page,
-      pageSize,
-      pages: Math.ceil(count / Math.max(1, pageSize)),
+      personId: id,
+      total: data.length,
       data,
     });
   } catch (e: any) {
     console.error('[waitingLists] listMyWaitingListsPost', e);
-    return res.status(500).json({ success: false, error: String(e?.message ?? e) });
+    return res.status(500).json({ success: false, error: 'internal_error' });
   }
 }
-
 
 export const removeFromWaitingList = async (req: Request, res: Response): Promise<Response> => {
     try {
