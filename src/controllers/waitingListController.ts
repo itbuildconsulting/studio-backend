@@ -3,7 +3,9 @@ import WaitingList from '../models/WaitingList.model';
 import ClassStudent from '../models/ClassStudent.model';
 import Class from '../models/Class.model';
 import sequelize from '../config/database';
-import { Op } from 'sequelize';
+import { Op, Transaction } from 'sequelize';
+import Bike from '../models/Bike.model';
+import Credit from '../models/Credit.model';
 
 export const addToWaitingList = async (req: Request, res: Response): Promise<Response> => {
     try {
@@ -77,6 +79,144 @@ export const promoteFromWaitingList = async (classId: number): Promise<void> => 
         console.error('Erro ao promover aluno da lista de espera:', error);
     }
 };
+
+
+export const promoteFromWaitingListWithBike = async (req: Request, res: Response) => {
+  const { classId, studentId, bikeNumber, productTypeId: productTypeIdOverride } = req.body ?? {};
+
+  try {
+    // -------- validação básica --------
+    const cId = Number(classId);
+    const sId = Number(studentId);
+    const bNum = Number(bikeNumber);
+
+    if (!Number.isFinite(cId) || !Number.isFinite(sId) || !Number.isFinite(bNum)) {
+      return res.status(400).json({ success: false, message: 'classId, studentId e bikeNumber são obrigatórios e devem ser numéricos.' });
+    }
+
+    // 1) Aula existe?
+    const classData = await Class.findByPk(cId);
+    if (!classData) return res.status(404).json({ success: false, message: 'Aula não encontrada.' });
+
+    // 2) O aluno está na waiting list desta aula?
+    const wl = await WaitingList.findOne({ where: { classId: cId, studentId: sId } });
+    if (!wl) {
+      return res.status(404).json({ success: false, message: 'Aluno não está na lista de espera desta aula.' });
+    }
+
+    // 3) Descobrir productTypeId (prioriza o da aula; aceita override no body)
+    const productTypeId = classData.productTypeId ?? productTypeIdOverride;
+    if (!productTypeId) {
+      return res.status(400).json({ success: false, message: 'productTypeId não informado e não definido na aula.' });
+    }
+
+    // 4) Checagens rápidas (fora da tx)
+    const already = await ClassStudent.findOne({ where: { classId: cId, studentId: sId } });
+    if (already) return res.status(400).json({ success: false, message: 'Aluno já está inscrito nesta aula.' });
+
+    const bikeRowQuick = await Bike.findOne({ where: { classId: cId, bikeNumber: bNum } });
+    if (bikeRowQuick && bikeRowQuick.status !== 'available' && bikeRowQuick.studentId !== sId) {
+      return res.status(409).json({ success: false, message: 'Bike já está em uso por outro aluno.' });
+    }
+
+    // --------- TRANSAÇÃO (atomicidade) ---------
+    const t: Transaction = await sequelize.transaction();
+    try {
+      // Revalida matrícula sob lock
+      const enrolled = await ClassStudent.findOne({
+        where: { classId: cId, studentId: sId },
+        transaction: t,
+        lock: t.LOCK.UPDATE,
+      });
+      if (enrolled) {
+        await t.rollback();
+        return res.status(400).json({ success: false, message: 'Aluno já está inscrito nesta aula.' });
+      }
+
+      // FEFO: pega o lote de crédito mais antigo, válido e com saldo para ESTE tipo
+      const now = new Date();
+      const creditLot = await Credit.findOne({
+        where: {
+          idCustomer: sId,              // ajuste se seu campo for outro
+          productTypeId,
+          status: 'valid',
+          expirationDate: { [Op.gte]: now },
+          availableCredits: { [Op.gt]: 0 },
+        },
+        order: [
+          ['expirationDate', 'ASC'],
+          ['id', 'ASC'],
+        ],
+        transaction: t,
+        lock: t.LOCK.UPDATE,
+      });
+      if (!creditLot) {
+        await t.rollback();
+        return res.status(400).json({ success: false, message: 'Créditos insuficientes para este tipo de aula (ou vencidos).' });
+      }
+
+      // Bike: trava/atribui
+      let bike = await Bike.findOne({
+        where: { classId: cId, bikeNumber: bNum },
+        transaction: t,
+        lock: t.LOCK.UPDATE,
+      });
+
+      if (!bike) {
+        bike = await Bike.create(
+          { classId: cId, studentId: sId, bikeNumber: bNum, status: 'in_use' },
+          { transaction: t }
+        );
+      } else {
+        if (bike.status !== 'available' && bike.studentId !== sId) {
+          await t.rollback();
+          return res.status(409).json({ success: false, message: 'Bike já está em uso por outro aluno.' });
+        }
+        await bike.update({ studentId: sId, status: 'in_use' }, { transaction: t });
+      }
+
+      // Vincula aluno à aula (guarde a origem do crédito)
+      const cs = await ClassStudent.create(
+        {
+          classId: cId,
+          studentId: sId,
+          PersonId: sId,                 // se seu modelo usa também PersonId
+          bikeId: bike.id,
+          transactionId: creditLot.creditBatch, // ou outro campo de rastreio
+        },
+        { transaction: t }
+      );
+
+      // Consome 1 crédito do lote
+      creditLot.availableCredits -= 1;
+      creditLot.usedCredits += 1;
+      if (creditLot.availableCredits <= 0) creditLot.status = 'used';
+      await creditLot.save({ transaction: t });
+
+      // Remove da waiting list (do aluno promovido)
+      await wl.destroy({ transaction: t });
+
+      await t.commit();
+      return res.status(200).json({
+        success: true,
+        message: 'Aluno promovido da lista de espera: matriculado e bike atribuída; 1 crédito consumido.',
+        data: {
+          classStudentId: cs.id,
+          bikeId: bike.id,
+          bikeNumber: bNum,
+        },
+      });
+    } catch (err) {
+      await t.rollback();
+      console.error('[promoteFromWaitingListWithBike] tx error:', err);
+      return res.status(500).json({ success: false, message: 'Erro durante a transação.', error: String((err as any)?.message ?? err) });
+    }
+  } catch (error) {
+    console.error('[promoteFromWaitingListWithBike] error:', error);
+    return res.status(500).json({ success: false, message: 'Erro ao promover aluno.', error: String((error as any)?.message ?? error) });
+  }
+};
+
 
 type ListBody = {
   personId: number,

@@ -1,5 +1,5 @@
 import express from 'express';
-import { addToWaitingList, listMyWaitingListsPost, promoteFromWaitingList, removeFromWaitingList } from '../controllers/waitingListController';
+import { addToWaitingList, listMyWaitingListsPost, promoteFromWaitingList, promoteFromWaitingListWithBike, removeFromWaitingList } from '../controllers/waitingListController';
 import { authenticateToken } from '../core/token/authenticateToken';
 
 const router = express.Router();
@@ -19,5 +19,7 @@ router.post('/mine', authenticateToken, listMyWaitingListsPost);
 
 // Rota para remover aluno da lista de espera
 router.delete('/remove', removeFromWaitingList);
+
+router.post('/waitingList/promote', authenticateToken, promoteFromWaitingListWithBike);
 
 export default router;

@@ -5,7 +5,7 @@ interface NotificationTokenAttrs {
   id: number;
   personId: number;
   token: string;
-  platform: 'iOS' | 'Android' | 'Web' | 'Unknown';
+  platform: string;
   deviceName?: string | null;
   enabled: boolean;
   lastSeenAt?: Date | null;
@@ -20,7 +20,7 @@ class NotificationToken extends Model<NotificationTokenAttrs, Creation>
   declare id: number;
   declare personId: number;
   declare token: string;
-  declare platform: 'iOS' | 'Android' | 'Web' | 'Unknown';
+  declare platform: string;
   declare deviceName?: string | null;
   declare enabled: boolean;
   declare lastSeenAt?: Date | null;
@@ -33,7 +33,7 @@ NotificationToken.init(
     id: { type: DataTypes.INTEGER.UNSIGNED, autoIncrement: true, primaryKey: true },
     personId: { type: DataTypes.INTEGER.UNSIGNED, allowNull: false },
     token: { type: DataTypes.STRING(255), allowNull: false, unique: true },
-    platform: { type: DataTypes.ENUM('iOS','Android','Web','Unknown'), allowNull: false, defaultValue: 'Unknown' },
+    platform: { type: DataTypes.STRING(255), allowNull: false },
     deviceName: { type: DataTypes.STRING(255), allowNull: true },
     enabled: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: true },
     lastSeenAt: { type: DataTypes.DATE, allowNull: true },
