@@ -15,6 +15,7 @@ import Config from '../models/Config.model';
 import Product from '../models/Product.model';
 import ProductType from '../models/ProductType.model';
 import Place from '../models/Place.model';
+import { getProductById } from './productController';
 
 /*export const balance = async (req: Request, res: Response): Promise<Response | void> => {
     const personId = req.body.user?.id;    
@@ -226,7 +227,7 @@ export const getClassById = async (req: Request, res: Response): Promise<Respons
         }
 
         const classData = await Class.findByPk(id, {
-            attributes: ['id', 'date', 'time', 'teacherId']
+            attributes: ['id', 'date', 'time', 'teacherId', 'productTypeId']
         });
 
         if (!classData) {
@@ -248,6 +249,7 @@ export const getClassById = async (req: Request, res: Response): Promise<Respons
                 id: classData.id,
                 date: classData.date,
                 time: classData.time,
+                getProductById: classData.productTypeId,
                 teacherId: classData.teacherId || '',
                 teacherName: teacher ? teacher.name : '',
                 bikes: bikes.map(bike => ({
