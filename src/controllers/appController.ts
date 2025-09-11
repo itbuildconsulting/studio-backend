@@ -566,22 +566,43 @@ export const cancelStudentPresenceInClass = async (req: Request, res: Response):
         raw: true,
       });
 
-      const personIds = Array.from(new Set(waiters.map((w: { studentId: any; }) => Number(w.studentId)).filter(Boolean)));
+      // IDs únicos e sem o aluno que cancelou
+      const personIds = Array.from(
+        new Set(
+          waiters
+            .map(w => Number(w.studentId))
+            .filter(id => Number.isFinite(id) && id !== Number(studentId))
+        )
+      );
+
       if (personIds.length > 0) {
         const title = 'Vaga liberada!';
-        const timeHHmm = notifyTime?.slice(0,5) ?? '';
+        const timeHHmm = notifyTime?.slice(0, 5) ?? '';
         const body = `Abriu uma vaga na aula de ${notifyDate} às ${timeHHmm}. Garanta sua vaga agora.`;
         const data = {
           type: 'class_waitlist_spot',
           classId: notifyClassId,
           date: notifyDate,
           time: notifyTime,
-          deeplink: `spingo://class/${notifyClassId}`
+          deeplink: `spingo://class/${notifyClassId}`,
         };
 
+        // assinatura: (personIds, { title, body, data })
         const result = await sendPushToPersons(personIds, { title, body, data });
-        // se seu serviço retorna { tickets, total }, podemos contar:
-        notified = (result?.total ?? personIds.length);
+
+
+        // logs úteis
+        console.log('[waitlist push]', {
+          classId: notifyClassId,
+          totalTokens: result.total
+        });
+
+        // se InvalidCredentials, você já mapeia 502 no /push/send; aqui só logamos
+        if (result.success === false) {
+          console.warn('[waitlist push] envio com falha:', result.error);
+        }
+      } else {
+        console.log('[waitlist push] ninguém na fila para notificar.', { classId: notifyClassId });
       }
     } catch (pushErr) {
       console.error('[cancelStudentPresenceInClass] push notify error:', pushErr);
