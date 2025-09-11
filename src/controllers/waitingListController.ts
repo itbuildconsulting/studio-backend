@@ -273,6 +273,7 @@ export async function listMyWaitingListsPost(req: Request, res: Response) {
           ? {
               id: cls.id ?? null,
               // só o que você pediu:
+              productTypeId: cls.productTypeId,
               date,
               time,
             }
