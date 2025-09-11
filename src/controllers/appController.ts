@@ -16,6 +16,8 @@ import Product from '../models/Product.model';
 import ProductType from '../models/ProductType.model';
 import Place from '../models/Place.model';
 import { getProductById } from './productController';
+import WaitingList from '../models/WaitingList.model';
+import { sendPushToPersons } from '../services/pushService';
 
 /*export const balance = async (req: Request, res: Response): Promise<Response | void> => {
     const personId = req.body.user?.id;    
@@ -542,20 +544,57 @@ export const cancelStudentPresenceInClass = async (req: Request, res: Response):
         };
       }
     } else {
-      // não houve consumo (inscrição sem débito de crédito)
       refundMessage = 'Inscrição sem débito de crédito; nada a devolver.';
     }
 
-    // 6) Marcar vínculo como cancelado e zerar checkin (0/1)
+    // 6) Marcar vínculo como cancelado e zerar checkin
     await classStudent.update({ status: 0, checkin: 0 }, { transaction: t });
 
+    // Salva info da aula para compor a notificação depois do commit
+    const notifyDate = classDateStr;
+    const notifyTime = classTimeStr;
+    const notifyClassId = Number(classId);
+
     await t.commit();
+
+    // 7) 🔔 Após o commit: notificar quem está na fila dessa aula
+    let notified = 0;
+    try {
+      const waiters = await WaitingList.findAll({
+        where: { classId: notifyClassId },
+        attributes: ['studentId'],
+        raw: true,
+      });
+
+      const personIds = Array.from(new Set(waiters.map((w: { studentId: any; }) => Number(w.studentId)).filter(Boolean)));
+      if (personIds.length > 0) {
+        const title = 'Vaga liberada!';
+        const timeHHmm = notifyTime?.slice(0,5) ?? '';
+        const body = `Abriu uma vaga na aula de ${notifyDate} às ${timeHHmm}. Garanta sua vaga agora.`;
+        const data = {
+          type: 'class_waitlist_spot',
+          classId: notifyClassId,
+          date: notifyDate,
+          time: notifyTime,
+          deeplink: `spingo://class/${notifyClassId}`
+        };
+
+        const result = await sendPushToPersons(personIds, { title, body, data });
+        // se seu serviço retorna { tickets, total }, podemos contar:
+        notified = (result?.total ?? personIds.length);
+      }
+    } catch (pushErr) {
+      console.error('[cancelStudentPresenceInClass] push notify error:', pushErr);
+      // não falha a operação por causa do push
+    }
+
     return res.status(200).json({
       success: true,
       message: `Presença cancelada. ${refundMessage}`,
       data: {
         classStudentId: classStudent.id,
-        refund: refundData, // null quando não há devolução
+        refund: refundData,
+        notifiedWaitlistCount: notified,
       },
     });
   } catch (error: any) {
