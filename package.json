@@ -5,7 +5,7 @@
   "main": "src/index.ts",
   "scripts": {
     "start": "nodemon src/index.ts",
-    "start:hml": "PORT=3000 NODE_ENV=development node dist/index.js",
+    "start:hml": "PORT=3000 NODE_ENV=development node src/index.ts",
     "start:prod": "PORT=4100 NODE_ENV=production node dist/index.js",
     "build": "tsc",
     "ts.check": "tsc --project tsconfig.json",
