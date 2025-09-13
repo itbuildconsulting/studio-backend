@@ -23,7 +23,7 @@ jobs:
 
       - name: Criar .env remoto
         run: |
-          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no root@212.85.2.8 "cat <<EOF > /var/www/studio/studio-backend/.env
+          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no root@212.85.2.8 "cat <<EOF > /var/www/prod/spingo-backend/.env
             PORT=${{ secrets.PORT }}
             DB_HOST=${{ secrets.DB_HOST }}
             DB_NAME=${{ secrets.DB_NAME }}
