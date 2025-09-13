@@ -36,7 +36,7 @@ jobs:
       - name: Deploy Backend
         run: |
           ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no root@212.85.2.8 << 'EOF'
-            cd /var/www/studio/studio-backend
+            cd /var/www/prod/spingo-backend
             git pull origin main
             npm install
             npm run build
