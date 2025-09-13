@@ -40,7 +40,7 @@ jobs:
             git pull origin main
             npm install
             npm run build
-             PORT=4100 NODE_ENV=production pm2 restart spingo-backend-prod --update-env || \
-              PORT=4100 NODE_ENV=production pm2 start dist/index.js --name spingo-backend-prod
+             PORT=4200 NODE_ENV=production pm2 restart spingo-backend-prod --update-env || \
+              PORT=4200 NODE_ENV=production pm2 start dist/index.js --name spingo-backend-prod
             pm2 save
           EOF
