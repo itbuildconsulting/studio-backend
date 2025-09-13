@@ -41,6 +41,6 @@ Config.init(
   }
 );
 
-Config.sync({ alter: true });
+//Config.sync({ alter: true });
 
 export default Config;
