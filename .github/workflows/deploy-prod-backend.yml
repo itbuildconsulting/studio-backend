@@ -24,13 +24,13 @@ jobs:
       - name: Criar .env remoto
         run: |
           ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no root@212.85.2.8 "cat <<EOF > /var/www/studio/studio-backend/.env
-            PORT=${{ vars.PORT }}
-            DB_HOST=${{ vars.DB_HOST }}
-            DB_NAME=${{ vars.DB_NAME }}
-            DB_USER=${{ vars.DB_USER }}
-            DB_PASS=${{ vars.DB_PASS }}
-            EMAIL_USER=${{ vars.EMAIL_USER }}
-            EMAIL_PASS=${{ vars.EMAIL_PASS }}
+            PORT=${{ secrets.PORT }}
+            DB_HOST=${{ secrets.DB_HOST }}
+            DB_NAME=${{ secrets.DB_NAME }}
+            DB_USER=${{ secrets.DB_USER }}
+            DB_PASS=${{ secrets.DB_PASS }}
+            EMAIL_USER=${{ secrets.EMAIL_USER }}
+            EMAIL_PASS=${{ secrets.EMAIL_PASS }}
           EOF"
 
       - name: Deploy Backend
