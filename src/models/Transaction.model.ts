@@ -139,6 +139,6 @@ Transactions.init({
   timestamps: true,  // Inclui os campos createdAt e updatedAt automaticamente
 });
 
-Transactions.sync({ alter: true });
+//Transactions.sync({ alter: true });
 
 export default Transactions;

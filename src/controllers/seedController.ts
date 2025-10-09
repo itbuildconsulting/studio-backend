@@ -37,7 +37,7 @@ export const seedController = {
             await WaitingList.sync();
             await NotificationToken.sync();
 
-            await sequelize.sync({ alter: true });
+            //await sequelize.sync({ alter: true });
             
             return res.status(201).send('Todas as tabelas sincronizadas com o banco de dados');
         } catch (err) {
