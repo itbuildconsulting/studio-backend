@@ -416,6 +416,7 @@ export const addStudentToClassWithBikeNumber = async (req: Request, res: Respons
           studentId,
           bikeId: bike.id,
           transactionId: creditLot.creditBatch, // rastreabilidade do lote consumido
+          status: 1
         },
         { transaction: t }
       );
@@ -662,7 +663,7 @@ export const nextClass = async (req: Request, res: Response): Promise<Response> 
     const classStudentRecords = await ClassStudent.findAll({
       where: {
         studentId,
-        status: 0, // 👈 só aulas com status 0
+        status: 1, // 👈 só aulas com status 0
       },
       attributes: ['classId'],
     });
