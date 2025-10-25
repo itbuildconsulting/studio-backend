@@ -7,6 +7,7 @@ import generateAuthToken from '../core/token/generateAuthToken';
 import generateResetToken from '../core/token/generateResetToken';
 import { sendEmail } from '../core/email/emailService';
 import Level from '../models/Level.model';
+import { sendOtpFor } from '../core/email/opt';
 
 export const login = async (req: Request, res: Response): Promise<Response> => {
     const { email, password } = req.body;
@@ -17,6 +18,13 @@ export const login = async (req: Request, res: Response): Promise<Response> => {
 
         if (!person) {
             return res.status(404).json({ error: 'Pessoa não encontrada' });
+        }
+
+        if (person.active !== 1) {
+          await sendOtpFor(person.id, person.email); // opcional: reenvia automaticamente
+          return res.status(403).json({
+            error: 'Conta pendente de verificação. Enviamos um código para seu e-mail.',
+          });
         }
 
         // Comparar a senha fornecida com a armazenada

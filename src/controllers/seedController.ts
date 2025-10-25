@@ -15,6 +15,7 @@ import Config from '../models/Config.model';
 import WaitingList from '../models/WaitingList.model';
 import sequelize from '../config/database';
 import NotificationToken from '../models/NotificationToken.model';
+import OtpCode from '../models/OtpCode';
 
 // Definir funções do controlador
 export const seedController = {
@@ -36,6 +37,7 @@ export const seedController = {
             await Config.sync(); 
             await WaitingList.sync();
             await NotificationToken.sync();
+            await OtpCode.sync();
 
             //await sequelize.sync({ alter: true });
             

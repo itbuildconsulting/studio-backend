@@ -1,79 +1,106 @@
 import { Request, Response } from 'express';
 import { Op } from 'sequelize'; // Operadores do Sequelize
 import Person from '../models/Person.model';
+import bcrypt from 'bcryptjs';
+import OtpCode from '../models/OtpCode';
+import { sendOtpFor } from '../core/email/opt';
 
-// CREATE
+// util: normalizar e-mail
+const normalizeEmail = (e?: string) => String(e || '').trim().toLowerCase();
+
 export const createPerson = async (req: Request, res: Response): Promise<Response> => {
-    try {
-        const {
-            name,
-            identity,
-            email,
-            phone,
-            birthday,
-            height,
-            weight,
-            other,
-            password,
-            rule,
-            frequency,
-            employee,
-            employee_level,
-            student_level,
-            zipCode,
-            state,
-            city,
-            address,
-            country,
-            active,
-        } = req.body;
+  try {
+    const {
+      name,
+      identity,
+      email,
+      phone,
+      birthday,
+      height,
+      weight,
+      other,
+      password,
+      rule,
+      frequency,
+      employee,
+      employee_level,
+      student_level,
+      zipCode,
+      state,
+      city,
+      address,
+      country,
+      // active // ❌ não aceite do cliente
+    } = req.body;
 
-        // Validação de dados
-        const validationError = validatePersonData(req.body, false);
-        if (validationError) {
-            return res.status(400).json({ success: false, error: validationError });
-        }
-
-        const document = identity.replace(/[.\-\/]/g, ''); // Remove caracteres especiais do documento
-
-        // Criação da pessoa
-        const newPerson = await Person.create({
-            name,
-            identity: document,
-            email,
-            phone,
-            birthday,
-            height,
-            weight,
-            other,
-            password,
-            rule,
-            frequency,
-            employee,
-            employee_level,
-            student_level,
-            zipCode,
-            state,
-            city,
-            address,
-            country,
-            active,
-        });
-
-        return res.status(201).json({
-            success: true,
-            message: 'Pessoa criada com sucesso',
-            id: newPerson.id,
-        });
-    } catch (error) {
-        console.error('Erro ao criar pessoa:', error);
-        return res.status(500).json({
-            success: false,
-            error: 'Erro ao criar pessoa',
-            message: error.message,
-        });
+    // 1) validação básica
+    const validationError = validatePersonData({ ...req.body, email, password }, false);
+    if (validationError) {
+      return res.status(400).json({ success: false, error: validationError });
     }
+
+    // 2) normalizações
+    const normalizedEmail = normalizeEmail(email);
+    const document = String(identity || '').replace(/[.\-\/\s]/g, '');
+
+    // 3) checa se já existe por e-mail
+    const existing = await Person.findOne({ where: { email: normalizedEmail } });
+
+    if (existing) {
+      if (existing.active === 1) {
+        // já verificado/ativo
+        return res.status(409).json({ success: false, error: 'E-mail já registrado' });
+      }
+      // ainda pendente (active = 0) → reenviar OTP e responder idempotente
+      await sendOtpFor(existing.id, normalizedEmail);
+      return res.status(200).json({
+        success: true,
+        message: 'Conta pendente de verificação. Reenviamos um código para o seu e-mail.',
+        id: existing.id,
+      });
+    }
+
+    // 4) hash de senha
+    const passwordHash = password ? await bcrypt.hash(password, 10) : null;
+
+    // 5) cria como pendente (active = 0)
+    const newPerson = await Person.create({
+      name,
+      identity: document,
+      email: normalizedEmail,
+      phone,
+      birthday,
+      height,
+      weight,
+      other,
+      password: passwordHash,
+      rule,
+      frequency,
+      employee,
+      employee_level,
+      student_level,
+      zipCode,
+      state,
+      city,
+      address,
+      country,
+      active: 0, // ✅ pendente
+    });
+
+    // 6) envia OTP
+    await sendOtpFor(newPerson.id, normalizedEmail);
+
+    return res.status(201).json({
+      success: true,
+      message: 'Pessoa criada. Enviamos um código de verificação para seu e-mail.',
+      id: newPerson.id,
+    });
+  } catch (error: any) {
+    console.error('Erro ao criar pessoa:', error);
+    return res.status(500).json({ success: false, error: 'Erro ao criar pessoa', message: error.message });
+  }
 };
+
 
 // READ ALL
 export const getAllPersons = async (_req: Request, res: Response): Promise<Response> => {

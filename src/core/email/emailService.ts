@@ -1,7 +1,7 @@
 import nodemailer from 'nodemailer';
 
 // Função para enviar o e-mail
-export const sendEmail = async (to: string, subject: string, text: string) => {
+export const sendEmail = async (to: string, subject: string, text: string, html?: string) => {
   try {
     // Configurações de transporte para o serviço de e-mail Hostinger
     const transporter = nodemailer.createTransport({
@@ -20,6 +20,7 @@ export const sendEmail = async (to: string, subject: string, text: string) => {
       to,
       subject,
       text,
+      html
     };
 
     // Enviar o e-mail
