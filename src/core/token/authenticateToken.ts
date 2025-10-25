@@ -16,7 +16,7 @@ export const authenticateToken = (req: Request, res: Response, next: NextFunctio
     return res.status(401).json({ error: 'Token de autorização não fornecido' });
   }
 
-  jwt.verify(token, '6a78e7df-0a0d-4a3f-897f-de1ae0f5b9c3', (err) => {
+  jwt.verify(token, process.env.JWT_SECRET, (err) => {
     if (err) {
       return res.status(403).json({ error: 'Falha ao autenticar o token' });
     }
