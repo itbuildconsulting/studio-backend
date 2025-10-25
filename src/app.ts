@@ -22,7 +22,7 @@ import configRoutes from './routes/configRoutes';
 import adminRoutes from './routes/adminRoutes';
 import devicesRouter from './routes/devicesRoutes';
 import notificationsRouter from './routes/notificationsRoutes';
-import authOptRouter from './routes/AuthOptRoutes';
+import authOptRouter from './routes/optRoutes'
 
 const app: Application = express();
 
