@@ -155,12 +155,6 @@ Person.init(
   {
     sequelize,
     tableName: 'persons',
-    hooks: {
-      beforeCreate: async (person: Person) => {
-        const hashedPassword = await bcrypt.hash(person.password, 10);
-        person.password = hashedPassword;
-      },
-    },
   }
 );
 
