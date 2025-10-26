@@ -30,6 +30,7 @@ jobs:
             DB_PASS=${{ vars.DB_PASS }}
             EMAIL_USER=${{ vars.EMAIL_USER }}
             EMAIL_PASS=${{ vars.EMAIL_PASS }}
+            JWT_SECRET=${{ vars.JWT_SECRET }}
           EOF"
 
       - name: Deploy Backend
