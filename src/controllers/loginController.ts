@@ -83,18 +83,15 @@ export const login = async (req: Request, res: Response): Promise<Response> => {
 
     // 9) Retorna sucesso com dados do usuário
     return res.status(200).json({
-      success: true,
-      token,
-      expiresIn: '1h',
-      user: {
-        id: person.id,
+        token,
+        expiresIn: '1h',
         name: person.name,
+        id: person.id,
         email: person.email,
-        level: level ? level.name : null,
-        color: level ? level.color : null,
+        level: !level ? null : level.name, // Agora enviamos o nome do nível ao invés do ID
+        color: !level ? null : level.color,
         student_level: person.student_level,
-        employee_level: person.employee_level,
-      }
+
     });
 
   } catch (error: any) {
