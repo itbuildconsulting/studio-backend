@@ -11,7 +11,8 @@ import {
     updatePerson, 
     deletePerson, 
     validateUserExistsEmail,
-    validateUserExistsIdentity
+    validateUserExistsIdentity,
+    createPersonInternal
 } from '../controllers/personController';
 
 const router = Router();
@@ -83,6 +84,8 @@ const router = Router();
  *         description: Erro ao criar pessoa
  */
 router.post('/',createPerson);
+
+router.post('/internal', authenticateToken, createPersonInternal);
 
 /**
  * @swagger

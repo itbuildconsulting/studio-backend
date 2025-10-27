@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
+import bcrypt from 'bcryptjs';
 import Place from '../models/Place.model';
 import ProductType from '../models/ProductType.model';
 import Person from '../models/Person.model';
@@ -50,6 +51,7 @@ export const seedController = {
 
     // Adicionar dados iniciais
     async addFirstData(_req: Request, res: Response, _next: NextFunction): Promise<Response | void> {
+        const passwordHash = await bcrypt.hash('testing', 10);
         try {
             const person = await Person.create({
                 name: "admin",
@@ -66,7 +68,7 @@ export const seedController = {
                 height: 160,
                 weight: 100,
                 other: "41",
-                password: "testing",
+                password: passwordHash,
                 rule: "",
                 frequency: "",
                 employee: 1,

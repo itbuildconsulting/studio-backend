@@ -101,6 +101,109 @@ export const createPerson = async (req: Request, res: Response): Promise<Respons
   }
 };
 
+// Cadastro INTERNO - sem verificação de e-mail (para admins/sistema)
+export const createPersonInternal = async (req: Request, res: Response): Promise<Response> => {
+  try {
+    const {
+      name,
+      identity,
+      email,
+      phone,
+      birthday,
+      height,
+      weight,
+      other,
+      password,
+      rule,
+      frequency,
+      employee,
+      employee_level,
+      student_level,
+      zipCode,
+      state,
+      city,
+      address,
+      country,
+      active, // ✅ ACEITA do sistema interno (admin pode definir)
+    } = req.body;
+
+    // 1) Validação básica
+    const validationError = validatePersonData({ ...req.body, email, password }, false);
+    if (validationError) {
+      return res.status(400).json({ success: false, error: validationError });
+    }
+
+    // 2) Normalizações
+    const normalizedEmail = normalizeEmail(email);
+    const document = String(identity || '').replace(/[.\-\/\s]/g, '');
+
+    // 3) Checa se já existe por e-mail
+    const existing = await Person.findOne({ where: { email: normalizedEmail } });
+
+    if (existing) {
+      return res.status(409).json({ 
+        success: false, 
+        error: 'E-mail já registrado no sistema' 
+      });
+    }
+
+    // 4) Hash de senha
+    if (!password || password.trim().length < 6) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Senha é obrigatória e deve ter pelo menos 6 caracteres' 
+      });
+    }
+
+    const passwordHash = await bcrypt.hash(password.trim(), 10);
+
+    // 5) Cria usuário JÁ ATIVO (active = 1 por padrão, ou conforme enviado)
+    const newPerson = await Person.create({
+      name,
+      identity: document,
+      email: normalizedEmail,
+      phone,
+      birthday,
+      height,
+      weight,
+      other,
+      password: passwordHash,
+      rule,
+      frequency,
+      employee,
+      employee_level,
+      student_level,
+      zipCode,
+      state,
+      city,
+      address,
+      country,
+      active: active !== undefined ? active : 1, // ✅ ativo por padrão
+    });
+
+    // 6) ❌ NÃO envia OTP
+
+    return res.status(201).json({
+      success: true,
+      message: 'Pessoa criada com sucesso no sistema interno.',
+      data: {
+        id: newPerson.id,
+        name: newPerson.name,
+        email: newPerson.email,
+        active: newPerson.active,
+        employee: newPerson.employee,
+      }
+    });
+
+  } catch (error: any) {
+    console.error('Erro ao criar pessoa (interno):', error);
+    return res.status(500).json({ 
+      success: false, 
+      error: 'Erro ao criar pessoa', 
+      message: error.message 
+    });
+  }
+};
 
 // READ ALL
 export const getAllPersons = async (_req: Request, res: Response): Promise<Response> => {
