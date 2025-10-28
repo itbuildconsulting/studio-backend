@@ -128,20 +128,35 @@ export const balance = async (req: Request, res: Response): Promise<Response> =>
 
   export const schedule = async (req: Request, res: Response): Promise<Response> => {
   try {
-    const { studentId } = req.body;
+    console.log('🔵 ========== INÍCIO DA REQUISIÇÃO ==========');
+    console.log('📥 Body recebido:', JSON.stringify(req.body, null, 2));
+    console.log('📥 Headers:', JSON.stringify(req.headers, null, 2));
+    
+    const { studentId, month, year } = req.body;
+    console.log('👤 Student ID:', studentId);
 
     const student = await Person.findByPk(studentId);
-    if (!student) return res.status(404).json({ message: 'Estudante não encontrado' });
+    if (!student) {
+      console.log('❌ Estudante não encontrado');
+      return res.status(404).json({ message: 'Estudante não encontrado' });
+    }
+    console.log('✅ Estudante encontrado:', student.id);
 
     const studentLevel = await Level.findOne({ where: { id: student.student_level } });
     const antecedence = studentLevel ? Number(studentLevel.antecedence) || 7 : 7;
+    console.log('📊 Nível do estudante:', student.student_level, '| Antecedência:', antecedence);
 
     const startDate = new Date();
     const endDate = new Date(startDate);
     endDate.setDate(startDate.getDate() + antecedence);
 
+    console.log('📅 Data servidor (raw):', startDate);
+    console.log('📅 Data servidor (ISO):', startDate.toISOString());
+    console.log('📅 Timezone servidor:', Intl.DateTimeFormat().resolvedOptions().timeZone);
+
     const formattedStartDate = format(startDate, 'yyyy-MM-dd');
     const formattedEndDate = format(endDate, 'yyyy-MM-dd');
+    console.log('📅 Período de busca:', formattedStartDate, 'até', formattedEndDate);
 
     // Buscar config de produtos permitidos no app
     const config = await Config.findOne({ where: { configKey: 'app_product' } });
@@ -152,32 +167,46 @@ export const balance = async (req: Request, res: Response): Promise<Response> =>
         .map((id) => parseInt(id.trim(), 10))
         .filter(Boolean);
     }
+    console.log('🎯 Tipos de produto permitidos:', allowedProductTypes);
 
-    // Filtro de data + (opcional) tipo de produto
     const whereCondition: any = {
       date: { [Op.gte]: formattedStartDate, [Op.lte]: formattedEndDate },
     };
     if (allowedProductTypes.length > 0) {
       whereCondition.productTypeId = { [Op.in]: allowedProductTypes };
     }
+    console.log('🔍 Condição WHERE:', JSON.stringify(whereCondition, null, 2));
 
     const availableClasses = await Class.findAll({
       attributes: ['date'],
       where: whereCondition,
-      // ❌ remove o include do Product
       group: ['date'],
       order: [['date', 'ASC']],
     });
 
+    console.log('📚 Total de aulas encontradas:', availableClasses.length);
+    console.log('📚 Aulas (raw):', availableClasses.map(c => ({ date: c.date, type: typeof c.date })));
+
     if (!availableClasses.length) {
+      console.log('⚠️ Nenhuma aula disponível para o período');
       return res.status(404).json({ message: 'Nenhuma aula disponível para o período' });
     }
 
     const availableDays = [...new Set(availableClasses.map((c) => c.date))];
+    console.log('✅ Dias disponíveis (antes de retornar):', availableDays);
+    console.log('✅ Total de dias únicos:', availableDays.length);
 
-    return res.status(200).json({ success: true, availableDays });
+    const response = { success: true, availableDays };
+    console.log('📤 Resposta final:', JSON.stringify(response, null, 2));
+    console.log('🔵 ========== FIM DA REQUISIÇÃO ==========\n');
+
+    return res.status(200).json(response);
   } catch (error) {
-    console.error('Erro ao buscar agenda:', error);
+    console.error('❌ ========== ERRO NA REQUISIÇÃO ==========');
+    console.error('❌ Erro:', error);
+    console.error('❌ Stack:', error instanceof Error ? error.stack : 'N/A');
+    console.error('❌ ==========================================\n');
+    
     const errorMessage = error instanceof Error ? error.message : 'Erro interno';
     return res.status(500).json({ success: false, message: errorMessage });
   }
