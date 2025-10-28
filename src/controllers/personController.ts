@@ -604,9 +604,9 @@ export const validatePersonData = (data: any, edit: boolean): string | null => {
     }
 
     // Telefone
-    if (!phone || typeof phone !== 'string' || phone.trim() === '') {
+    /*if (!phone || typeof phone !== 'string' || phone.trim() === '') {
         return 'Telefone é obrigatório.';
-    }
+    }*/
 
     // Data de nascimento
     const dateRegex = /^\d{4}-\d{2}-\d{2}$/; // Formato esperado: YYYY-MM-DD
@@ -633,7 +633,7 @@ export const validatePersonData = (data: any, edit: boolean): string | null => {
     }
 
     // Endereço
-    if (!zipCode || typeof zipCode !== 'string' || zipCode.trim() === '') {
+    /*if (!zipCode || typeof zipCode !== 'string' || zipCode.trim() === '') {
         return 'CEP é obrigatório.';
     }
 
@@ -651,7 +651,7 @@ export const validatePersonData = (data: any, edit: boolean): string | null => {
 
     if (!country || typeof country !== 'string' || country.trim() === '') {
         return 'País é obrigatório.';
-    }
+    }*/
 
     // Ativo
     if (active !== undefined && typeof active !== 'number') {
