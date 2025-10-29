@@ -26,13 +26,14 @@ interface CheckoutRequest {
     personId: string;
     products: ProductRequest[];
     payment: PaymentRequest;
+    billingAddress?: any;
 }
 
 // Função de checkout
 export const checkout = async (req: Request, res: Response, ): Promise<Response | void> => {
     try {
         authenticateToken(req, res, async () => {
-            const { personId, products, payment }: CheckoutRequest = req.body;
+            const { personId, products, payment, billingAddress }: CheckoutRequest = req.body;
             try {
                 const personData = await Person.findByPk(personId);
                 if (!personData) {
@@ -86,6 +87,34 @@ export const checkout = async (req: Request, res: Response, ): Promise<Response 
                     };
                 });
 
+                // ============================================
+                // NOVO: Usar billingAddress se fornecido, senão usar dados do perfil
+                // ============================================
+                
+                // Endereço de cobrança (prioriza billingAddress do request)
+                const billingAddressData = {
+                    line_1: billingAddress?.address || personData.address,
+                    line_2: 'Casa',  // Pode ser expandido se necessário
+                    zip_code: billingAddress?.zipCode || personData.zipCode,
+                    city: billingAddress?.city || personData.city,
+                    state: billingAddress?.state || personData.state,
+                    country: 'BR'
+                };
+
+                // Telefone de cobrança (prioriza billingAddress do request)
+                const phoneNumber = billingAddress?.phone || personData.phone || '999999999';
+                
+                // Extrair código de área e número (assumindo formato brasileiro)
+                let areaCode = '21';  // padrão
+                let number = phoneNumber;
+                
+                // Tentar extrair código de área se estiver no formato (XX) XXXXX-XXXX ou similar
+                const phoneMatch = phoneNumber.replace(/\D/g, ''); // Remove não-dígitos
+                if (phoneMatch.length >= 10) {
+                    areaCode = phoneMatch.substring(0, 2);
+                    number = phoneMatch.substring(2);
+                }
+
                 const checkout = {
                     closed: true,
                     customer: {
@@ -93,19 +122,12 @@ export const checkout = async (req: Request, res: Response, ): Promise<Response 
                         type: 'individual',
                         email: personData.email,
                         document: personData.identity,
-                        address: {
-                            line_1: personData.address,
-                            line_2: 'Casa',  // Assumindo que line_2 não está disponível
-                            zip_code: personData.zipCode,
-                            city: personData.city,
-                            state: personData.state,
-                            country: 'BR'
-                        },
+                        address: billingAddressData,  // ATUALIZADO: Usa dados de cobrança
                         phones: {
                             mobile_phone: {
                                 country_code: '55',
-                                area_code: '21',
-                                number: '999999999'
+                                area_code: areaCode,  // ATUALIZADO: Código de área extraído
+                                number: number        // ATUALIZADO: Número extraído
                             }
                         }
                     },
@@ -123,14 +145,7 @@ export const checkout = async (req: Request, res: Response, ): Promise<Response 
                                     exp_month: payment.exp_month,
                                     exp_year: payment.exp_year,
                                     cvv: payment.cvv,
-                                    billing_address: {
-                                        line_1: personData.address,
-                                        line_2: 'Casa',
-                                        zip_code: personData.zipCode,
-                                        city: personData.city,
-                                        state: personData.state,
-                                        country: 'BR'
-                                    }
+                                    billing_address: billingAddressData  // ATUALIZADO: Usa dados de cobrança
                                 }
                             }
                         }
