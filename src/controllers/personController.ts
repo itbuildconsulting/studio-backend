@@ -8,6 +8,8 @@ import { sendOtpFor } from '../core/email/opt';
 // util: normalizar e-mail
 const normalizeEmail = (e?: string) => String(e || '').trim().toLowerCase();
 
+// CORREÇÃO: Adicionar validação de CPF duplicado no createPerson e createPersonInternal
+
 export const createPerson = async (req: Request, res: Response): Promise<Response> => {
   try {
     const {
@@ -30,7 +32,6 @@ export const createPerson = async (req: Request, res: Response): Promise<Respons
       city,
       address,
       country,
-      // active // ❌ não aceite do cliente
     } = req.body;
 
     // 1) validação básica
@@ -43,25 +44,43 @@ export const createPerson = async (req: Request, res: Response): Promise<Respons
     const normalizedEmail = normalizeEmail(email);
     const document = String(identity || '').replace(/[.\-\/\s]/g, '');
 
-    // 3) checa se já existe por e-mail
-    const existing = await Person.findOne({ where: { email: normalizedEmail } });
+    // 3) ✅ CORREÇÃO: Verificar AMBOS - e-mail E CPF
+    const existingEmail = await Person.findOne({ where: { email: normalizedEmail } });
+    const existingIdentity = await Person.findOne({ where: { identity: document } });
 
-    if (existing) {
-      if (existing.active === 1) {
-        // já verificado/ativo
+    // 3.1) Verificar se e-mail já existe
+    if (existingEmail) {
+      if (existingEmail.active === 1) {
         return res.status(409).json({ success: false, error: 'E-mail já registrado' });
       }
-      // ainda pendente (active = 0) → reenviar OTP e responder idempotente
-      await sendOtpFor(existing.id, normalizedEmail);
+      // ainda pendente (active = 0) → reenviar OTP
+      await sendOtpFor(existingEmail.id, normalizedEmail);
       return res.status(200).json({
         success: true,
         message: 'Conta pendente de verificação. Reenviamos um código para o seu e-mail.',
-        id: existing.id,
+        id: existingEmail.id,
+      });
+    }
+
+    // 3.2) ✅ NOVO: Verificar se CPF já existe
+    if (existingIdentity) {
+      return res.status(409).json({ 
+        success: false, 
+        error: 'CPF/Documento já cadastrado no sistema' 
       });
     }
 
     // 4) hash de senha
     const passwordHash = password ? await bcrypt.hash(password, 10) : null;
+
+    // ✅ Normalizar height e weight
+    const normalizedHeight = height === '' || height === null || height === undefined 
+    ? null 
+    : Number(height);
+
+    const normalizedWeight = weight === '' || weight === null || weight === undefined 
+    ? null 
+    : Number(weight);
 
     // 5) cria como pendente (active = 0)
     const newPerson = await Person.create({
@@ -70,8 +89,8 @@ export const createPerson = async (req: Request, res: Response): Promise<Respons
       email: normalizedEmail,
       phone,
       birthday,
-      height,
-      weight,
+      height: normalizedHeight,  // ✅ Usar valor normalizado
+      weight: normalizedWeight,  // ✅ Usar valor normalizado
       other,
       password: passwordHash,
       rule,
@@ -84,7 +103,7 @@ export const createPerson = async (req: Request, res: Response): Promise<Respons
       city,
       address,
       country,
-      active: 0, // ✅ pendente
+      active: 0,
     });
 
     // 6) envia OTP
@@ -101,7 +120,7 @@ export const createPerson = async (req: Request, res: Response): Promise<Respons
   }
 };
 
-// Cadastro INTERNO - sem verificação de e-mail (para admins/sistema)
+// Cadastro INTERNO - também precisa da mesma validação
 export const createPersonInternal = async (req: Request, res: Response): Promise<Response> => {
   try {
     const {
@@ -124,7 +143,7 @@ export const createPersonInternal = async (req: Request, res: Response): Promise
       city,
       address,
       country,
-      active, // ✅ ACEITA do sistema interno (admin pode definir)
+      active,
     } = req.body;
 
     // 1) Validação básica
@@ -137,13 +156,23 @@ export const createPersonInternal = async (req: Request, res: Response): Promise
     const normalizedEmail = normalizeEmail(email);
     const document = String(identity || '').replace(/[.\-\/\s]/g, '');
 
-    // 3) Checa se já existe por e-mail
-    const existing = await Person.findOne({ where: { email: normalizedEmail } });
+    // 3) ✅ CORREÇÃO: Verificar AMBOS - e-mail E CPF
+    const existingEmail = await Person.findOne({ where: { email: normalizedEmail } });
+    const existingIdentity = await Person.findOne({ where: { identity: document } });
 
-    if (existing) {
+    // 3.1) Verificar se e-mail já existe
+    if (existingEmail) {
       return res.status(409).json({ 
         success: false, 
         error: 'E-mail já registrado no sistema' 
+      });
+    }
+
+    // 3.2) ✅ NOVO: Verificar se CPF já existe
+    if (existingIdentity) {
+      return res.status(409).json({ 
+        success: false, 
+        error: 'CPF/Documento já cadastrado no sistema' 
       });
     }
 
@@ -157,15 +186,24 @@ export const createPersonInternal = async (req: Request, res: Response): Promise
 
     const passwordHash = await bcrypt.hash(password.trim(), 10);
 
-    // 5) Cria usuário JÁ ATIVO (active = 1 por padrão, ou conforme enviado)
+    // ✅ Normalizar height e weight
+    const normalizedHeight = height === '' || height === null || height === undefined 
+    ? null 
+    : Number(height);
+
+    const normalizedWeight = weight === '' || weight === null || weight === undefined 
+    ? null 
+    : Number(weight);
+
+    // 5) Cria usuário JÁ ATIVO
     const newPerson = await Person.create({
       name,
       identity: document,
       email: normalizedEmail,
       phone,
       birthday,
-      height,
-      weight,
+      height: normalizedHeight,  // ✅ Usar valor normalizado
+      weight: normalizedWeight,  // ✅ Usar valor normalizado
       other,
       password: passwordHash,
       rule,
@@ -178,10 +216,8 @@ export const createPersonInternal = async (req: Request, res: Response): Promise
       city,
       address,
       country,
-      active: active !== undefined ? active : 1, // ✅ ativo por padrão
+      active: active !== undefined ? active : 1,
     });
-
-    // 6) ❌ NÃO envia OTP
 
     return res.status(201).json({
       success: true,
@@ -427,9 +463,15 @@ export const updatePerson = async (req: Request, res: Response): Promise<Respons
         person.city = city;
         person.state = state;
         person.country = country;
-        person.height = height;
-        person.weight = weight;
         person.employee_level = employee_level;
+
+        person.height = height === '' || height === null || height === undefined 
+        ? null 
+        : Number(height);
+
+        person.weight = weight === '' || weight === null || weight === undefined 
+        ? null 
+        : Number(weight);
 
         // Salva as mudanças
         await person.save();

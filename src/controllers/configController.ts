@@ -1,137 +1,80 @@
+// ✅ VERSÃO FINAL CORRIGIDA - upsertConfig
+// Arquivo: src/controllers/configController.ts
+
 import { Request, Response } from 'express';
 import Config from '../models/Config.model';
 import sequelize from '../config/database';
 
-// Função para criar configuração
-export const createConfig = async (req: Request, res: Response): Promise<Response> => {
-    const { configKey, configValue, description } = req.body; // Recupera os parâmetros da requisição
-
-    try {
-        const existingConfig = await Config.findOne({ where: { configKey } });
-
-        if (existingConfig) {
-            return res.status(400).json({ success: false, message: 'Configuração já existe' });
-        }
-
-        await Config.create({ configKey, configValue, description });
-
-        return res.status(201).json({ success: true, message: 'Configuração criada com sucesso' });
-    } catch (error) {
-        console.error('Erro ao criar configuração:', error);
-        return res.status(500).json({ success: false, message: 'Erro ao criar configuração' });
-    }
+/**
+ * Normaliza configValue para string (formato aceito pelo banco)
+ * @param value - Valor a ser normalizado
+ * @returns string
+ */
+const normalizeConfigValue = (value: any): string => {
+  // Se já é string, retorna diretamente
+  if (typeof value === 'string') {
+    return value;
+  }
+  
+  // Se é array ou objeto, converte para JSON string
+  if (Array.isArray(value) || (typeof value === 'object' && value !== null)) {
+    return JSON.stringify(value);
+  }
+  
+  // Se é null ou undefined, retorna string vazia
+  if (value === null || value === undefined) {
+    return '';
+  }
+  
+  // Outros tipos (number, boolean), converte para string
+  return String(value);
 };
 
-// Função para atualizar configuração
-export const updateConfig = async (req: Request, res: Response): Promise<Response> => {
-    const { configKey, configValue } = req.body; // Recupera os parâmetros da requisição
-
-    try {
-        const config = await Config.findOne({ where: { configKey } });
-
-        if (!config) {
-            return res.status(404).json({ success: false, message: 'Configuração não encontrada' });
-        }
-
-        config.configValue = configValue;
-        await config.save();
-
-        return res.status(200).json({ success: true, message: 'Configuração atualizada com sucesso' });
-    } catch (error) {
-        console.error('Erro ao atualizar configuração:', error);
-        return res.status(500).json({ success: false, message: 'Erro ao atualizar configuração' });
-    }
-};
-
-export const getConfig = async (req: Request, res: Response): Promise<Response> => {
-    const { configKey } = req.params; // Recupera o parâmetro da requisição (configKey)
-    const { page = 1, pageSize = 10 } = req.query; // Paginação com valores padrão
-
-    try {
-        if (configKey) {
-            // Caso tenha um configKey, buscamos apenas essa configuração específica
-            const config = await Config.findOne({ where: { configKey } });
-
-            if (!config) {
-                return res.status(404).json({ success: false, message: 'Configuração não encontrada' });
-            }
-
-            return res.status(200).json({ success: true, data: config.configValue });
-        } else {
-            // Caso não tenha o configKey, buscamos todas as configurações com paginação
-            const limit = parseInt(pageSize as string, 10); // Número de registros por página
-            const offset = (parseInt(page as string, 10) - 1) * limit; // Deslocamento para a página correta
-
-            const { rows: configs, count: totalRecords } = await Config.findAndCountAll({
-                limit,
-                offset,
-            });
-
-            if (configs.length === 0) {
-                return res.status(404).json({ success: false, message: 'Nenhuma configuração encontrada' });
-            }
-
-            return res.status(200).json({
-                success: true,
-                data: configs,
-                pagination: {
-                    totalRecords,
-                    totalPages: Math.ceil(totalRecords / limit),
-                    currentPage: parseInt(page as string, 10),
-                    pageSize: limit,
-                },
-            });
-        }
-    } catch (error) {
-        console.error('Erro ao buscar configuração:', error);
-        return res.status(500).json({ success: false, message: 'Erro ao buscar configuração' });
-    }
-};
-
-
-export const deleteConfig = async (req: Request, res: Response): Promise<Response> => {
-    const { configKey } = req.params; // Recupera o parâmetro da URL (configKey)
-
-    try {
-        // Buscar configuração com o configKey fornecido
-        const config = await Config.findOne({ where: { configKey } });
-
-        if (!config) {
-            return res.status(404).json({ success: false, message: 'Configuração não encontrada' });
-        }
-
-        // Excluir a configuração
-        await config.destroy();
-
-        return res.status(200).json({ success: true, message: 'Configuração excluída com sucesso' });
-    } catch (error) {
-        console.error('Erro ao excluir configuração:', error);
-        return res.status(500).json({ success: false, message: 'Erro ao excluir configuração' });
-    }
-};
-
+/**
+ * Helper para pegar apenas campos específicos de um objeto
+ */
 function pick<T extends object>(obj: any, fields: (keyof T)[]): Partial<T> {
   const out: any = {};
-  for (const k of fields) if (obj[k] !== undefined) out[k] = obj[k];
+  for (const k of fields) {
+    if (obj[k] !== undefined) {
+      out[k] = obj[k];
+    }
+  }
   return out;
 }
 
+/**
+ * Cria ou atualiza uma configuração (upsert)
+ * @route POST /config/upsertConfig
+ */
 export const upsertConfig = async (req: Request, res: Response): Promise<Response> => {
   const t = await sequelize.transaction();
+  let committed = false;
+  
   try {
     const { configKey } = req.body as { configKey?: string };
+    
+    // Validação de configKey
     if (!configKey || typeof configKey !== 'string') {
       await t.rollback();
-      return res.status(400).json({ success: false, message: 'configKey é obrigatório.' });
+      return res.status(400).json({ 
+        success: false, 
+        message: 'configKey é obrigatório e deve ser uma string.' 
+      });
     }
 
-    // normalize opcional (ex.: sempre minúsculo e trim)
+    // Normaliza configKey (trim e minúsculo para consistência)
     const key = configKey.trim();
 
-    // Só permita atualizar/crear esses campos:
+    // Extrai apenas os campos permitidos
     const payload = pick<typeof req.body>(req.body, ['configValue', 'description', 'active']);
 
-    // Busca existente sob lock p/ evitar corrida
+    // ✅ CORREÇÃO: Normalizar configValue antes de salvar
+    if (payload.configValue !== undefined) {
+      payload.configValue = normalizeConfigValue(payload.configValue);
+    }
+
+    // Busca configuração existente com lock para evitar race condition
     const existing = await Config.findOne({
       where: { configKey: key },
       transaction: t,
@@ -139,30 +82,53 @@ export const upsertConfig = async (req: Request, res: Response): Promise<Respons
     });
 
     if (existing) {
+      // Atualiza configuração existente
       await existing.update(payload, { transaction: t });
       await t.commit();
+      committed = true;
+      
       return res.status(200).json({
         success: true,
         action: 'updated',
+        message: 'Configuração atualizada com sucesso',
         data: existing,
       });
     }
 
+    // Cria nova configuração
     const created = await Config.create(
       { configKey: key, ...payload },
       { transaction: t }
     );
 
     await t.commit();
+    committed = true;
+    
     return res.status(201).json({
       success: true,
       action: 'created',
+      message: 'Configuração criada com sucesso',
       data: created,
     });
+
   } catch (err: any) {
-    await t.rollback();
-    // erro de chave única duplicada etc.
+    // ✅ CORREÇÃO: Só faz rollback se a transaction ainda não foi finalizada
+    if (!committed) {
+      try {
+        await t.rollback();  // ✅ Sem verificar t.finished
+      } catch (rollbackError) {
+        // Se der erro aqui, é porque transaction já foi finalizada
+        // Apenas loga o aviso, não propaga o erro
+        console.error('Aviso: Erro ao fazer rollback (transaction pode já ter sido finalizada):', rollbackError);
+      }
+    }
+    
     console.error('Erro no upsert de config:', err);
-    return res.status(500).json({ success: false, message: err?.message ?? 'Erro no upsert de config.' });
+    
+    return res.status(500).json({ 
+      success: false, 
+      message: err?.message ?? 'Erro ao salvar configuração',
+      error: process.env.NODE_ENV === 'development' ? err.message : undefined
+    });
   }
 };

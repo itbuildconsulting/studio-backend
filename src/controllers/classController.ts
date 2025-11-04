@@ -279,35 +279,38 @@ export const getClassById = async (req: Request, res: Response): Promise<Respons
         // Buscar as bicicletas associadas à aula
         const bikes = await Bike.findAll({
             where: { classId: id },
-            attributes: ['bikeNumber', 'status', 'studentId'], // Inclui studentId para buscar o nome do aluno, se houver
+            attributes: ['bikeNumber', 'status', 'studentId'],
         });
 
-        // Para cada bicicleta, buscar o nome do aluno associado, se houver
+        // Para cada bicicleta, buscar o nome e data de nascimento do aluno associado
         const formattedBikes = await Promise.all(
             bikes.map(async (bike) => {
                 let studentName = null;
+                let studentBirthday = null; // ✅ Adicionar
 
                 if (bike.studentId) {
-                    // Buscar o nome do aluno associado, se houver um studentId
+                    // Buscar o nome e data de nascimento do aluno
                     const student = await Person.findByPk(bike.studentId, {
-                        attributes: ['name'], // Buscar apenas o nome do aluno
+                        attributes: ['name', 'birthday'], // ✅ Adicionar 'birthday'
                     });
                     studentName = student?.name || null;
+                    studentBirthday = student?.birthday || null; // ✅ Adicionar
                 }
 
                 return {
                     bikeNumber: bike.bikeNumber,
-                    status: bike.status, // Status da bicicleta (ex.: disponível, em uso, manutenção)
+                    status: bike.status,
                     studentId: bike.studentId,
-                    studentName, // Nome do aluno associado (ou null se não houver)
+                    studentName,
+                    studentBirthday, // ✅ Adicionar ao retorno
                 };
             })
         );
 
         // Retornar os dados da aula com as bicicletas
         return res.status(200).json({
-            ...classData.toJSON(), // Converte os dados da aula para JSON
-            bikes: formattedBikes, // Adiciona as bicicletas ao retorno
+            ...classData.toJSON(),
+            bikes: formattedBikes,
         });
     } catch (error) {
         console.error('Erro ao buscar aula:', error);

@@ -8,6 +8,8 @@ import { checkPurchaseLimit, createItemsAfterTransaction } from './itemsControll
 import Item from '../models/Item.model';
 import Transactions from '../models/Transaction.model';
 import { removeCreditsForBatch } from '../services/credits.service';
+import ClassStudent from '../models/ClassStudent.model';
+import Class from '../models/Class.model';
 
 interface ProductRequest {
     productId: string;
@@ -399,36 +401,81 @@ async function createTransaction(checkout: any) {
 // Função de cancelamento de pagamento e reembolso integral
 export const cancelPaymentAndRefund = async (req: Request, res: Response): Promise<Response> => {
   try {
-    const { paymentId } = req.body; // ID do pagamento ( = creditBatch usado na compra )
+    const { paymentId } = req.body;
     if (!paymentId) {
-      return res.status(400).json({ success: false, message: 'O ID do pagamento é obrigatório' });
+      return res.status(400).json({ 
+        success: false, 
+        message: 'O ID do pagamento é obrigatório' 
+      });
     }
 
-    // 1) Buscar transação na tabela Transactions
-    const transaction = await Transactions.findOne({ where: { transactionId: paymentId } });
+    // 1) Buscar transação
+    const transaction = await Transactions.findOne({ 
+      where: { transactionId: paymentId } 
+    });
     if (!transaction) {
-      return res.status(404).json({ success: false, message: 'Transação não encontrada' });
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Transação não encontrada' 
+      });
     }
 
-    // 2) Cancelar/reembolsar no provedor
+    // 2) NOVA VERIFICAÇÃO: Checar se há créditos vinculados a aulas
+    const classesWithCredits = await ClassStudent.findAll({
+      where: { 
+        transactionId: paymentId,
+        status: 1  // apenas aulas ativas
+      },
+      include: [{
+        model: Class,
+        attributes: ['id', 'date', 'time']
+      }]
+    });
+
+    if (classesWithCredits.length > 0) {
+      // Construir lista de aulas para exibir ao usuário
+      const classList = classesWithCredits.map((cs: any) => {
+        const classData = cs.Class;
+        return `Aula #${classData.id} - ${classData.date} às ${classData.time}`;
+      }).join(', ');
+
+      return res.status(400).json({
+        success: false,
+        message: 'Não é possível cancelar esta compra pois você está matriculado em aulas. Por favor, cancele suas matrículas primeiro ou entre em contato com o suporte.',
+        details: {
+          enrolledClassesCount: classesWithCredits.length,
+          classes: classList
+        }
+      });
+    }
+
+    // 3) Cancelar/reembolsar no provedor
     const cancelPaymentResult = await cancelPayment(transaction.chargeId);
     if (!cancelPaymentResult.success) {
-      return res.status(500).json({ success: false, message: cancelPaymentResult.message });
+      return res.status(500).json({ 
+        success: false, 
+        message: cancelPaymentResult.message 
+      });
     }
 
-    // 3) Atualizar status da transação (no seu código está 'canceled'; mantenha o que faz sentido pra você)
+    // 4) Atualizar status da transação
     await transaction.update({ status: 'canceled' });
 
-    // 4) Atualizar itens associados
-    const items = await Item.findAll({ where: { transactionId: paymentId } });
+    // 5) Atualizar itens associados
+    const items = await Item.findAll({ 
+      where: { transactionId: paymentId } 
+    });
     if (items.length) {
-      await Promise.all(items.map(item => item.update({ status: 'cancelado' })));
+      await Promise.all(
+        items.map(item => item.update({ status: 'cancelado' }))
+      );
     }
 
-    // 5) REMOVER/ZERAR CRÉDITOS desse pagamento (creditBatch = paymentId)
-    //    Modo padrão: permissivo (zera saldo restante se houver consumo). 
-    //    Se quiser bloquear se houver uso prévio: { strict: true }
-    const creditsResult = await removeCreditsForBatch(String(paymentId), { /* strict: true */ });
+    // 6) Remover créditos (em modo strict para segurança extra)
+    const creditsResult = await removeCreditsForBatch(
+      String(paymentId), 
+      { strict: true }
+    );
 
     return res.status(200).json({
       success: true,
@@ -438,7 +485,11 @@ export const cancelPaymentAndRefund = async (req: Request, res: Response): Promi
 
   } catch (error) {
     console.error('Erro ao cancelar pagamento:', error);
-    return res.status(500).json({ success: false, message: 'Erro ao processar cancelamento de pagamento' });
+    return res.status(500).json({ 
+      success: false, 
+      message: 'Erro ao processar cancelamento de pagamento',
+      error: error instanceof Error ? error.message : 'Erro desconhecido'
+    });
   }
 };
   

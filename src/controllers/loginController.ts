@@ -156,25 +156,31 @@ export const resetPassword = async (req: Request, res: Response): Promise<Respon
       });
     }
 
+    // ❌ REMOVA ESTA PARTE - NÃO FAZ SENTIDO NO RESET DE SENHA
     // 6) Verificar se a nova senha é diferente da antiga (opcional mas recomendado)
-    if (person.password) {
-      const sameAsOld = await bcrypt.compare(newPassword, person.password);
-      if (sameAsOld) {
-        return res.status(400).json({ 
-          success: false,
-          error: 'A nova senha não pode ser igual à senha anterior' 
-        });
-      }
-    }
+    // if (person.password) {
+    //   const sameAsOld = await bcrypt.compare(newPassword, person.password);
+    //   if (sameAsOld) {
+    //     return res.status(400).json({ 
+    //       success: false,
+    //       error: 'A nova senha não pode ser igual à senha anterior' 
+    //     });
+    //   }
+    // }
 
     // 7) Hash da nova senha
     const passwordHash = await bcrypt.hash(newPassword.trim(), 10);
 
     // 8) Atualizar senha
     person.password = passwordHash;
-    // Opcional: invalidar tokens antigos
-    // person.tokenVersion = (person.tokenVersion || 0) + 1;
     await person.save();
+
+    // 9) Opcional: Enviar email de confirmação
+    await sendEmail(
+      person.email,
+      'Senha alterada com sucesso',
+      'Sua senha foi redefinida com sucesso.'
+    );
 
     return res.status(200).json({ 
       success: true,
