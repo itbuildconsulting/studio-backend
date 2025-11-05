@@ -1,7 +1,7 @@
 import { Router } from 'express';
 
 import { authenticateToken } from '../core/token/authenticateToken';
-import { createConfig, deleteConfig, getConfig, updateConfig, upsertConfig } from '../controllers/configController';
+import {createConfig, deleteConfig, getConfig, updateConfig, upsertConfig } from '../controllers/configController';
 
 const router = Router();
 
