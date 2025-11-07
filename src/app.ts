@@ -23,6 +23,7 @@ import adminRoutes from './routes/adminRoutes';
 import devicesRouter from './routes/devicesRoutes';
 import notificationsRouter from './routes/notificationsRoutes';
 import authOptRouter from './routes/optRoutes'
+import emailTestRoutes from './routes/emailTestRoutes';
 
 const app: Application = express();
 
@@ -61,6 +62,8 @@ app.use("/admin", adminRoutes);
 app.use('/devices', devicesRouter);
 app.use('/notifications', notificationsRouter);
 app.use('/auth', authOptRouter);
+app.use('/api/email', emailTestRoutes);
+
 
 // Configuração do Swagger
 swaggerSetup(app);
