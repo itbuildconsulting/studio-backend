@@ -1,5 +1,5 @@
+// src/routes/authVerifyRoutes.ts
 import { Router } from 'express';
-import { verifyOtp } from '../controllers/optController';
 import { verifyEmailLink } from '../controllers/authVerifyController';
 
 const router = Router();
@@ -7,34 +7,9 @@ const router = Router();
 /**
  * @swagger
  * tags:
- *   name: Auth
- *   description: Operações de autenticação
+ *   name: Auth Verification
+ *   description: Verificação de email via magic link
  */
-
-/**
- * @swagger
- * /login:
- *   post:
- *     summary: Realiza o login do usuário
- *     tags: [Auth]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               email:
- *                 type: string
- *               password:
- *                 type: string
- *     responses:
- *       200:
- *         description: Login realizado com sucesso
- *       401:
- *         description: Credenciais inválidas
- */
-router.post('/otp/verify', verifyOtp);
 
 /**
  * @swagger
@@ -76,6 +51,5 @@ router.post('/otp/verify', verifyOtp);
  *               type: string
  */
 router.get('/verify', verifyEmailLink);
-
 
 export default router;
