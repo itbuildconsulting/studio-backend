@@ -1,7 +1,7 @@
 import { DataTypes, Model, Optional } from 'sequelize';
 import sequelize from '../config/database';
-import ProductType from './ProductType.model'; // Importa o modelo ProductType
-import Place from './Place.model'; // Importa o modelo Place
+import ProductType from './ProductType.model';
+import Place from './Place.model';
 
 // Definição dos atributos do modelo Product
 interface ProductAttributes {
@@ -11,12 +11,17 @@ interface ProductAttributes {
   validateDate: number;
   value: number;
   active: number;
-  productTypeId: number; // Relacionamento com ProductType
-  purchaseLimit: number;
+  productTypeId: number;
+  purchaseLimit: number;                      // 🆕 Limite de compras por aluno
+  requiredLevel?: number | null;              // Nível mínimo necessário
+  exclusiveLevels?: number[] | null;          // Array de níveis com acesso exclusivo
 }
 
 // Definição dos atributos opcionais ao criar um novo Product
-interface ProductCreationAttributes extends Optional<ProductAttributes, 'id'> {}
+interface ProductCreationAttributes extends Optional<
+  ProductAttributes, 
+  'id' | 'purchaseLimit' | 'requiredLevel' | 'exclusiveLevels'
+> {}
 
 // Definindo a classe Product que estende o Model do Sequelize
 class Product extends Model<ProductAttributes, ProductCreationAttributes> implements ProductAttributes {
@@ -28,6 +33,8 @@ class Product extends Model<ProductAttributes, ProductCreationAttributes> implem
   public active!: number;
   public productTypeId!: number;
   public purchaseLimit!: number;
+  public requiredLevel?: number | null;
+  public exclusiveLevels?: number[] | null;
 
   // Timestamps do Sequelize (createdAt, updatedAt)
   public readonly createdAt!: Date;
@@ -65,26 +72,41 @@ Product.init(
     productTypeId: {
       type: DataTypes.INTEGER.UNSIGNED,
       references: {
-        model: ProductType, // Relacionamento com ProductType
+        model: ProductType,
         key: 'id',
       },
     },
+    // 🆕 Limite máximo de compras por aluno
     purchaseLimit: {
       type: DataTypes.INTEGER,
       allowNull: false,
-      defaultValue: 0, // 0 significa sem limite, 1 significa que pode ser comprado apenas uma vez
+      defaultValue: 0,
+      comment: 'DEPRECADO - usar maxPurchase',
+    },    
+    // Nível mínimo necessário para ver/comprar o produto
+    requiredLevel: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      defaultValue: null,
+      comment: 'Nível mínimo necessário (NULL = todos podem ver)',
+    },
+    // Array de IDs de níveis com acesso exclusivo
+    exclusiveLevels: {
+      type: DataTypes.JSON,
+      allowNull: true,
+      defaultValue: null,
+      comment: 'Array de IDs de níveis com acesso exclusivo (NULL = sem restrição)',
     },
   },
   {
     sequelize,
     tableName: 'product',
-    timestamps: true, // Habilita createdAt e updatedAt
+    timestamps: true,
   }
 );
 
 // Configurando as associações
-Product.belongsTo(ProductType, { foreignKey: 'productTypeId', as: 'productType' });-  
+Product.belongsTo(ProductType, { foreignKey: 'productTypeId', as: 'productType' });
 Product.belongsTo(Place, { foreignKey: 'placeId', as: 'place' });
-//Product.sync({ alter: true });
 
 export default Product;

@@ -18,6 +18,7 @@ import Place from '../models/Place.model';
 import { getProductById } from './productController';
 import WaitingList from '../models/WaitingList.model';
 import { sendPushToPersons } from '../services/pushService';
+import Item from '../models/Item.model';
 
 /*export const balance = async (req: Request, res: Response): Promise<Response | void> => {
     const personId = req.body.user?.id;    
@@ -880,6 +881,9 @@ export const getUserTransactions = async (req: Request, res: Response): Promise<
 
 export const getAllProducts = async (req: Request, res: Response): Promise<Response> => {
     try {
+        // 🆕 Pegar studentId do token JWT
+        const studentId = (req as any).user?.id;
+        
         const { page = 1, pageSize = 10 } = req.query;
         const limit = parseInt(pageSize as string, 10);
         const offset = (parseInt(page as string, 10) - 1) * limit;
@@ -921,10 +925,62 @@ export const getAllProducts = async (req: Request, res: Response): Promise<Respo
             offset,
         });
 
-        // 4. Retornar resultado com paginação
+        // 4. 🆕 ENRIQUECER COM purchaseInfo (se tiver studentId)
+        let enrichedProducts = products.map(p => p.toJSON());
+        
+        if (studentId) {
+            enrichedProducts = await Promise.all(
+                products.map(async (product) => {
+                    const productJson = product.toJSON();
+                    
+                    // Contar quantas vezes o aluno já comprou este produto
+                    const purchaseCount = await Item.count({
+                        where: {
+                            studentId,
+                            itemId: product.id,
+                        },
+                    });
+
+                    // Calcular se pode comprar
+                    const canPurchase =
+                        product.purchaseLimit === 0 ||
+                        purchaseCount < product.purchaseLimit;
+
+                    // Calcular quantas compras restam
+                    const remainingPurchases =
+                        product.purchaseLimit === 0
+                            ? null // null = ilimitado
+                            : Math.max(0, product.purchaseLimit - purchaseCount);
+
+                    return {
+                        ...productJson,
+                        // 🆕 Adicionar purchaseInfo
+                        purchaseInfo: {
+                            currentPurchases: purchaseCount,
+                            maxAllowed: product.purchaseLimit,
+                            canPurchase,
+                            remainingPurchases,
+                        },
+                    };
+                })
+            );
+        } else {
+            // Se não tiver studentId, adicionar purchaseInfo vazio
+            enrichedProducts = products.map(p => ({
+                ...p.toJSON(),
+                purchaseInfo: {
+                    currentPurchases: 0,
+                    maxAllowed: p.purchaseLimit,
+                    canPurchase: true,
+                    remainingPurchases: p.purchaseLimit === 0 ? null : p.purchaseLimit,
+                },
+            }));
+        }
+
+        // 5. Retornar resultado com paginação
         return res.status(200).json({
             success: true,
-            data: products,
+            data: enrichedProducts, // 🆕 Retorna produtos enriquecidos
             pagination: {
                 totalRecords,
                 totalPages: Math.ceil(totalRecords / limit),
