@@ -24,6 +24,8 @@ import devicesRouter from './routes/devicesRoutes';
 import notificationsRouter from './routes/notificationsRoutes';
 import authOptRouter from './routes/optRoutes'
 import emailTestRoutes from './routes/emailTestRoutes';
+import parqRoutes from './routes/parqRoutes';
+import contractRoutes from './routes/contractRoutes';
 
 const app: Application = express();
 
@@ -63,6 +65,8 @@ app.use('/devices', devicesRouter);
 app.use('/notifications', notificationsRouter);
 app.use('/auth', authOptRouter);
 app.use('/api/email', emailTestRoutes);
+app.use('/parq', parqRoutes);
+app.use('/contracts', contractRoutes);
 
 
 // Configuração do Swagger
