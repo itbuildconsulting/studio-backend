@@ -1,4 +1,4 @@
-// src/controllers/contractController.ts
+// src/controllers/contractController.ts - VERSÃO CORRIGIDA
 import { Request, Response } from 'express';
 import ContractSignature from '../models/ContractSignature';
 import ContractVersion from '../models/ContractVersion';
@@ -9,27 +9,102 @@ import Person from '../models/Person.model';
  */
 export const getActiveContract = async (req: Request, res: Response): Promise<Response> => {
   try {
+    console.log('📋 Buscando contrato ativo...');
+    
     const contract = await ContractVersion.findOne({
       where: { active: true },
       order: [['effective_date', 'DESC']],
+      // ✅ CORRIGIDO: Especificar apenas campos que existem
+      attributes: ['id', 'version', 'content', 'active', 'effective_date', 'createdAt', 'updatedAt'],
     });
 
     if (!contract) {
+      console.log('❌ Nenhum contrato ativo encontrado');
       return res.status(404).json({
         success: false,
         message: 'Nenhum contrato ativo encontrado',
       });
     }
 
+    console.log('✅ Contrato ativo encontrado:', contract.version);
+    
     return res.status(200).json({
       success: true,
       data: contract,
     });
   } catch (error: any) {
-    console.error('Erro ao buscar contrato ativo:', error);
+    console.error('❌ Erro ao buscar contrato ativo:', error);
     return res.status(500).json({
       success: false,
       message: 'Erro ao buscar contrato',
+      error: error?.message,
+    });
+  }
+};
+
+/**
+ * Verificar se o aluno assinou o contrato
+ */
+export const checkContractStatus = async (req: Request, res: Response): Promise<Response> => {
+  try {
+    const { studentId } = req.params;
+
+    console.log(`🔍 Verificando status do contrato para aluno ${studentId}...`);
+
+    // Buscar contrato ativo
+    const activeContract = await ContractVersion.findOne({
+      where: { active: true },
+      order: [['effective_date', 'DESC']],
+      // ✅ CORRIGIDO: Especificar apenas campos que existem
+      attributes: ['id', 'version', 'content', 'active', 'effective_date'],
+    });
+
+    if (!activeContract) {
+      console.log('❌ Nenhum contrato ativo encontrado');
+      return res.status(404).json({
+        success: false,
+        message: 'Nenhum contrato ativo encontrado',
+      });
+    }
+
+    console.log('✅ Contrato ativo:', activeContract.version);
+
+    // Verificar se o aluno assinou
+    const signature = await ContractSignature.findOne({
+      where: {
+        studentId,
+        contractVersionId: activeContract.id,
+        active: true,
+      },
+      order: [['signed_at', 'DESC']],
+    });
+
+    if (!signature) {
+      console.log(`⚠️ Aluno ${studentId} NÃO assinou o contrato`);
+      return res.status(200).json({
+        success: true,
+        hasSigned: false,
+        needsSignature: true,
+        contract: activeContract,
+        message: 'Aluno precisa assinar o contrato',
+      });
+    }
+
+    console.log(`✅ Aluno ${studentId} já assinou o contrato`);
+    
+    return res.status(200).json({
+      success: true,
+      hasSigned: true,
+      needsSignature: false,
+      signature: signature,
+      message: 'Contrato já foi assinado',
+    });
+  } catch (error: any) {
+    console.error('❌ Erro ao verificar status do contrato:', error);
+    console.error('❌ Stack:', error.stack);
+    return res.status(500).json({
+      success: false,
+      message: 'Erro ao verificar status do contrato',
       error: error?.message,
     });
   }
@@ -48,6 +123,8 @@ export const signContract = async (req: Request, res: Response): Promise<Respons
       acceptedImageUse,
       acceptedDataProcessing,
     } = req.body;
+
+    console.log(`✍️ Aluno ${studentId} assinando contrato...`);
 
     // Validar se o aluno existe
     const student = await Person.findByPk(studentId);
@@ -77,6 +154,7 @@ export const signContract = async (req: Request, res: Response): Promise<Respons
     });
 
     if (existingSignature) {
+      console.log(`⚠️ Aluno ${studentId} já assinou este contrato`);
       return res.status(400).json({
         success: false,
         message: 'Contrato já foi assinado',
@@ -102,7 +180,7 @@ export const signContract = async (req: Request, res: Response): Promise<Respons
     const ipAddress = req.ip || req.headers['x-forwarded-for'] || req.socket.remoteAddress;
     const userAgent = req.headers['user-agent'];
 
-    // Criar snapshot dos dados do aluno
+    // Criar assinatura
     const signature = await ContractSignature.create({
       studentId: Number(studentId),
       contractVersionId,
@@ -118,73 +196,18 @@ export const signContract = async (req: Request, res: Response): Promise<Respons
       acceptedDataProcessing: acceptedDataProcessing || true,
     });
 
+    console.log(`✅ Contrato assinado! Signature ID: ${signature.id}`);
+
     return res.status(201).json({
       success: true,
       message: 'Contrato assinado com sucesso',
       data: signature,
     });
   } catch (error: any) {
-    console.error('Erro ao assinar contrato:', error);
+    console.error('❌ Erro ao assinar contrato:', error);
     return res.status(500).json({
       success: false,
       message: 'Erro ao assinar contrato',
-      error: error?.message,
-    });
-  }
-};
-
-/**
- * Verificar se o aluno assinou o contrato
- */
-export const checkContractStatus = async (req: Request, res: Response): Promise<Response> => {
-  try {
-    const { studentId } = req.params;
-
-    // Buscar contrato ativo
-    const activeContract = await ContractVersion.findOne({
-      where: { active: true },
-      order: [['effective_date', 'DESC']],
-    });
-
-    if (!activeContract) {
-      return res.status(404).json({
-        success: false,
-        message: 'Nenhum contrato ativo encontrado',
-      });
-    }
-
-    // Verificar se o aluno assinou
-    const signature = await ContractSignature.findOne({
-      where: {
-        studentId,
-        contractVersionId: activeContract.id,
-        active: true,
-      },
-      order: [['signed_at', 'DESC']],
-    });
-
-    if (!signature) {
-      return res.status(200).json({
-        success: true,
-        hasSigned: false,
-        needsSignature: true,
-        contract: activeContract,
-        message: 'Aluno precisa assinar o contrato',
-      });
-    }
-
-    return res.status(200).json({
-      success: true,
-      hasSigned: true,
-      needsSignature: false,
-      signature: signature,
-      message: 'Contrato já foi assinado',
-    });
-  } catch (error: any) {
-    console.error('Erro ao verificar status do contrato:', error);
-    return res.status(500).json({
-      success: false,
-      message: 'Erro ao verificar status do contrato',
       error: error?.message,
     });
   }
@@ -224,7 +247,7 @@ export const getStudentSignature = async (req: Request, res: Response): Promise<
       data: signature,
     });
   } catch (error: any) {
-    console.error('Erro ao buscar assinatura:', error);
+    console.error('❌ Erro ao buscar assinatura:', error);
     return res.status(500).json({
       success: false,
       message: 'Erro ao buscar assinatura',
@@ -287,7 +310,7 @@ export const getStudentsWithoutContract = async (
       data: studentsWithoutContract,
     });
   } catch (error: any) {
-    console.error('Erro ao listar alunos sem contrato:', error);
+    console.error('❌ Erro ao listar alunos sem contrato:', error);
     return res.status(500).json({
       success: false,
       message: 'Erro ao listar alunos sem contrato',
