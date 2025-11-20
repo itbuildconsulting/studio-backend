@@ -1,69 +1,45 @@
 // src/models/ContractSignature.ts
-import { DataTypes, Model, Optional } from 'sequelize';
+import { Model, DataTypes } from 'sequelize';
 import sequelize from '../config/database';
+import ContractVersion from './ContractVersion';
 
 interface ContractSignatureAttributes {
   id: number;
   studentId: number;
   contractVersionId: number;
-  signedAt: Date;
-  ipAddress?: string | null;
-  userAgent?: string | null;
+  signed_at: Date;
+  ipAddress?: string;
+  userAgent?: string;
   studentName: string;
-  studentCpf: string;
-  studentEmail: string;
-  studentBirthDate?: Date | null;
+  studentCpf?: string;
+  studentEmail?: string;
+  studentBirthDate?: Date;
   acceptedTerms: boolean;
   acceptedPrivacy: boolean;
   acceptedImageUse: boolean;
   acceptedDataProcessing: boolean;
   active: boolean;
-  revokedAt?: Date | null;
-  revokedReason?: string | null;
   createdAt?: Date;
   updatedAt?: Date;
 }
 
-interface ContractSignatureCreationAttributes
-  extends Optional<
-    ContractSignatureAttributes,
-    | 'id'
-    | 'signedAt'
-    | 'ipAddress'
-    | 'userAgent'
-    | 'studentBirthDate'
-    | 'acceptedTerms'
-    | 'acceptedPrivacy'
-    | 'acceptedImageUse'
-    | 'acceptedDataProcessing'
-    | 'active'
-    | 'revokedAt'
-    | 'revokedReason'
-    | 'createdAt'
-    | 'updatedAt'
-  > {}
-
-class ContractSignature
-  extends Model<ContractSignatureAttributes, ContractSignatureCreationAttributes>
-  implements ContractSignatureAttributes
-{
+class ContractSignature extends Model<ContractSignatureAttributes> implements ContractSignatureAttributes {
   public id!: number;
   public studentId!: number;
   public contractVersionId!: number;
-  public signedAt!: Date;
-  public ipAddress?: string | null;
-  public userAgent?: string | null;
+  public signed_at!: Date;
+  public ipAddress!: string;
+  public userAgent!: string;
   public studentName!: string;
   public studentCpf!: string;
   public studentEmail!: string;
-  public studentBirthDate?: Date | null;
+  public studentBirthDate!: Date;
   public acceptedTerms!: boolean;
   public acceptedPrivacy!: boolean;
   public acceptedImageUse!: boolean;
   public acceptedDataProcessing!: boolean;
   public active!: boolean;
-  public revokedAt?: Date | null;
-  public revokedReason?: string | null;
+  
   public readonly createdAt!: Date;
   public readonly updatedAt!: Date;
 }
@@ -71,110 +47,100 @@ class ContractSignature
 ContractSignature.init(
   {
     id: {
-      type: DataTypes.INTEGER,
+      type: DataTypes.INTEGER.UNSIGNED,
       autoIncrement: true,
       primaryKey: true,
     },
     studentId: {
-      type: DataTypes.INTEGER,
+      type: DataTypes.INTEGER.UNSIGNED,
       allowNull: false,
-      field: 'student_id',
-      references: {
-        model: 'person',
-        key: 'id',
-      },
+      // ✅ MAPEAR para o nome correto da coluna
+      field: 'studentId',
     },
     contractVersionId: {
-      type: DataTypes.INTEGER,
+      type: DataTypes.INTEGER.UNSIGNED,
       allowNull: false,
-      field: 'contract_version_id',
-      references: {
-        model: 'contract_versions',
-        key: 'id',
-      },
+      // ✅ MAPEAR para o nome correto da coluna
+      field: 'contractVersionId',
     },
-    signedAt: {
+    signed_at: {
       type: DataTypes.DATE,
       allowNull: false,
       defaultValue: DataTypes.NOW,
-      field: 'signed_at',
     },
     ipAddress: {
       type: DataTypes.STRING(45),
       allowNull: true,
-      field: 'ip_address',
+      field: 'ipAddress',
     },
     userAgent: {
       type: DataTypes.TEXT,
       allowNull: true,
-      field: 'user_agent',
+      field: 'userAgent',
     },
     studentName: {
       type: DataTypes.STRING(255),
       allowNull: false,
-      field: 'student_name',
+      field: 'studentName',
     },
     studentCpf: {
       type: DataTypes.STRING(14),
-      allowNull: false,
-      field: 'student_cpf',
+      allowNull: true,
+      field: 'studentCpf',
     },
     studentEmail: {
       type: DataTypes.STRING(255),
-      allowNull: false,
-      field: 'student_email',
+      allowNull: true,
+      field: 'studentEmail',
     },
     studentBirthDate: {
       type: DataTypes.DATEONLY,
       allowNull: true,
-      field: 'student_birth_date',
+      field: 'studentBirthDate',
     },
     acceptedTerms: {
       type: DataTypes.BOOLEAN,
       allowNull: false,
-      defaultValue: true,
-      field: 'accepted_terms',
+      defaultValue: false,
+      field: 'acceptedTerms',
     },
     acceptedPrivacy: {
       type: DataTypes.BOOLEAN,
       allowNull: false,
-      defaultValue: true,
-      field: 'accepted_privacy',
+      defaultValue: false,
+      field: 'acceptedPrivacy',
     },
     acceptedImageUse: {
       type: DataTypes.BOOLEAN,
       allowNull: false,
-      defaultValue: true,
-      field: 'accepted_image_use',
+      defaultValue: false,
+      field: 'acceptedImageUse',
     },
     acceptedDataProcessing: {
       type: DataTypes.BOOLEAN,
       allowNull: false,
-      defaultValue: true,
-      field: 'accepted_data_processing',
+      defaultValue: false,
+      field: 'acceptedDataProcessing',
     },
     active: {
       type: DataTypes.BOOLEAN,
       allowNull: false,
       defaultValue: true,
     },
-    revokedAt: {
-      type: DataTypes.DATE,
-      allowNull: true,
-      field: 'revoked_at',
-    },
-    revokedReason: {
-      type: DataTypes.TEXT,
-      allowNull: true,
-      field: 'revoked_reason',
-    },
   },
   {
     sequelize,
     tableName: 'contract_signatures',
     timestamps: true,
-    underscored: true,
+    // ✅ IMPORTANTE: Não converter para snake_case
+    underscored: false,
   }
 );
+
+// Relacionamento com ContractVersion
+ContractSignature.belongsTo(ContractVersion, {
+  foreignKey: 'contractVersionId',
+  as: 'contractVersion',
+});
 
 export default ContractSignature;
