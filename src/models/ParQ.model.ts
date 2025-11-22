@@ -1,27 +1,23 @@
-// src/models/ParQ.ts
-import { DataTypes, Model, Optional } from 'sequelize';
+// src/models/ParQ.model.ts ou src/models/Parq.ts
+import { Model, DataTypes } from 'sequelize';
 import sequelize from '../config/database';
 
 interface ParQAttributes {
   id: number;
   studentId: number;
-  question1: boolean; // Problema de coração
-  question2: boolean; // Dores no peito ao praticar
-  question3: boolean; // Dores no peito no último mês
-  question4: boolean; // Desequilíbrio/tontura
-  question5: boolean; // Problema ósseo ou articular
-  question6: boolean; // Medicamento para pressão/coração
-  question7: boolean; // Outra razão
-  hasRisk?: boolean;  // Campo calculado
+  question1: boolean;
+  question2: boolean;
+  question3: boolean;
+  question4: boolean;
+  question5: boolean;
+  question6: boolean;
+  question7: boolean;
   signedTerm: boolean;
-  termDate?: Date | null;
   createdAt?: Date;
   updatedAt?: Date;
 }
 
-interface ParQCreationAttributes extends Optional<ParQAttributes, 'id' | 'hasRisk' | 'createdAt' | 'updatedAt'> {}
-
-class ParQ extends Model<ParQAttributes, ParQCreationAttributes> implements ParQAttributes {
+class ParQ extends Model<ParQAttributes> implements ParQAttributes {
   public id!: number;
   public studentId!: number;
   public question1!: boolean;
@@ -31,9 +27,8 @@ class ParQ extends Model<ParQAttributes, ParQCreationAttributes> implements ParQ
   public question5!: boolean;
   public question6!: boolean;
   public question7!: boolean;
-  public hasRisk?: boolean;
   public signedTerm!: boolean;
-  public termDate?: Date | null;
+  
   public readonly createdAt!: Date;
   public readonly updatedAt!: Date;
 }
@@ -41,86 +36,65 @@ class ParQ extends Model<ParQAttributes, ParQCreationAttributes> implements ParQ
 ParQ.init(
   {
     id: {
-      type: DataTypes.INTEGER,
+      type: DataTypes.INTEGER.UNSIGNED,
       autoIncrement: true,
       primaryKey: true,
     },
     studentId: {
-      type: DataTypes.INTEGER,
+      type: DataTypes.INTEGER.UNSIGNED,
       allowNull: false,
-      field: 'student_id',
-      references: {
-        model: 'person',
-        key: 'id',
-      },
+      unique: true,
+      // ✅ MAPEAR para o nome correto da coluna
+      field: 'studentId',
     },
     question1: {
       type: DataTypes.BOOLEAN,
       allowNull: false,
-      field: 'question_1',
+      defaultValue: false,
     },
     question2: {
       type: DataTypes.BOOLEAN,
       allowNull: false,
-      field: 'question_2',
+      defaultValue: false,
     },
     question3: {
       type: DataTypes.BOOLEAN,
       allowNull: false,
-      field: 'question_3',
+      defaultValue: false,
     },
     question4: {
       type: DataTypes.BOOLEAN,
       allowNull: false,
-      field: 'question_4',
+      defaultValue: false,
     },
     question5: {
       type: DataTypes.BOOLEAN,
       allowNull: false,
-      field: 'question_5',
+      defaultValue: false,
     },
     question6: {
       type: DataTypes.BOOLEAN,
       allowNull: false,
-      field: 'question_6',
+      defaultValue: false,
     },
     question7: {
       type: DataTypes.BOOLEAN,
       allowNull: false,
-      field: 'question_7',
-    },
-    hasRisk: {
-      type: DataTypes.VIRTUAL,
-      get() {
-        return (
-          this.question1 ||
-          this.question2 ||
-          this.question3 ||
-          this.question4 ||
-          this.question5 ||
-          this.question6 ||
-          this.question7
-        );
-      },
-      field: 'has_risk',
+      defaultValue: false,
     },
     signedTerm: {
       type: DataTypes.BOOLEAN,
       allowNull: false,
       defaultValue: false,
-      field: 'signed_term',
-    },
-    termDate: {
-      type: DataTypes.DATE,
-      allowNull: true,
-      field: 'term_date',
+      field: 'signedTerm',
     },
   },
   {
     sequelize,
     tableName: 'parq',
     timestamps: true,
-    underscored: true,
+    // ✅ IMPORTANTE: Não converter para snake_case
+    underscored: false,
   }
 );
 
