@@ -12,6 +12,8 @@ interface ParQAttributes {
   question5: boolean;
   question6: boolean;
   question7: boolean;
+  hasRisk: boolean;          // ← ADICIONAR ESTA PROPRIEDADE
+  termDate: Date | null;     // ← ADICIONAR ESTA PROPRIEDADE
   signedTerm: boolean;
   createdAt?: Date;
   updatedAt?: Date;
@@ -28,6 +30,8 @@ class ParQ extends Model<ParQAttributes> implements ParQAttributes {
   public question6!: boolean;
   public question7!: boolean;
   public signedTerm!: boolean;
+  public hasRisk!: boolean;          // ← ADICIONAR
+  public termDate!: Date | null;     // ← ADICIONAR
   
   public readonly createdAt!: Date;
   public readonly updatedAt!: Date;
@@ -87,6 +91,16 @@ ParQ.init(
       allowNull: false,
       defaultValue: false,
       field: 'signedTerm',
+    },
+    hasRisk: {                         // ← ADICIONAR ESTE CAMPO
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+    },
+    termDate: {                        // ← ADICIONAR ESTE CAMPO
+      type: DataTypes.DATE,
+      allowNull: true,
+      defaultValue: null,
     },
   },
   {
