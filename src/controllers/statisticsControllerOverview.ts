@@ -188,7 +188,7 @@ export const getInactiveStudents = async (req: Request, res: Response): Promise<
         const cutoffDate = new Date();
         cutoffDate.setDate(cutoffDate.getDate() - days);
 
-        // Buscar alunos que fizeram check-in antes da data de corte
+        // Buscar último check-in de cada aluno
         const lastCheckins = await ClassStudent.findAll({
             attributes: [
                 'studentId',
@@ -198,39 +198,43 @@ export const getInactiveStudents = async (req: Request, res: Response): Promise<
                 checkin: { [Op.not]: null }
             },
             group: ['studentId'],
-            having: literal(`MAX(checkin) < '${cutoffDate.toISOString()}'`),
             raw: true
         });
 
-        // Enriquecer com dados do aluno
+        // Filtrar apenas os que estão inativos (último check-in antes da data de corte)
         const inactiveStudents = await Promise.all(
-            lastCheckins.map(async (record: any) => {
-                const person = await Person.findByPk(record.studentId, {
-                    attributes: ['id', 'name']
-                });
+            lastCheckins
+                .filter((record: any) => {
+                    const lastDate = new Date(record.lastCheckin);
+                    return lastDate < cutoffDate;
+                })
+                .map(async (record: any) => {
+                    const person = await Person.findByPk(record.studentId, {
+                        attributes: ['id', 'name']
+                    });
 
-                // Buscar créditos disponíveis
-                const credits = await Credit.sum('availableCredits', {
-                    where: {
-                        idCustomer: record.studentId,
-                        status: 'valid',
-                        expirationDate: { [Op.gte]: new Date() }
-                    }
-                }) || 0;
+                    // Buscar créditos disponíveis
+                    const credits = await Credit.sum('availableCredits', {
+                        where: {
+                            idCustomer: record.studentId,
+                            status: 'valid',
+                            expirationDate: { [Op.gte]: new Date() }
+                        }
+                    }) || 0;
 
-                const lastClassDate = new Date(record.lastCheckin);
-                const daysInactive = Math.floor(
-                    (new Date().getTime() - lastClassDate.getTime()) / (1000 * 60 * 60 * 24)
-                );
+                    const lastClassDate = new Date(record.lastCheckin);
+                    const daysInactive = Math.floor(
+                        (new Date().getTime() - lastClassDate.getTime()) / (1000 * 60 * 60 * 24)
+                    );
 
-                return {
-                    studentId: record.studentId,
-                    name: person?.name || 'Desconhecido',
-                    lastClassDate: record.lastCheckin,
-                    daysInactive,
-                    credits: Math.round(credits)
-                };
-            })
+                    return {
+                        studentId: record.studentId,
+                        name: person?.name || 'Desconhecido',
+                        lastClassDate: lastClassDate.toISOString(),
+                        daysInactive,
+                        credits: Math.round(credits)
+                    };
+                })
         );
 
         return res.status(200).json({
