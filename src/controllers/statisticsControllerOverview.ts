@@ -117,19 +117,23 @@ export const getTopStudents = async (req: Request, res: Response): Promise<Respo
         const firstDayMonth = new Date(now.getFullYear(), now.getMonth(), 1);
         const start = period ? new Date(period) : firstDayMonth;
 
-        // Buscar alunos com mais aulas
+        // Buscar alunos com mais aulas (baseado na data da Class)
         const topStudents = await ClassStudent.findAll({
             attributes: [
                 'studentId',
-                [fn('COUNT', col('classId')), 'classCount'],
-                [fn('COUNT', fn('DISTINCT', fn('DATE', col('checkin')))), 'uniqueDays']
+                [fn('COUNT', col('ClassStudent.classId')), 'classCount'],
+                [fn('COUNT', fn('DISTINCT', fn('DATE', col('Class.date')))), 'uniqueDays']
             ],
-            where: {
-                checkin: { [Op.not]: null },
-                createdAt: { [Op.gte]: start }
-            },
+            include: [{
+                model: Class,
+                attributes: [],
+                where: {
+                    date: { [Op.gte]: start }
+                },
+                required: true
+            }],
             group: ['studentId'],
-            order: [[fn('COUNT', col('classId')), 'DESC']],
+            order: [[fn('COUNT', col('ClassStudent.classId')), 'DESC']],
             limit: parseInt(limit.toString()),
             raw: true
         });
@@ -137,28 +141,36 @@ export const getTopStudents = async (req: Request, res: Response): Promise<Respo
         // Enriquecer com dados do aluno
         const enrichedStudents = await Promise.all(
             topStudents.map(async (student: any) => {
-                const person = await Person.findByPk(student.studentId, {
+                const studentData: any = student;
+                const person = await Person.findByPk(studentData.studentId, {
                     attributes: ['id', 'name']
                 });
 
                 // Calcular taxa de presença
                 const scheduledClasses = await ClassStudent.count({
+                    include: [{
+                        model: Class,
+                        attributes: [],
+                        where: {
+                            date: { [Op.gte]: start }
+                        },
+                        required: true
+                    }],
                     where: {
-                        studentId: student.studentId,
-                        createdAt: { [Op.gte]: start }
+                        studentId: studentData.studentId
                     }
                 });
 
-                const attendedClasses = parseInt(student.classCount);
+                const attendedClasses = parseInt(studentData.classCount);
                 const attendanceRate = scheduledClasses > 0
                     ? ((attendedClasses / scheduledClasses) * 100).toFixed(0)
                     : 0;
 
                 return {
-                    studentId: student.studentId,
+                    studentId: studentData.studentId,
                     name: person?.name || 'Desconhecido',
                     classCount: attendedClasses,
-                    streak: parseInt(student.uniqueDays || 0),
+                    streak: parseInt(studentData.uniqueDays || 0),
                     attendanceRate: parseInt(attendanceRate.toString())
                 };
             })
@@ -187,25 +199,31 @@ export const getInactiveStudents = async (req: Request, res: Response): Promise<
 
         const cutoffDate = new Date();
         cutoffDate.setDate(cutoffDate.getDate() - days);
+        const today = new Date();
 
-        // Buscar último check-in de cada aluno
-        const lastCheckins = await ClassStudent.findAll({
+        // Buscar a última aula de cada aluno (através do relacionamento Class)
+        const studentsWithLastClass = await ClassStudent.findAll({
             attributes: [
                 'studentId',
-                [fn('MAX', col('checkin')), 'lastCheckin']
+                [fn('MAX', col('Class.date')), 'lastClassDate']
             ],
-            where: {
-                checkin: { [Op.not]: null }
-            },
+            include: [{
+                model: Class,
+                attributes: [],
+                where: {
+                    date: { [Op.lt]: today } // Apenas aulas passadas
+                },
+                required: true
+            }],
             group: ['studentId'],
             raw: true
         });
 
-        // Filtrar apenas os que estão inativos (último check-in antes da data de corte)
+        // Filtrar apenas os inativos e enriquecer com dados
         const inactiveStudents = await Promise.all(
-            lastCheckins
+            studentsWithLastClass
                 .filter((record: any) => {
-                    const lastDate = new Date(record.lastCheckin);
+                    const lastDate = new Date(record.lastClassDate);
                     return lastDate < cutoffDate;
                 })
                 .map(async (record: any) => {
@@ -222,9 +240,9 @@ export const getInactiveStudents = async (req: Request, res: Response): Promise<
                         }
                     }) || 0;
 
-                    const lastClassDate = new Date(record.lastCheckin);
+                    const lastClassDate = new Date(record.lastClassDate);
                     const daysInactive = Math.floor(
-                        (new Date().getTime() - lastClassDate.getTime()) / (1000 * 60 * 60 * 24)
+                        (today.getTime() - lastClassDate.getTime()) / (1000 * 60 * 60 * 24)
                     );
 
                     return {
