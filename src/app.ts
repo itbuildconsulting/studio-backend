@@ -27,6 +27,7 @@ import emailTestRoutes from './routes/emailTestRoutes';
 import parqRoutes from './routes/parqRoutes';
 import contractRoutes from './routes/contractRoutes';
 import resultsRoutes from './routes/resultsRoutes';
+import performanceRoutes from './routes/statisticsRoutes';
 
 const app: Application = express();
 
@@ -69,6 +70,7 @@ app.use('/api/email', emailTestRoutes);
 app.use('/parq', parqRoutes);
 app.use('/contracts', contractRoutes);
 app.use('/results', resultsRoutes);
+app.use('/performance', performanceRoutes);
 
 
 // Configuração do Swagger
