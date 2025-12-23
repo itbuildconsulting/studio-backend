@@ -364,7 +364,7 @@ async function createTransaction(checkout: any) {
         const response = await fetch('https://api.pagar.me/core/v5/orders', {
             method: 'POST',
             headers: {
-                'Authorization': 'Basic ' + Buffer.from("sk_test_ff6bdd05222244b48cf7a8544a86584c:").toString('base64'),
+                'Authorization': 'Basic ' + Buffer.from(`${process.env.PAGARME_SECRET_KEY}:`).toString('base64'),
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify(checkout)
@@ -499,7 +499,7 @@ export const cancelPaymentAndRefund = async (req: Request, res: Response): Promi
       const response = await fetch(`https://api.pagar.me/core/v5/charges/${paymentId}`, {
         method: 'DELETE',
         headers: {
-          'Authorization': 'Basic ' + Buffer.from("sk_test_ff6bdd05222244b48cf7a8544a86584c:").toString('base64'),
+          'Authorization': 'Basic ' + Buffer.from(`${process.env.PAGARME_SECRET_KEY}:`).toString('base64'),
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
@@ -508,7 +508,6 @@ export const cancelPaymentAndRefund = async (req: Request, res: Response): Promi
       });
   
       const data = await response.json();
-      console.log('AQUIII', data)
   
       if (response.ok && data.status === 'canceled') {
         return { success: true, data }; // Retorna o resultado da resposta com sucesso

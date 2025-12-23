@@ -17,28 +17,34 @@ import WaitingList from '../models/WaitingList.model';
 import sequelize from '../config/database';
 import NotificationToken from '../models/NotificationToken.model';
 import OtpCode from '../models/OtpCode';
+import ContractSignature from '../models/ContractSignature';
+import ContractVersion from '../models/ContractVersion';
+import ParQ from '../models/ParQ.model';
 
 // Definir funções do controlador
 export const seedController = {
     // Sincronizar tabelas
     async post(_req: Request, res: Response, _next: NextFunction): Promise<Response | void> {
         try {
-            await Place.sync();
-            await ProductType.sync();
-            await Person.sync();
-            await Product.sync();
-            await Balance.sync();            
-            await Class.sync();
-            await Bike.sync();
-            await ClassStudent.sync();            
-            await Transactions.sync();
-            await Item.sync();
-            await Level.sync();
-            await Credit.sync(); 
-            await Config.sync(); 
-            await WaitingList.sync();
-            await NotificationToken.sync();
-            await OtpCode.sync();
+            await Place.sync(); //OK
+            await ProductType.sync(); //OK
+            await Person.sync(); //OK
+            await Product.sync(); //OK
+            await Balance.sync(); //OK           
+            await Class.sync(); //OK
+            await Bike.sync(); //OK
+            await ClassStudent.sync();//OK
+            await Transactions.sync(); //OK
+            await Item.sync(); //OK
+            await Level.sync(); //OK
+            await Credit.sync(); //OK
+            await Config.sync(); //OK
+            await WaitingList.sync(); //OK
+            await NotificationToken.sync(); //OK
+            await OtpCode.sync(); //OK
+            await ContractSignature.sync();//OK
+            await ContractVersion.sync()//OK
+            await ParQ.sync() //OK
 
             //await sequelize.sync({ alter: true });
             
@@ -51,19 +57,19 @@ export const seedController = {
 
     // Adicionar dados iniciais
     async addFirstData(_req: Request, res: Response, _next: NextFunction): Promise<Response | void> {
-        const passwordHash = await bcrypt.hash('testing', 10);
+        const passwordHash = await bcrypt.hash('C2rio@2021', 10);
         try {
             const person = await Person.create({
-                name: "admin",
-                identity: "000000000",
-                email: "admin@example.com",
-                phone: "00000000",
-                birthday: new Date("1994-05-17"),
+                name: "Richard Salles",
+                identity: "05552131703",
+                email: "richard.danielcs@gmail.com",
+                phone: "21969167953",
+                birthday: new Date("1994-03-28"),
                 active: 1,
-                address: "7221, Avenida Dra Ruth Cardoso, Pinheiro",
-                zipCode: "05425070",
-                city: "São Paulo",
-                state: "SP",
+                address: "Avenida José Cortes Junior",
+                zipCode: "24340300",
+                city: "Niteroi",
+                state: "RJ",
                 country: "BR",
                 height: 160,
                 weight: 100,
