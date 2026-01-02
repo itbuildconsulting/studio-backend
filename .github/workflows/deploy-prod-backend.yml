@@ -2,7 +2,7 @@ name: Deploy Backend (production)
 
 on:
   push:
-    branches: [main]
+    branches: [release]
 
 jobs:
   backend:
@@ -39,7 +39,7 @@ jobs:
         run: |
           ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no root@212.85.2.8 << 'EOF'
             cd /var/www/prod/spingo-backend
-            git pull origin main
+            git pull origin release
             npm install
             npm run build
              PORT=4200 NODE_ENV=production pm2 restart spingo-backend-prod --update-env || \

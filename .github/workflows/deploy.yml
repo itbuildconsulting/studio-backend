@@ -1,4 +1,4 @@
-name: Deploy Fullstack
+name: Deploy Staiging
 
 on:
   push:

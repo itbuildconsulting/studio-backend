@@ -20,6 +20,8 @@ import WaitingList from '../models/WaitingList.model';
 import { sendPushToPersons } from '../services/pushService';
 import Item from '../models/Item.model';
 
+import { checkProductUsageRestriction, getStudentProductByType } from '../services/productUsageRestriction';
+
 /*export const balance = async (req: Request, res: Response): Promise<Response | void> => {
     const personId = req.body.user?.id;    
 
@@ -343,7 +345,7 @@ export const addStudentToClassWithBikeNumber = async (req: Request, res: Respons
     // 2) Descobrir o productTypeId exigido para essa aula
     const productTypeId = classData.productTypeId ?? productTypeIdFromBody;
     if (!productTypeId) {
-      return res.status(400).json({ message: 'productTypeId da aula não definido. Envie no body ou registre na Class.' });
+      return res.status(400).json({ message: 'productTypeId da aula não definido.' });
     }
 
     // 3) Verificar se o aluno já está inscrito (checagem rápida fora da tx)
@@ -358,12 +360,37 @@ export const addStudentToClassWithBikeNumber = async (req: Request, res: Respons
       return res.status(400).json({ message: 'Bike não está disponível' });
     }
 
+    // 5) ⭐ NOVA VALIDAÇÃO: Verificar restrição de uso do produto
+    const product = await getStudentProductByType(studentId, productTypeId);
+    
+    if (product) {
+      const restrictionCheck = await checkProductUsageRestriction(
+        studentId,
+        product.id,
+        classData.date
+      );
+
+      if (!restrictionCheck.canUse) {
+        return res.status(400).json({
+          success: false,
+          message: restrictionCheck.message,
+          restriction: {
+            type: product.usageRestrictionType,
+            limit: restrictionCheck.limit,
+            currentUsage: restrictionCheck.currentUsage,
+            periodStart: restrictionCheck.periodStart,
+            periodEnd: restrictionCheck.periodEnd,
+          },
+        });
+      }
+    }
+
     // ---------- Transação para garantir atomicidade ----------
     const t = await sequelize.transaction();
     try {
       const now = new Date();
 
-      // (Re)verificações sob lock para evitar corrida:
+      // (Re)verificações sob lock para evitar corrida
       const alreadyEnrolled = await ClassStudent.findOne({
         where: { classId, studentId },
         transaction: t,
@@ -378,9 +405,9 @@ export const addStudentToClassWithBikeNumber = async (req: Request, res: Respons
       const creditLot = await Credit.findOne({
         where: {
           idCustomer: studentId,
-          productTypeId,            // *** tipo correto ***
-          status: 'valid',          // apenas válidos
-          expirationDate: { [Op.gte]: now }, // não vencidos
+          productTypeId,
+          status: 'valid',
+          expirationDate: { [Op.gte]: now },
           availableCredits: { [Op.gt]: 0 },
         },
         order: [
@@ -388,15 +415,17 @@ export const addStudentToClassWithBikeNumber = async (req: Request, res: Respons
           ['id', 'ASC'],
         ],
         transaction: t,
-        lock: t.LOCK.UPDATE, // row lock
+        lock: t.LOCK.UPDATE,
       });
 
       if (!creditLot) {
         await t.rollback();
-        return res.status(400).json({ message: 'Créditos insuficientes para esse tipo de aula (ou todos vencidos).' });
+        return res.status(400).json({ 
+          message: 'Créditos insuficientes para esse tipo de aula (ou todos vencidos).' 
+        });
       }
 
-      // Criar/atribuir a bike dentro da tx (re-checa disponibilidade sob lock)
+      // Criar/atribuir a bike dentro da tx
       const bike = existingBike
         ? existingBike
         : await Bike.create(
@@ -405,21 +434,20 @@ export const addStudentToClassWithBikeNumber = async (req: Request, res: Respons
           );
 
       if (existingBike) {
-        // se já existia e estava "available", travar e marcar em uso
         await existingBike.update(
           { studentId, status: 'in_use' },
           { transaction: t }
         );
       }
 
-      // Criar vínculo do aluno com a aula (salvando de qual LOTE consumimos via creditBatch)
+      // Criar vínculo do aluno com a aula
       await ClassStudent.create(
         {
           classId,
           PersonId: studentId,
           studentId,
           bikeId: bike.id,
-          transactionId: creditLot.creditBatch, // rastreabilidade do lote consumido
+          transactionId: creditLot.creditBatch,
           status: 1
         },
         { transaction: t }
@@ -432,10 +460,18 @@ export const addStudentToClassWithBikeNumber = async (req: Request, res: Respons
       await creditLot.save({ transaction: t });
 
       await t.commit();
+      
       return res.status(200).json({
         success: true,
         message: 'Aluno adicionado à aula, bike atribuída e 1 crédito consumido (FEFO).',
+        usageInfo: product ? {
+          productName: product.name,
+          restrictionType: product.usageRestrictionType,
+          usageLimit: product.usageRestrictionLimit,
+          currentUsage: restrictionCheck?.currentUsage,
+        } : null,
       });
+      
     } catch (err) {
       await t.rollback();
       console.error('Erro durante a transação:', err);

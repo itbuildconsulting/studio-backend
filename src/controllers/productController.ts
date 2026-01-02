@@ -6,7 +6,16 @@ import Place from '../models/Place.model';
 // CREATE
 export const createProduct = async (req: Request, res: Response): Promise<Response> => {
     try {
-        const { name, credit, validateDate, productTypeId, value, active } = req.body;
+        const { 
+            name, 
+            credit, 
+            validateDate, 
+            productTypeId, 
+            value, 
+            active,
+            usageRestrictionType = 'none',
+            usageRestrictionLimit = null
+        } = req.body;
 
         // Validação dos campos obrigatórios
         const validationError = validateProductData(req.body);
@@ -14,9 +23,39 @@ export const createProduct = async (req: Request, res: Response): Promise<Respon
             return res.status(400).json({ success: false, error: validationError });
         }
 
+        // Validação adicional para restrições de uso
+        if (usageRestrictionType !== 'none' && !usageRestrictionLimit) {
+            return res.status(400).json({ 
+                success: false, 
+                error: 'Quando há restrição de uso, o limite deve ser informado' 
+            });
+        }
+
+        if (usageRestrictionLimit && usageRestrictionLimit < 1) {
+            return res.status(400).json({ 
+                success: false, 
+                error: 'O limite de uso deve ser maior que zero' 
+            });
+        }
+
         // Criação do novo produto
-        const newProduct = await Product.create({ name, credit, validateDate, productTypeId, value, active });
-        return res.status(201).json({ success: true, message: 'Produto criado com sucesso', id: newProduct.id });
+        const newProduct = await Product.create({ 
+            name, 
+            credit, 
+            validateDate, 
+            productTypeId, 
+            value, 
+            active,
+            usageRestrictionType,
+            usageRestrictionLimit
+        });
+        
+        return res.status(201).json({ 
+            success: true, 
+            message: 'Produto criado com sucesso', 
+            id: newProduct.id,
+            data: newProduct
+        });
     } catch (error) {
         console.error('Erro ao criar produto:', error);
         return res.status(500).json({ success: false, error: 'Erro ao criar produto' });
@@ -186,34 +225,59 @@ export const getDropdownProducts = async (req: Request, res: Response): Promise<
 export const updateProduct = async (req: Request, res: Response): Promise<Response> => {
     try {
         const { id } = req.params;
-        const { name, credit, validateDate, productTypeId, value, active } = req.body;
+        const { 
+            name, 
+            credit, 
+            validateDate, 
+            productTypeId, 
+            value, 
+            active,
+            purchaseLimit,
+            usageRestrictionType,
+            usageRestrictionLimit
+        } = req.body;
 
-        // Validação dos campos obrigatórios
-        const validationError = validateProductData(req.body);
-        if (validationError) {
-            return res.status(400).json({ success: false, error: validationError });
-        }
-
-        // Verifica se o produto existe
         const product = await Product.findByPk(id);
         if (!product) {
-            return res.status(404).json({ success: false, error: 'Produto não encontrado' });
+            return res.status(404).send('Produto não encontrado');
         }
 
-        // Atualização do produto
-        product.name = name;
-        product.credit = credit;
-        product.validateDate = validateDate;
-        product.productTypeId = productTypeId;
-        product.value = value;
-        product.active = active;
+        // Validação adicional para restrições de uso
+        if (usageRestrictionType !== 'none' && !usageRestrictionLimit) {
+            return res.status(400).json({ 
+                success: false, 
+                error: 'Quando há restrição de uso, o limite deve ser informado' 
+            });
+        }
+
+        if (usageRestrictionLimit && usageRestrictionLimit < 1) {
+            return res.status(400).json({ 
+                success: false, 
+                error: 'O limite de uso deve ser maior que zero' 
+            });
+        }
+
+        // Atualizar campos
+        product.name = name || product.name;
+        product.credit = credit || product.credit;
+        product.validateDate = validateDate || product.validateDate;
+        product.productTypeId = productTypeId || product.productTypeId;
+        product.value = value || product.value;
+        product.active = active !== undefined ? active : product.active;
+        product.purchaseLimit = purchaseLimit !== undefined ? purchaseLimit : product.purchaseLimit;
+        product.usageRestrictionType = usageRestrictionType || product.usageRestrictionType;
+        product.usageRestrictionLimit = usageRestrictionLimit !== undefined ? usageRestrictionLimit : product.usageRestrictionLimit;
 
         await product.save();
 
-        return res.status(200).json({ success: true, message: 'Produto atualizado com sucesso' });
+        return res.status(200).json({
+            success: true,
+            message: 'Produto atualizado com sucesso',
+            data: product
+        });
     } catch (error) {
         console.error('Erro ao atualizar produto:', error);
-        return res.status(500).json({ success: false, error: 'Erro ao atualizar produto' });
+        return res.status(500).send('Erro ao atualizar produto');
     }
 };
 
@@ -241,16 +305,24 @@ export const deleteProduct = async (req: Request, res: Response): Promise<Respon
 };
 
 // Função de validação dos campos obrigatórios
-const validateProductData = (productData: any) => {
-    const { name, credit, validateDate, productTypeId, value, active } = productData;
+function validateProductData(data: any): string | null {
+    const { name, credit, validateDate, productTypeId, value } = data;
 
-    if (!name || name.trim() === '') return 'O campo name é obrigatório';
-    if (!credit) return 'O campo credit é obrigatório';
-    if (credit < 0) return 'O valor de crédito não pode ser negativo.';
-    if (!validateDate) return 'O campo validateDate é obrigatório';
-    if (!productTypeId) return 'O campo productTypeId é obrigatório';
-    if (!value) return 'O campo value é obrigatório';
-    if (active === undefined) return 'O campo active é obrigatório';
+    if (!name || typeof name !== 'string') {
+        return 'Nome do produto é obrigatório e deve ser uma string.';
+    }
+    if (credit === undefined || typeof credit !== 'number') {
+        return 'Créditos são obrigatórios e devem ser um número.';
+    }
+    if (validateDate === undefined || typeof validateDate !== 'number') {
+        return 'Data de validade é obrigatória e deve ser um número.';
+    }
+    if (!productTypeId || typeof productTypeId !== 'number') {
+        return 'Tipo de produto é obrigatório e deve ser um número.';
+    }
+    if (value === undefined || typeof value !== 'number') {
+        return 'Valor é obrigatório e deve ser um número.';
+    }
 
-    return null;  // Retorna null se todos os campos estiverem válidos
-};
+    return null; // Se tudo estiver válido
+}
