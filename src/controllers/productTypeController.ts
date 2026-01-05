@@ -33,6 +33,7 @@ export const createProductType = async (req: Request, res: Response): Promise<Re
 export const getAllProductTypes = async (_req: Request, res: Response): Promise<Response> => {
     try {
         const productTypes = await ProductType.findAll({
+            where: { active: 1 },
             include: [
                 {
                     model: Place,
@@ -55,6 +56,7 @@ export const getAllProductTypes = async (_req: Request, res: Response): Promise<
 export const getDropdownProductTypes = async (_req: Request, res: Response): Promise<Response> => {
     try {
         const dropdownData = await ProductType.findAll({
+            where: { active: 1 },
             attributes: ['id', 'name'],
             include: [{
                 model: Place,
