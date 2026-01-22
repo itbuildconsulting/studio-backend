@@ -379,8 +379,7 @@ export const getByCriteriaStudent = async (req: Request, res: Response): Promise
             })
         );
 
-        const totalPages = Math.ceil(count / limit);
-
+        
         return res.status(200).json({
             success: true,
             data: studentsWithLevel, // ✅ Retorna com info de nível
