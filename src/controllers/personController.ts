@@ -4,6 +4,7 @@ import Person from '../models/Person.model';
 import bcrypt from 'bcryptjs';
 import OtpCode from '../models/OtpCode';
 import { sendOtpFor } from '../core/email/opt';
+import Level from '../models/Level.model';
 
 // util: normalizar e-mail
 const normalizeEmail = (e?: string) => String(e || '').trim().toLowerCase();
@@ -264,7 +265,25 @@ export const getPersonById = async (req: Request, res: Response): Promise<Respon
             attributes: { exclude: ['password', 'resetToken', 'tokenVersion'] }, // ajuste a lista
         });
         if (!person) return res.status(404).send('Pessoa não encontrada');
-            return res.status(200).json(person);
+        
+        let levelInfo = null;
+        if (person.student_level) {
+            const level = await Level.findByPk(person.student_level);
+            if (level) {
+                levelInfo = {
+                    id: level.id,
+                    name: level.name,
+                    color: level.color,
+                    numberOfClasses: level.numberOfClasses,
+                };
+            }
+        }
+        
+        return res.status(200).json({
+            ...person.toJSON(),
+            levelInfo, // ✅ Adiciona info do nível
+        });
+        
     } catch (error) {
         console.error('Erro ao buscar pessoa:', error);
         return res.status(500).send('Erro ao buscar pessoa');
@@ -279,38 +298,32 @@ export const getByCriteriaEmployee = async (req: Request, res: Response): Promis
         // Critérios básicos: Apenas funcionários
         const criteria: any = { employee: true };
 
-        // Se os campos forem passados, verifica se não estão vazios e adiciona aos critérios
         if (email && email.trim() !== "") criteria.email = email;
         if (name && name.trim() !== "") criteria.name = { [Op.like]: `%${name}%` };
         if (identity && identity.trim() !== "") criteria.identity = identity;
-        if (active !== undefined) criteria.active = active; // Filtro por status ativo/inativo
+        if (active !== undefined) criteria.active = active;
 
-        // Configurar paginação
-        const limit = parseInt(pageSize, 10); // Número de registros por página
-        const offset = (parseInt(page, 10) - 1) * limit; // Deslocamento
+        const limit = parseInt(pageSize, 10);
+        const offset = (parseInt(page, 10) - 1) * limit;
 
-        // Busca pessoas com os critérios fornecidos e paginação
-        const { rows: people, count: totalRecords } = await Person.findAndCountAll({
+        const { count, rows } = await Person.findAndCountAll({
             where: criteria,
+            attributes: { exclude: ['password', 'resetToken', 'tokenVersion'] },
             limit,
             offset,
+            order: [['createdAt', 'DESC']],
         });
 
-        if (!people || people.length === 0) {
-            return res.status(404).json({
-                success: false,
-                message: 'Nenhum funcionário encontrado com os critérios fornecidos'
-            });
-        }
+        const totalPages = Math.ceil(count / limit);
 
         return res.status(200).json({
             success: true,
-            data: people,
+            data: rows,
             pagination: {
-                totalRecords,
-                totalPages: Math.ceil(totalRecords / limit),
-                currentPage: parseInt(page, 10),
+                total: count,
+                page: parseInt(page, 10),
                 pageSize: limit,
+                totalPages,
             },
         });
     } catch (error) {
@@ -607,6 +620,59 @@ export const validateUserExistsIdentity = async (req: Request, res: Response): P
             message: 'Erro ao validar CPF.'
         });
     }
+};
+
+export const updateStudentLevel = async (req: Request, res: Response): Promise<Response> => {
+  try {
+    const { id } = req.params;
+    const { student_level } = req.body;
+
+    if (!student_level) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'student_level é obrigatório' 
+      });
+    }
+
+    const person = await Person.findByPk(id);
+    if (!person) {
+      return res.status(404).json({ 
+        success: false, 
+        error: 'Pessoa não encontrada' 
+      });
+    }
+
+    // Verificar se o nível existe
+    const level = await Level.findByPk(student_level);
+    if (!level) {
+      return res.status(404).json({ 
+        success: false, 
+        error: 'Nível não encontrado' 
+      });
+    }
+
+    // Atualizar apenas o student_level
+    person.student_level = student_level;
+    await person.save();
+
+    return res.status(200).json({
+      success: true,
+      message: 'Nível do aluno atualizado com sucesso',
+      data: {
+        id: person.id,
+        name: person.name,
+        student_level: person.student_level,
+        level_name: level.name,
+        level_color: level.color,
+      }
+    });
+  } catch (error) {
+    console.error('Erro ao atualizar nível do aluno:', error);
+    return res.status(500).json({ 
+      success: false, 
+      error: 'Erro ao atualizar nível do aluno' 
+    });
+  }
 };
 
 

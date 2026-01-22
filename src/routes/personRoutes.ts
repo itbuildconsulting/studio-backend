@@ -12,7 +12,8 @@ import {
     deletePerson, 
     validateUserExistsEmail,
     validateUserExistsIdentity,
-    createPersonInternal
+    createPersonInternal,
+    updateStudentLevel
 } from '../controllers/personController';
 
 const router = Router();
@@ -264,5 +265,7 @@ router.post('/remove/:id', authenticateToken, deletePerson);
 router.post('/validateUserExistsEmail', validateUserExistsEmail);
 
 router.post('/validateUserExistsIdentity', validateUserExistsIdentity);
+
+router.put('/:id/student-level', authenticateToken, updateStudentLevel);
 
 export default router;
