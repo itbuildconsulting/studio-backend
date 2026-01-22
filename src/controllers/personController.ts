@@ -350,7 +350,7 @@ export const getByCriteriaStudent = async (req: Request, res: Response): Promise
         const limit = parseInt(pageSize, 10);
         const offset = (parseInt(page, 10) - 1) * limit;
 
-        const { count, rows } = await Person.findAndCountAll({
+        const { count: totalRecords, rows } = await Person.findAndCountAll({
             where: criteria,
             attributes: { exclude: ['password', 'resetToken', 'tokenVersion'] },
             limit,
@@ -385,10 +385,10 @@ export const getByCriteriaStudent = async (req: Request, res: Response): Promise
             success: true,
             data: studentsWithLevel, // ✅ Retorna com info de nível
             pagination: {
-                total: count,
-                page: parseInt(page, 10),
+                totalRecords,
+                totalPages: Math.ceil(totalRecords / limit),
+                currentPage: parseInt(page, 10),
                 pageSize: limit,
-                totalPages,
             },
         });
     } catch (error) {
