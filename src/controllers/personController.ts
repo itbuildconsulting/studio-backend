@@ -342,10 +342,10 @@ export const getByCriteriaStudent = async (req: Request, res: Response): Promise
 
         const criteria: any = { employee: false };
 
-        if (email && email.trim() !== "") criteria.email = email;
-        if (name && name.trim() !== "") criteria.name = { [Op.like]: `%${name}%` };
-        if (identity && identity.trim() !== "") criteria.identity = identity;
-        if (active !== undefined) criteria.active = active;
+        if (email && email.trim() !== "") criteria.email = { [Op.like]: `%${email}%` }; // Busca parcial por e-mail
+        if (name && name.trim() !== "") criteria.name = { [Op.like]: `%${name}%` }; // Busca parcial por nome
+        if (identity && identity.trim() !== "") criteria.identity = { [Op.like]: `%${identity}%` }; // Busca parcial por identidade
+        if (active !== undefined) criteria.active = active; // Filtro por status ativo/inativo
 
         const limit = parseInt(pageSize, 10);
         const offset = (parseInt(page, 10) - 1) * limit;
