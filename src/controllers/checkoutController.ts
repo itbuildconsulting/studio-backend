@@ -374,10 +374,13 @@ async function createTransaction(checkout: any) {
   
         if (!response.ok) {
             // Retornando erro como parte do objeto de resposta
+           console.error('Falha ao criar transação:', data.message);
+            console.error('Detalhes do erro:', data.data);
+            // Tratar o erro adequadamente
             return {
                 success: false,
-                message: data.message || 'Erro na transação',
-                data: data
+                error: data.message,
+                details: data.data
             };
         }
   

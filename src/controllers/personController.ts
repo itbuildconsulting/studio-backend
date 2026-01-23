@@ -378,7 +378,6 @@ export const getByCriteriaStudent = async (req: Request, res: Response): Promise
                 };
             })
         );
-
         
         return res.status(200).json({
             success: true,
