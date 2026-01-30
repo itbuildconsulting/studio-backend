@@ -361,6 +361,9 @@ export const checkoutCash = async (req: Request, res: Response): Promise<Respons
 async function createTransaction(checkout: any) {
     
     try {
+        console.log('🔵 Iniciando transação Pagar.me...');
+        console.log('📦 Payload enviado:', JSON.stringify(checkout, null, 2));
+        
         const response = await fetch('https://api.pagar.me/core/v5/orders', {
             method: 'POST',
             headers: {
@@ -371,20 +374,27 @@ async function createTransaction(checkout: any) {
         });
   
         const data = await response.json();
+        
+        console.log('📊 Status da resposta:', response.status);
+        console.log('📄 Resposta completa:', JSON.stringify(data, null, 2));
   
         if (!response.ok) {
-            // Retornando erro como parte do objeto de resposta
-           console.error('Falha ao criar transação:', data.message);
-            console.error('Detalhes do erro:', data.data);
-            // Tratar o erro adequadamente
+            console.error('❌ Falha ao criar transação');
+            console.error('Status HTTP:', response.status);
+            console.error('Mensagem:', data.message || 'Sem mensagem');
+            console.error('Erros detalhados:', JSON.stringify(data.errors || data, null, 2));
+            
             return {
                 success: false,
-                error: data.message,
-                details: data.data
+                error: data.message || 'Erro na transação',
+                details: data.errors || data, // Pagar.me retorna "errors", não "data"
+                statusCode: response.status
             };
         }
   
-        // Retornando sucesso com dados
+        console.log('✅ Transação criada com sucesso');
+        console.log('ID da Order:', data.id);
+        
         return {
             success: true,
             message: 'Transação criada com sucesso',
@@ -392,11 +402,12 @@ async function createTransaction(checkout: any) {
         };
   
     } catch (error: any) {
-        console.error('Erro na API Pagar.me:', error);
+        console.error('💥 Erro crítico na API Pagar.me:', error);
+        console.error('Stack trace:', error.stack);
+        
         return {
             success: false,
             message: error.message || 'Erro interno no servidor',
-            data: error.response ? await error.response.json() : null
         };
     }
 }
