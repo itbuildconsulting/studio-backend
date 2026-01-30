@@ -1,6 +1,7 @@
 import express, { Router } from 'express';
 import { cancelPaymentAndRefund, checkout, checkoutCash } from '../controllers/checkoutController';
 import { authenticateToken } from '../core/token/authenticateToken'; // Importe o middleware de autenticação
+import { checkoutPix, checkPixStatus, pixWebhook } from '../controllers/pixController';
 
 const router: Router = express.Router();
 
@@ -12,5 +13,11 @@ router.post('/', authenticateToken, checkout);
 router.post('/dashboard', authenticateToken, checkoutCash);
 
 router.post('/cancelPaymentAndRefund', authenticateToken, cancelPaymentAndRefund);
+
+router.post('/pix', checkoutPix);
+
+router.post('/webhook/pix', pixWebhook);
+
+router.get('/pix/status/:chargeId', checkPixStatus);
 
 export default router;

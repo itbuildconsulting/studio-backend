@@ -340,36 +340,48 @@ export const getByCriteriaStudent = async (req: Request, res: Response): Promise
     try {
         const { email, name, identity, page = 1, pageSize = 10, active } = req.body;
 
-        // Critérios básicos: Apenas estudantes
         const criteria: any = { employee: false };
 
-        // Adicionar filtros dinâmicos com busca parcial
         if (email && email.trim() !== "") criteria.email = { [Op.like]: `%${email}%` }; // Busca parcial por e-mail
         if (name && name.trim() !== "") criteria.name = { [Op.like]: `%${name}%` }; // Busca parcial por nome
         if (identity && identity.trim() !== "") criteria.identity = { [Op.like]: `%${identity}%` }; // Busca parcial por identidade
         if (active !== undefined) criteria.active = active; // Filtro por status ativo/inativo
 
-        // Configurar paginação
-        const limit = parseInt(pageSize, 10); // Número de registros por página
-        const offset = (parseInt(page, 10) - 1) * limit; // Deslocamento
+        const limit = parseInt(pageSize, 10);
+        const offset = (parseInt(page, 10) - 1) * limit;
 
-        // Busca os registros com paginação
-        const { rows: students, count: totalRecords } = await Person.findAndCountAll({
+        const { count: totalRecords, rows } = await Person.findAndCountAll({
             where: criteria,
+            attributes: { exclude: ['password', 'resetToken', 'tokenVersion'] },
             limit,
             offset,
+            order: [['createdAt', 'DESC']],
         });
 
-        if (!students || students.length === 0) {
-            return res.status(404).json({
-                success: false,
-                message: 'Nenhum estudante encontrado com os critérios fornecidos',
-            });
-        }
-
+        // ✅ Buscar níveis de todos os alunos
+        const studentsWithLevel = await Promise.all(
+            rows.map(async (person) => {
+                let levelInfo = null;
+                if (person.student_level) {
+                    const level = await Level.findByPk(person.student_level);
+                    if (level) {
+                        levelInfo = {
+                            id: level.id,
+                            name: level.name,
+                            color: level.color,
+                        };
+                    }
+                }
+                return {
+                    ...person.toJSON(),
+                    levelInfo,
+                };
+            })
+        );
+        
         return res.status(200).json({
             success: true,
-            data: students,
+            data: studentsWithLevel, // ✅ Retorna com info de nível
             pagination: {
                 totalRecords,
                 totalPages: Math.ceil(totalRecords / limit),
@@ -378,10 +390,11 @@ export const getByCriteriaStudent = async (req: Request, res: Response): Promise
             },
         });
     } catch (error) {
-        console.error('Erro ao buscar estudantes:', error);
+        console.error('Erro ao buscar pessoas:', error);
         return res.status(500).json({
             success: false,
-            error: 'Erro ao buscar estudantes',
+            data: error,
+            error: 'Erro ao buscar pessoas',
         });
     }
 };
