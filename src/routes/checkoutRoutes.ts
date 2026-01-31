@@ -14,10 +14,10 @@ router.post('/dashboard', authenticateToken, checkoutCash);
 
 router.post('/cancelPaymentAndRefund', authenticateToken, cancelPaymentAndRefund);
 
-router.post('/pix', checkoutPix);
+router.post('/pix', authenticateToken, checkoutPix);
 
-router.post('/webhook/pix', pixWebhook);
+router.post('/webhook/pix', authenticateToken, pixWebhook);
 
-router.get('/pix/status/:chargeId', checkPixStatus);
+router.get('/pix/status/:chargeId', authenticateToken, checkPixStatus);
 
 export default router;
