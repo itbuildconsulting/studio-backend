@@ -8,12 +8,16 @@ const sequelize = new Sequelize(String(process.env.DB_NAME), String(process.env.
     port: 3306,
     timezone: "-03:00", // horário de Brasília
     pool: {
-        max: 20,      // Número máximo de conexões abertas
-        min: 5,       // Número mínimo de conexões
-        acquire: 60000, // Tempo máximo para tentar adquirir uma conexão (60 segundos)
-        idle: 10000    // Tempo máximo que uma conexão pode ficar ociosa (10 segundos)
-      },
-      logging: false, // opcional: desativa logs de SQL no console
+      max: 5,          // ✅ Reduzido de 20 para 5
+      min: 2,          // ✅ Reduzido de 5 para 2
+      acquire: 30000,  // ✅ Reduzido de 60s para 30s
+      idle: 600000,    // ✅ Aumentado de 10s para 10 minutos
+      evict: 60000     // ✅ Verifica conexões inativas a cada 1 minuto
+    },
+    logging: false, // opcional: desativa logs de SQL no console
+    retry: {
+      max: 3           // ✅ Tenta reconectar até 3 vezes
+    }
 });
 
 export default sequelize;

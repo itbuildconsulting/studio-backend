@@ -22,6 +22,7 @@ interface PaymentRequest {
     exp_month: string;
     exp_year: string;
     cvv: string;
+    installments: string;
 }
 
 interface CheckoutRequest {
@@ -75,7 +76,7 @@ export const checkout = async (req: Request, res: Response, ): Promise<Response 
                     if (!product) {
                         throw new Error(`Produto com ID ${item.productId} não encontrado`);
                     }
-                    creditTotal += product.credit;
+                    creditTotal += product.credit * Number(item.quantity);
                     const totalForCheckout = Math.round(product.value * 100); // 10500
                     productType = product.productTypeId
                     return {
@@ -139,7 +140,7 @@ export const checkout = async (req: Request, res: Response, ): Promise<Response 
                         {
                             payment_method: 'credit_card',
                             credit_card: {
-                                installments: 1,
+                                installments: payment.installments || 1,
                                 statement_descriptor: 'AVENGERS',
                                 card: {
                                     number: payment.number,
