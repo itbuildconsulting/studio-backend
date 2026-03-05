@@ -47,7 +47,7 @@ export const createProduct = async (req: Request, res: Response): Promise<Respon
             value, 
             active,
             usageRestrictionType,
-            usageRestrictionLimit
+            usageRestrictionLimit,
         });
         
         return res.status(201).json({ 

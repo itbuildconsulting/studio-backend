@@ -22,6 +22,7 @@ interface PaymentRequest {
     exp_month: string;
     exp_year: string;
     cvv: string;
+    installments: string;
 }
 
 interface CheckoutRequest {
@@ -75,7 +76,7 @@ export const checkout = async (req: Request, res: Response, ): Promise<Response 
                     if (!product) {
                         throw new Error(`Produto com ID ${item.productId} não encontrado`);
                     }
-                    creditTotal += product.credit;
+                    creditTotal += product.credit * Number(item.quantity);
                     const totalForCheckout = Math.round(product.value * 100); // 10500
                     productType = product.productTypeId
                     return {
@@ -139,7 +140,7 @@ export const checkout = async (req: Request, res: Response, ): Promise<Response 
                         {
                             payment_method: 'credit_card',
                             credit_card: {
-                                installments: 1,
+                                installments: payment.installments || 1,
                                 statement_descriptor: 'AVENGERS',
                                 card: {
                                     number: payment.number,
@@ -361,8 +362,6 @@ export const checkoutCash = async (req: Request, res: Response): Promise<Respons
 async function createTransaction(checkout: any) {
     
     try {
-        console.log('🔵 Iniciando transação Pagar.me...');
-        console.log('📦 Payload enviado:', JSON.stringify(checkout, null, 2));
         
         const response = await fetch('https://api.pagar.me/core/v5/orders', {
             method: 'POST',
@@ -375,9 +374,6 @@ async function createTransaction(checkout: any) {
   
         const data = await response.json();
         
-        console.log('📊 Status da resposta:', response.status);
-        console.log('📄 Resposta completa:', JSON.stringify(data, null, 2));
-  
         if (!response.ok) {
             console.error('❌ Falha ao criar transação');
             console.error('Status HTTP:', response.status);
@@ -391,10 +387,7 @@ async function createTransaction(checkout: any) {
                 statusCode: response.status
             };
         }
-  
-        console.log('✅ Transação criada com sucesso');
-        console.log('ID da Order:', data.id);
-        
+          
         return {
             success: true,
             message: 'Transação criada com sucesso',

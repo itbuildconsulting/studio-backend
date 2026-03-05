@@ -409,9 +409,7 @@ export const checkPixStatus = async (req: Request, res: Response): Promise<Respo
 
 async function createTransaction(checkout: any) {
     try {
-        console.log('🔵 Iniciando transação PIX na Pagar.me...');
-        console.log('📦 Payload enviado:', JSON.stringify(checkout, null, 2));
-        
+
         const response = await fetch('https://api.pagar.me/core/v5/orders', {
             method: 'POST',
             headers: {
@@ -423,9 +421,6 @@ async function createTransaction(checkout: any) {
   
         const data = await response.json();
         
-        console.log('📊 Status da resposta HTTP:', response.status);
-        console.log('📄 Resposta completa:', JSON.stringify(data, null, 2));
-  
         // CRÍTICO: Verificar gateway_response ANTES de considerar sucesso
         const lastTransaction = data.charges?.[0]?.last_transaction;
         const gatewayResponse = lastTransaction?.gateway_response;
@@ -502,13 +497,7 @@ async function createTransaction(checkout: any) {
                 details: lastTransaction
             };
         }
-  
-        // TUDO OK! Transação criada com sucesso
-        console.log('✅ Transação PIX criada com sucesso');
-        console.log('ID da Order:', data.id);
-        console.log('Status da transação:', transactionStatus);
-        console.log('QR Code gerado:', qrCode ? '✅ Sim' : '❌ Não');
-        
+          
         return {
             success: true,
             message: 'Transação PIX criada com sucesso',
