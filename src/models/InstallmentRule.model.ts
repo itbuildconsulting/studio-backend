@@ -67,6 +67,7 @@ InstallmentRule.init(
   {
     sequelize,
     tableName: 'installment_rules',
+    underscored: true,
     timestamps: true, // Cria createdAt e updatedAt automaticamente
   }
 );
