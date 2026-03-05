@@ -28,6 +28,8 @@ import parqRoutes from './routes/parqRoutes';
 import contractRoutes from './routes/contractRoutes';
 import resultsRoutes from './routes/resultsRoutes';
 import performanceRoutes from './routes/statisticsRoutes';
+import installmentRulesRoutes from './routes/installmentRulesRoutes';
+import paymentRoutes from './routes/paymentRoutes';
 
 const app: Application = express();
 
@@ -71,6 +73,8 @@ app.use('/parq', parqRoutes);
 app.use('/contracts', contractRoutes);
 app.use('/results', resultsRoutes);
 app.use('/performance', performanceRoutes);
+app.use('/installment-rules', installmentRulesRoutes);
+app.use('/payment', paymentRoutes);
 
 
 // Configuração do Swagger

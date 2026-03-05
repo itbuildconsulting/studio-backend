@@ -22,6 +22,7 @@ interface PaymentRequest {
     exp_month: string;
     exp_year: string;
     cvv: string;
+    installments: string;
 }
 
 interface CheckoutRequest {
@@ -75,7 +76,7 @@ export const checkout = async (req: Request, res: Response, ): Promise<Response 
                     if (!product) {
                         throw new Error(`Produto com ID ${item.productId} não encontrado`);
                     }
-                    creditTotal += product.credit;
+                    creditTotal += product.credit * Number(item.quantity);
                     const totalForCheckout = Math.round(product.value * 100); // 10500
                     productType = product.productTypeId
                     return {
@@ -139,7 +140,7 @@ export const checkout = async (req: Request, res: Response, ): Promise<Response 
                         {
                             payment_method: 'credit_card',
                             credit_card: {
-                                installments: 1,
+                                installments: payment.installments || 1,
                                 statement_descriptor: 'AVENGERS',
                                 card: {
                                     number: payment.number,
@@ -361,6 +362,7 @@ export const checkoutCash = async (req: Request, res: Response): Promise<Respons
 async function createTransaction(checkout: any) {
     
     try {
+        
         const response = await fetch('https://api.pagar.me/core/v5/orders', {
             method: 'POST',
             headers: {
@@ -371,20 +373,21 @@ async function createTransaction(checkout: any) {
         });
   
         const data = await response.json();
-  
+        
         if (!response.ok) {
-            // Retornando erro como parte do objeto de resposta
-           console.error('Falha ao criar transação:', data.message);
-            console.error('Detalhes do erro:', data.data);
-            // Tratar o erro adequadamente
+            console.error('❌ Falha ao criar transação');
+            console.error('Status HTTP:', response.status);
+            console.error('Mensagem:', data.message || 'Sem mensagem');
+            console.error('Erros detalhados:', JSON.stringify(data.errors || data, null, 2));
+            
             return {
                 success: false,
-                error: data.message,
-                details: data.data
+                error: data.message || 'Erro na transação',
+                details: data.errors || data, // Pagar.me retorna "errors", não "data"
+                statusCode: response.status
             };
         }
-  
-        // Retornando sucesso com dados
+          
         return {
             success: true,
             message: 'Transação criada com sucesso',
@@ -392,11 +395,12 @@ async function createTransaction(checkout: any) {
         };
   
     } catch (error: any) {
-        console.error('Erro na API Pagar.me:', error);
+        console.error('💥 Erro crítico na API Pagar.me:', error);
+        console.error('Stack trace:', error.stack);
+        
         return {
             success: false,
             message: error.message || 'Erro interno no servidor',
-            data: error.response ? await error.response.json() : null
         };
     }
 }

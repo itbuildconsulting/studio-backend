@@ -363,8 +363,11 @@ export const addStudentToClassWithBikeNumber = async (req: Request, res: Respons
     // 5) ⭐ NOVA VALIDAÇÃO: Verificar restrição de uso do produto
     const product = await getStudentProductByType(studentId, productTypeId);
     
+    // ⬇️ DECLARE restrictionCheck AQUI FORA para ser acessível depois
+    let restrictionCheck: any = null;
+    
     if (product) {
-      const restrictionCheck = await checkProductUsageRestriction(
+      restrictionCheck = await checkProductUsageRestriction(
         studentId,
         product.id,
         classData.date
@@ -461,6 +464,7 @@ export const addStudentToClassWithBikeNumber = async (req: Request, res: Respons
 
       await t.commit();
       
+      // ⬇️ AGORA restrictionCheck está acessível aqui
       return res.status(200).json({
         success: true,
         message: 'Aluno adicionado à aula, bike atribuída e 1 crédito consumido (FEFO).',
@@ -468,7 +472,7 @@ export const addStudentToClassWithBikeNumber = async (req: Request, res: Respons
           productName: product.name,
           restrictionType: product.usageRestrictionType,
           usageLimit: product.usageRestrictionLimit,
-          currentUsage: restrictionCheck?.currentUsage,
+          currentUsage: restrictionCheck?.currentUsage || 0,
         } : null,
       });
       
