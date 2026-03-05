@@ -362,8 +362,6 @@ export const checkoutCash = async (req: Request, res: Response): Promise<Respons
 async function createTransaction(checkout: any) {
     
     try {
-        console.log('🔵 Iniciando transação Pagar.me...');
-        console.log('📦 Payload enviado:', JSON.stringify(checkout, null, 2));
         
         const response = await fetch('https://api.pagar.me/core/v5/orders', {
             method: 'POST',
@@ -376,9 +374,6 @@ async function createTransaction(checkout: any) {
   
         const data = await response.json();
         
-        console.log('📊 Status da resposta:', response.status);
-        console.log('📄 Resposta completa:', JSON.stringify(data, null, 2));
-  
         if (!response.ok) {
             console.error('❌ Falha ao criar transação');
             console.error('Status HTTP:', response.status);
@@ -392,10 +387,7 @@ async function createTransaction(checkout: any) {
                 statusCode: response.status
             };
         }
-  
-        console.log('✅ Transação criada com sucesso');
-        console.log('ID da Order:', data.id);
-        
+          
         return {
             success: true,
             message: 'Transação criada com sucesso',
