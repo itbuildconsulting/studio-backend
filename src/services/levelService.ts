@@ -128,6 +128,30 @@ export async function updateStudentLevel(studentId: number): Promise<{
       };
     }
 
+        // Só sobe de nível, nunca desce
+    if (newLevelId !== null && previousLevel !== null && newLevelId < previousLevel) {
+      return {
+        success: true,
+        updated: false,
+        previousLevel,
+        newLevel: previousLevel, // mantém o atual
+        completedClasses,
+        message: 'Nível atual é superior ao calculado, mantendo o nível existente',
+      };
+    }
+
+    // Se aluno já tem nível e o novo seria null, mantém o atual
+    if (newLevelId === null && previousLevel !== null) {
+      return {
+        success: true,
+        updated: false,
+        previousLevel,
+        newLevel: previousLevel,
+        completedClasses,
+        message: 'Aluno já possui nível, mantendo mesmo sem aulas suficientes calculadas',
+      };
+    }
+
     // 5. Atualizar o nível do aluno
     await student.update({
       student_level: newLevelId ? String(newLevelId) : null,
