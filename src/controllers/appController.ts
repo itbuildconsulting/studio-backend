@@ -800,16 +800,28 @@ export const getStudentSummary = async (req: Request, res: Response): Promise<Re
         );
         
 
-        // Buscar todas as aulas relacionadas ao aluno na tabela ClassStudent
+         // ✅ FIX BUG 3: buscar status + data da aula via join com Class
         const classStudentRecords = await ClassStudent.findAll({
             where: { studentId },
-            attributes: ['classId', 'checkin'],
+            attributes: ['classId', 'checkin', 'status'],
+            include: [{
+                model: Class,
+                attributes: ['date'],
+            }],
         });
+  
+        // ✅ Agendadas: ativa (status = true) + data futura ou hoje
+        const scheduledClassesCount = classStudentRecords.filter((record: any) => {
+            const classDate: string = record.Class?.date ?? '';
+            return record.status === true && classDate >= today;
+        }).length;
+ 
+        // ✅ Realizadas: ativa (status = true) + data no passado (checkin opcional)
+        const completedClassesCount = classStudentRecords.filter((record: any) => {
+            const classDate: string = record.Class?.date ?? '';
+            return record.status === true && classDate < today;
+        }).length;
 
-        // Separar as aulas agendadas e realizadas
-        const scheduledClassesCount = classStudentRecords.filter(record => record.checkin === null).length;
-
-        const completedClassesCount = classStudentRecords.filter(record => record.checkin !== null).length;
 
         // Resumo do aluno
         const summary = {
@@ -946,7 +958,10 @@ export const getAllProducts = async (req: Request, res: Response): Promise<Respo
 
         // 3. Buscar produtos com ou sem filtro
         const { rows: products, count: totalRecords } = await Product.findAndCountAll({
-            where: productTypeFilter,
+            where: {
+                ...productTypeFilter,
+                active: 1, // 🆕 Filtra apenas produtos ativos
+            },
             include: [
                 {
                     model: ProductType,
