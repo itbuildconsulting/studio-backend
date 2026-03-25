@@ -349,7 +349,7 @@ export const addStudentToClassWithBikeNumber = async (req: Request, res: Respons
     }
 
     // 3) Verificar se o aluno já está inscrito (checagem rápida fora da tx)
-    const existingEnrollment = await ClassStudent.findOne({ where: { classId, studentId } });
+    const existingEnrollment = await ClassStudent.findOne({ where: { classId, studentId, status: 1 } });
     if (existingEnrollment) {
       return res.status(400).json({ message: 'Aluno já está inscrito nesta aula' });
     }
@@ -395,7 +395,7 @@ export const addStudentToClassWithBikeNumber = async (req: Request, res: Respons
 
       // (Re)verificações sob lock para evitar corrida
       const alreadyEnrolled = await ClassStudent.findOne({
-        where: { classId, studentId },
+        where: { classId, studentId, status: 1 },
         transaction: t,
         lock: t.LOCK.UPDATE,
       });

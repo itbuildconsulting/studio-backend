@@ -111,8 +111,10 @@ export const promoteFromWaitingListWithBike = async (req: Request, res: Response
     }
 
     // 4) Checagens rápidas (fora da tx)
-    const already = await ClassStudent.findOne({ where: { classId: cId, studentId: sId } });
-    if (already) return res.status(400).json({ success: false, message: 'Aluno já está inscrito nesta aula.' });
+    const existingEnrollment = await ClassStudent.findOne({ where: { classId, studentId, status: 1 } });
+    if (existingEnrollment) {
+      return res.status(400).json({ message: 'Aluno já está inscrito nesta aula' });
+    }
 
     const bikeRowQuick = await Bike.findOne({ where: { classId: cId, bikeNumber: bNum } });
     if (bikeRowQuick && bikeRowQuick.status !== 'available' && bikeRowQuick.studentId !== sId) {

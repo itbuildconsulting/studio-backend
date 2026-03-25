@@ -1,7 +1,19 @@
 import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
 import OtpCode from '../../models/OtpCode';
 import { sendEmail } from './emailService';
-import { generateVerificationToken } from '../../controllers/authVerifyController';
+
+const JWT_SECRET = process.env.JWT_SECRET || '6a78e7df-0a0d-4a3f-897f-de1ae0f5b9c3';
+const BACKEND_URL = process.env.BACKEND_URL || 'https://backend.studiostaging.xyz';
+
+// Gera um token JWT com 12h de validade para verificação por link
+function generateVerificationToken(userId: number, email: string): string {
+  return jwt.sign(
+    { id: userId, email, purpose: 'email-verify' },
+    JWT_SECRET,
+    { expiresIn: '12h' }
+  );
+}
 
 export async function sendOtpFor(userId: number, email: string) {
   const code = String(Math.floor(100000 + Math.random() * 900000)); // 6 dígitos
@@ -11,24 +23,22 @@ export async function sendOtpFor(userId: number, email: string) {
     user_id: userId,
     purpose: 'signup',
     code_hash,
-    expires_at: new Date(Date.now() + 10 * 60 * 1000), // 10 minutos
+    expires_at: new Date(Date.now() + 12 * 60 * 60 * 1000), // ✅ 12 horas
     attempts: 0,
   });
 
-  // ✅ NOVO: Gerar magic link com 12h de validade
+  // Link mágico: aponta para o backend, que ativa a conta e redireciona
   const verificationToken = generateVerificationToken(userId, email);
-  const verificationLink = `https://admin.spingo.com.br/auth/verify?token=${verificationToken}`;
+  const verificationLink = `https://spingo.com.br/verify?token=${verificationToken}`;
 
   const subject = `${code} é seu código do Spin'go`;
-  
+
   const text = `
 Seu código de verificação é ${code}.
-Ele é válido por 10 minutos.
+Ele é válido por 12 horas.
 
 Ou clique no link abaixo para confirmar automaticamente:
 ${verificationLink}
-
-Este link expira em 12 horas.
 
 Se não foi você, ignore este e-mail.
   `.trim();
@@ -56,18 +66,8 @@ Se não foi você, ignore este e-mail.
       padding: 40px;
       box-shadow: 0 2px 8px rgba(0,0,0,0.1);
     }
-    .logo {
-      text-align: center;
-      margin-bottom: 30px;
-    }
-    .logo h1 {
-      color: #667eea;
-      font-size: 32px;
-      margin: 0;
-    }
-    .content {
-      margin-bottom: 30px;
-    }
+    .logo { text-align: center; margin-bottom: 30px; }
+    .logo h1 { color: #667eea; font-size: 32px; margin: 0; }
     .code-box {
       background: #f8f9fa;
       border: 2px solid #667eea;
@@ -83,11 +83,8 @@ Se não foi você, ignore este e-mail.
       color: #667eea;
       font-family: 'Courier New', monospace;
     }
-    .code-label {
-      font-size: 14px;
-      color: #6b7280;
-      margin-bottom: 10px;
-    }
+    .code-label { font-size: 14px; color: #6b7280; margin-bottom: 10px; }
+    .expiry { color: #6b7280; font-size: 14px; text-align: center; margin-top: 10px; }
     .divider {
       text-align: center;
       margin: 30px 0;
@@ -112,21 +109,15 @@ Se não foi você, ignore este e-mail.
     .button {
       display: inline-block;
       background: #667eea;
-      color: white;
+      color: white !important;
       padding: 16px 32px;
       text-decoration: none;
       border-radius: 8px;
       font-weight: 600;
       text-align: center;
       margin: 20px 0;
-      transition: background 0.2s;
     }
-    .button:hover {
-      background: #5568d3;
-    }
-    .button-container {
-      text-align: center;
-    }
+    .button-container { text-align: center; }
     .info {
       background: #fef3c7;
       border-left: 4px solid #f59e0b;
@@ -143,24 +134,6 @@ Se não foi você, ignore este e-mail.
       padding-top: 20px;
       border-top: 1px solid #e5e7eb;
     }
-    .expiry {
-      color: #6b7280;
-      font-size: 14px;
-      text-align: center;
-      margin-top: 10px;
-    }
-    @media only screen and (max-width: 600px) {
-      body {
-        padding: 10px;
-      }
-      .container {
-        padding: 20px;
-      }
-      .code {
-        font-size: 24px;
-        letter-spacing: 4px;
-      }
-    }
   </style>
 </head>
 <body>
@@ -168,33 +141,29 @@ Se não foi você, ignore este e-mail.
     <div class="logo">
       <h1>🎯 Spin'go</h1>
     </div>
-    
-    <div class="content">
-      <h2 style="color: #1f2937; margin-bottom: 10px;">Confirme seu email</h2>
-      <p style="color: #6b7280; margin-bottom: 20px;">
-        Para começar a usar o Spin'go, você precisa verificar seu email. Escolha uma das opções abaixo:
-      </p>
 
-      <div class="code-box">
-        <div class="code-label">Seu código de verificação:</div>
-        <div class="code">${code}</div>
-        <div class="expiry">⏱️ Válido por 10 minutos</div>
-      </div>
+    <h2 style="color: #1f2937; margin-bottom: 10px;">Confirme seu email</h2>
+    <p style="color: #6b7280; margin-bottom: 20px;">
+      Para começar a usar o Spin'go, você precisa verificar seu email. Escolha uma das opções abaixo:
+    </p>
 
-      <div class="divider">
-        <span>OU</span>
-      </div>
+    <div class="code-box">
+      <div class="code-label">Seu código de verificação:</div>
+      <div class="code">${code}</div>
+      <div class="expiry">⏱️ Válido por 12 horas</div>
+    </div>
 
-      <div class="button-container">
-        <a href="${verificationLink}" class="button">
-          ✓ Confirmar Email Automaticamente
-        </a>
-        <div class="expiry">🔗 Link válido por 12 horas</div>
-      </div>
+    <div class="divider"><span>OU</span></div>
 
-      <div class="info">
-        <strong>💡 Dica:</strong> Clicar no botão acima é mais rápido! Você será direcionado automaticamente para o aplicativo.
-      </div>
+    <div class="button-container">
+      <a href="${verificationLink}" class="button">
+        ✓ Confirmar Email Automaticamente
+      </a>
+      <div class="expiry">🔗 Link válido por 12 horas</div>
+    </div>
+
+    <div class="info">
+      <strong>💡 Dica:</strong> Clicar no botão acima é mais rápido! Sua conta será ativada automaticamente.
     </div>
 
     <div class="footer">
