@@ -30,7 +30,7 @@ export const pagarmeWebhook = async (req: Request, res: Response): Promise<Respo
 
   // 1) Valida assinatura
   if (!isSignatureValid(req)) {
-    console.warn('[webhook] Assinatura inválida rejeitada');
+    console.warn('[webhook] Assinatura inválida rejeitada ');
     return res.status(401).json({ success: false, error: 'Assinatura inválida' });
   }
 
