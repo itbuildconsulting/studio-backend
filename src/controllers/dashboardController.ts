@@ -54,36 +54,36 @@ export const getStudentAttendance = async (req: Request, res: Response): Promise
 };
 
 
+// PATCH para src/controllers/dashboardController.ts
+// Substituir o bloco do getMonthlySales:
+
 export const getMonthlySales = async (req: Request, res: Response): Promise<Response> => {
     try {
         const { year } = req.body;
 
-        // Verifica se o ano foi fornecido, caso contrário, utiliza o ano atual
         const currentYear = year || new Date().getFullYear();
 
-        // Consulta a tabela Transactions para calcular as vendas mensais
         const sales = await Transactions.findAll({
             attributes: [
-                [fn('MONTH', col('createdAt')), 'month'], // Extrai o mês da data
-                [fn('SUM', col('amount')), 'totalSales'], // Soma o total de vendas por mês
+                [fn('MONTH', col('createdAt')), 'month'],
+                [fn('SUM', col('amount')), 'totalSales'],
             ],
-            /*where: {
+            where: {                                          // ✅ DESCOMENTADO
                 createdAt: {
                     [Op.between]: [
-                        new Date(`${currentYear}-01-01`), // Início do ano
-                        new Date(`${currentYear}-12-31`), // Fim do ano
+                        new Date(`${currentYear}-01-01`),
+                        new Date(`${currentYear}-12-31`),
                     ],
                 },
-                status: 'paid', // Considere apenas vendas concluídas (opcional)
-            },*/
-            group: [fn('MONTH', col('createdAt'))], // Agrupa por mês
-            order: [[literal('month'), 'ASC']], // Ordena os resultados pelos meses
+                status: 'paid',                             // ✅ só transações pagas
+            },
+            group: [fn('MONTH', col('createdAt'))],
+            order: [[literal('month'), 'ASC']],
         });
 
-        // Formata o resultado
         const formattedSales = sales.map((entry: any) => ({
-            month: parseInt(entry.get('month')), // Número do mês (1 = Janeiro, 2 = Fevereiro, etc.)
-            totalSales: parseFloat(entry.get('totalSales')), // Soma total de vendas no mês
+            month: parseInt(entry.get('month')),
+            totalSales: parseFloat(entry.get('totalSales')),
         }));
 
         return res.status(200).json({
