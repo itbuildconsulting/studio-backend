@@ -521,13 +521,13 @@ export const cancelStudentPresenceInClass = async (req: Request, res: Response):
     const twoHoursBefore = new Date(classDateTime);
     twoHoursBefore.setHours(twoHoursBefore.getHours() - 2);
 
-    if (now >= twoHoursBefore) {
+    /*if (now >= twoHoursBefore) {
       await t.rollback();
       return res.status(400).json({
         success: false,
         message: 'O cancelamento só é permitido até 2 horas antes da aula.',
       });
-    }
+    }*/
 
     // 3) Vínculo do aluno na aula (lock)
     const classStudent = await ClassStudent.findOne({
