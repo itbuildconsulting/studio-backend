@@ -516,7 +516,7 @@ export const cancelStudentPresenceInClass = async (req: Request, res: Response):
     // 2) Janela de cancelamento: até 2h antes
     const classDateStr = String((classData as any).date); // 'YYYY-MM-DD'
     const classTimeStr = String((classData as any).time); // 'HH:mm:ss'
-    const classDateTime = new Date(`${classDateStr}T${classTimeStr}`);
+    const classDateTime = new Date(`${classDateStr}T${classTimeStr}-03:00`);
     const now = new Date();
     const twoHoursBefore = new Date(classDateTime);
     twoHoursBefore.setHours(twoHoursBefore.getHours() - 2);
