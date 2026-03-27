@@ -183,7 +183,7 @@ export const getClassesForNextDays = async (req: Request, res: Response): Promis
         const groupedClasses: Record<string, any[]> = {};
 
         formattedClasses.forEach((cls: { classDate: { toISOString: () => string; }; }) => {
-            const day = cls.classDate.toISOString().split('T')[0]; // Data no formato YYYY-MM-DD
+            const day = String(cls.classDate).split('T')[0];
             if (!groupedClasses[day]) {
                 groupedClasses[day] = [];
             }
