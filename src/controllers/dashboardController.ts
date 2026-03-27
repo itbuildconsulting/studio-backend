@@ -157,16 +157,24 @@ export const getClassesForNextDays = async (req: Request, res: Response): Promis
         // Processar cada aula e buscar os dados adicionais
         const formattedClasses = await Promise.all(
             classes.map(async (cls: any) => {
-                const location = await getLocation(cls.productType); // Buscar localização
-                const studentCount = await getStudentCount(cls.id); // Contar alunos
+                const productTypeId = cls.get('productTypeId'); // ✅ usa .get() para garantir o valor
+                const classId = cls.get('id');
+
+                const location = productTypeId              // ✅ guard: só chama se existir
+                    ? await getLocation(productTypeId)
+                    : 'Local não especificado';
+
+                const studentCount = classId
+                    ? await getStudentCount(classId)
+                    : 0;
 
                 return {
-                    id: cls.id,
-                    time: cls.time,
-                    productType: cls.productType,
+                    id: classId,
+                    time: cls.get('time'),
+                    productTypeId,
                     location,
                     studentCount,
-                    classDate: cls.date,
+                    classDate: cls.get('date'),
                 };
             })
         );
