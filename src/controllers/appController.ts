@@ -1051,3 +1051,71 @@ export const getAllProducts = async (req: Request, res: Response): Promise<Respo
         });
     }
 };
+
+
+export const getStudentExtrato = async (req: Request, res: Response): Promise<Response> => {
+  try {
+    const { studentId } = req.params;
+
+    if (!studentId) {
+      return res.status(400).json({ success: false, message: 'ID do aluno é obrigatório' });
+    }
+
+    // 1) Todas as inscrições do aluno com dados da aula
+    const classStudents = await ClassStudent.findAll({
+      where: { studentId },
+      include: [{ model: Class, attributes: ['id', 'date', 'time', 'productTypeId'] }],
+      order: [[Class, 'date', 'DESC']],
+    });
+
+    const aulas = classStudents.map((cs: any) => ({
+      classStudentId: cs.id,
+      classId: cs.classId,
+      date: cs.Class?.date,
+      time: cs.Class?.time,
+      productTypeId: cs.Class?.productTypeId,
+      status: cs.status,           // 1 = ativa, 0 = cancelada
+      checkin: cs.checkin,
+      bikeId: cs.bikeId,
+      transactionId: cs.transactionId,  // creditBatch usado
+    }));
+
+    // 2) Todos os lotes de crédito do aluno
+    const credits = await Credit.findAll({
+      where: { idCustomer: studentId },
+      order: [['expirationDate', 'ASC']],
+      attributes: ['id', 'creditBatch', 'productTypeId', 'availableCredits', 'usedCredits', 'status', 'expirationDate', 'origin', 'createdAt'],
+    });
+
+    // 3) Cruzamento: para cada aula cancelada, checar se crédito foi devolvido
+    const agora = new Date();
+    const cruzamento = aulas
+      .filter(a => a.status === 0 || a.status === false)
+      .map(a => {
+        const lote = credits.find((c: any) => c.creditBatch === a.transactionId);
+        return {
+          classId: a.classId,
+          date: a.date,
+          transactionId: a.transactionId,
+          loteEncontrado: !!lote,
+          loteStatus: lote?.status ?? null,
+          loteExpirado: lote?.expirationDate ? lote.expirationDate < agora : null,
+          availableCredits: lote?.availableCredits ?? null,
+          usedCredits: lote?.usedCredits ?? null,
+          creditoDevolvido: lote ? lote.availableCredits > 0 : false,
+        };
+      });
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        aulas,
+        creditos: credits,
+        cancelamentos: cruzamento,
+      },
+    });
+  } catch (error) {
+    console.error('Erro ao buscar extrato:', error);
+    return res.status(500).json({ success: false, message: 'Erro ao buscar extrato' });
+  }
+};
