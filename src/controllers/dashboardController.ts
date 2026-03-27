@@ -145,7 +145,7 @@ export const getClassesForNextDays = async (req: Request, res: Response): Promis
 
         // Buscar as aulas no intervalo de datas
         const classes = await Class.findAll({
-            attributes: ['id', 'time', 'productType', 'date'], // Atributos principais
+            attributes: ['id', 'time', 'productTypeId', 'date'], // Atributos principais
             where: {
                 date: {
                     [Op.between]: [today, threeDaysFromNow],
