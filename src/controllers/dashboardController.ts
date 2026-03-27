@@ -130,7 +130,10 @@ const getLocation = async (productType: string): Promise<string> => {
 // Função para contar o número de alunos em uma aula
 const getStudentCount = async (classId: number): Promise<number> => {
     return await ClassStudent.count({
-        where: { classId },
+        where: { 
+            classId,
+            status: true,  // ✅ só inscrições ativas
+        },
     });
 };
 
