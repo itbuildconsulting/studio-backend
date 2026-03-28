@@ -248,7 +248,7 @@ export const getClassById = async (req: Request, res: Response): Promise<Respons
 
         const bikes = await Bike.findAll({
             where: { classId: id },
-            attributes: ['bikeNumber', 'status']
+            attributes: ['id', 'bikeNumber', 'status', 'studentId'],
         });
 
         return res.status(200).json({
@@ -261,8 +261,10 @@ export const getClassById = async (req: Request, res: Response): Promise<Respons
                 teacherId: classData.teacherId || '',
                 teacherName: teacher ? teacher.name : '',
                 bikes: bikes.map(bike => ({
+                    id: bike.id,           // ← adicionar
                     bikeNumber: bike.bikeNumber,
-                    status: bike.status
+                    status: bike.status,
+                    studentId: bike.studentId, // ← adicionar
                 }))
             }
         });
@@ -497,13 +499,13 @@ export const addStudentToClassWithBikeNumber = async (req: Request, res: Respons
 
 
 export const cancelStudentPresenceInClass = async (req: Request, res: Response): Promise<Response> => {
-  const { classId, studentId } = req.body;
+  const { classId, studentId, bikeId } = req.body;
 
   const t = await sequelize.transaction();
   try {
-    if (!classId || !studentId) {
+    if (!classId || !studentId || !bikeId) {
       await t.rollback();
-      return res.status(400).json({ success: false, message: 'classId e studentId são obrigatórios.' });
+      return res.status(400).json({ success: false, message: 'classId, studentId e bikeId são obrigatórios.' });
     }
 
     // 1) Aula (lock)
@@ -516,32 +518,28 @@ export const cancelStudentPresenceInClass = async (req: Request, res: Response):
     // 2) Janela de cancelamento: até 2h antes
     const classDateStr = String((classData as any).date); // 'YYYY-MM-DD'
     const classTimeStr = String((classData as any).time); // 'HH:mm:ss'
-    const classDateTime = new Date(`${classDateStr}T${classTimeStr}`);
+    const classDateTime = new Date(`${classDateStr}T${classTimeStr}-03:00`);
     const now = new Date();
     const twoHoursBefore = new Date(classDateTime);
     twoHoursBefore.setHours(twoHoursBefore.getHours() - 2);
 
-    if (now >= twoHoursBefore) {
+    /*if (now >= twoHoursBefore) {
       await t.rollback();
       return res.status(400).json({
         success: false,
         message: 'O cancelamento só é permitido até 2 horas antes da aula.',
       });
-    }
+    }*/
 
-    // 3) Vínculo do aluno na aula (lock)
+    // 3) Vínculo ATIVO — bate studentId + bikeId + status ativo
     const classStudent = await ClassStudent.findOne({
-      where: { classId, studentId },
-      transaction: t,
-      lock: t.LOCK.UPDATE,
+        where: { classId, studentId, bikeId, status: 1 }, // ✅ match preciso
+        transaction: t,
+        lock: t.LOCK.UPDATE,
     });
     if (!classStudent) {
-      await t.rollback();
-      return res.status(404).json({ success: false, message: 'Aluno não está registrado nesta aula.' });
-    }
-    if (classStudent.status === false) {
-      await t.rollback();
-      return res.status(400).json({ success: false, message: 'A presença já foi cancelada para este aluno.' });
+        await t.rollback();
+        return res.status(404).json({ success: false, message: 'Inscrição ativa não encontrada.' });
     }
 
     // 4) Soltar a bike (se houver)
@@ -1050,4 +1048,72 @@ export const getAllProducts = async (req: Request, res: Response): Promise<Respo
             error: 'Erro ao buscar produtos',
         });
     }
+};
+
+
+export const getStudentExtrato = async (req: Request, res: Response): Promise<Response> => {
+  try {
+    const { studentId } = req.params;
+
+    if (!studentId) {
+      return res.status(400).json({ success: false, message: 'ID do aluno é obrigatório' });
+    }
+
+    // 1) Todas as inscrições do aluno com dados da aula
+    const classStudents = await ClassStudent.findAll({
+      where: { studentId },
+      include: [{ model: Class, attributes: ['id', 'date', 'time', 'productTypeId'] }],
+      order: [[Class, 'date', 'DESC']],
+    });
+
+    const aulas = classStudents.map((cs: any) => ({
+      classStudentId: cs.id,
+      classId: cs.classId,
+      date: cs.Class?.date,
+      time: cs.Class?.time,
+      productTypeId: cs.Class?.productTypeId,
+      status: cs.status,           // 1 = ativa, 0 = cancelada
+      checkin: cs.checkin,
+      bikeId: cs.bikeId,
+      transactionId: cs.transactionId,  // creditBatch usado
+    }));
+
+    // 2) Todos os lotes de crédito do aluno
+    const credits = await Credit.findAll({
+      where: { idCustomer: studentId },
+      order: [['expirationDate', 'ASC']],
+      attributes: ['id', 'creditBatch', 'productTypeId', 'availableCredits', 'usedCredits', 'status', 'expirationDate', 'origin', 'createdAt'],
+    });
+
+    // 3) Cruzamento: para cada aula cancelada, checar se crédito foi devolvido
+    const agora = new Date();
+    const cruzamento = aulas
+      .filter(a => a.status === 0 || a.status === false)
+      .map(a => {
+        const lote = credits.find((c: any) => c.creditBatch === a.transactionId);
+        return {
+          classId: a.classId,
+          date: a.date,
+          transactionId: a.transactionId,
+          loteEncontrado: !!lote,
+          loteStatus: lote?.status ?? null,
+          loteExpirado: lote?.expirationDate ? lote.expirationDate < agora : null,
+          availableCredits: lote?.availableCredits ?? null,
+          usedCredits: lote?.usedCredits ?? null,
+          creditoDevolvido: lote ? lote.availableCredits > 0 : false,
+        };
+      });
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        aulas,
+        creditos: credits,
+        cancelamentos: cruzamento,
+      },
+    });
+  } catch (error) {
+    console.error('Erro ao buscar extrato:', error);
+    return res.status(500).json({ success: false, message: 'Erro ao buscar extrato' });
+  }
 };

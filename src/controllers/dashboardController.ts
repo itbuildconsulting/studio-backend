@@ -12,37 +12,42 @@ export const getStudentAttendance = async (req: Request, res: Response): Promise
     try {
         const { startDate, endDate } = req.body;
 
-        // Determinar o intervalo de datas
-        let dateRange = {
+        const dateRange = {
             [Op.between]: [
-                startDate ? new Date(startDate) : startOfWeek(new Date()), // Início da semana ou data fornecida
-                endDate ? new Date(endDate) : endOfWeek(new Date()), // Fim da semana ou data fornecida
+                startDate ? new Date(startDate) : startOfWeek(new Date()),
+                endDate ? new Date(endDate) : endOfWeek(new Date()),
             ],
         };
 
-        // Consultar a tabela classStudent para calcular a frequência
         const attendance = await ClassStudent.findAll({
             attributes: [
-                [fn('DAYOFWEEK', col('createdAt')), 'dayOfWeek'], // Extrai o dia da semana
-                [fn('COUNT', col('studentId')), 'attendanceCount'], // Conta as presenças por dia
+                [fn('DAYOFWEEK', col('Class.date')), 'dayOfWeek'],   // ✅ usa a data da AULA
+                [fn('COUNT', col('ClassStudent.studentId')), 'attendanceCount'],
+            ],
+            include: [
+                {
+                    model: Class,
+                    attributes: [],                                    // ✅ só precisa do date
+                    where: {
+                        date: dateRange,                               // ✅ filtra pela data da aula
+                    },
+                    required: true,
+                },
             ],
             where: {
-                createdAt: dateRange, // Filtrar pelo intervalo de datas
+                status: true,                                          // ✅ só inscrições ativas
             },
-            group: [fn('DAYOFWEEK', col('createdAt'))], // Agrupa por dia da semana
-            order: [fn('DAYOFWEEK', col('createdAt'))], // Ordena pelo dia da semana
+            group: [fn('DAYOFWEEK', col('Class.date'))],
+            order: [[fn('DAYOFWEEK', col('Class.date')), 'ASC']],
+            raw: true,
         });
 
-        // Formatar a resposta
         const formattedAttendance = attendance.map((entry: any) => ({
-            dayOfWeek: parseInt(entry.get('dayOfWeek')), // Dia da semana como número
-            attendanceCount: parseInt(entry.get('attendanceCount')), // Total de presenças
+            dayOfWeek: parseInt(entry.dayOfWeek),
+            attendanceCount: parseInt(entry.attendanceCount),
         }));
 
-        return res.status(200).json({
-            success: true,
-            data: formattedAttendance,
-        });
+        return res.status(200).json({ success: true, data: formattedAttendance });
     } catch (error) {
         console.error('Erro ao buscar frequência:', error);
         return res.status(500).json({
@@ -125,7 +130,10 @@ const getLocation = async (productType: string): Promise<string> => {
 // Função para contar o número de alunos em uma aula
 const getStudentCount = async (classId: number): Promise<number> => {
     return await ClassStudent.count({
-        where: { classId },
+        where: { 
+            classId,
+            status: true,  // ✅ só inscrições ativas
+        },
     });
 };
 
@@ -140,7 +148,7 @@ export const getClassesForNextDays = async (req: Request, res: Response): Promis
 
         // Buscar as aulas no intervalo de datas
         const classes = await Class.findAll({
-            attributes: ['id', 'time', 'productType', 'date'], // Atributos principais
+            attributes: ['id', 'time', 'productTypeId', 'date'], // Atributos principais
             where: {
                 date: {
                     [Op.between]: [today, threeDaysFromNow],
@@ -152,16 +160,24 @@ export const getClassesForNextDays = async (req: Request, res: Response): Promis
         // Processar cada aula e buscar os dados adicionais
         const formattedClasses = await Promise.all(
             classes.map(async (cls: any) => {
-                const location = await getLocation(cls.productType); // Buscar localização
-                const studentCount = await getStudentCount(cls.id); // Contar alunos
+                const productTypeId = cls.get('productTypeId'); // ✅ usa .get() para garantir o valor
+                const classId = cls.get('id');
+
+                const location = productTypeId              // ✅ guard: só chama se existir
+                    ? await getLocation(productTypeId)
+                    : 'Local não especificado';
+
+                const studentCount = classId
+                    ? await getStudentCount(classId)
+                    : 0;
 
                 return {
-                    id: cls.id,
-                    time: cls.time,
-                    productType: cls.productType,
+                    id: classId,
+                    time: cls.get('time'),
+                    productTypeId,
                     location,
                     studentCount,
-                    classDate: cls.date,
+                    classDate: cls.get('date'),
                 };
             })
         );
@@ -170,7 +186,7 @@ export const getClassesForNextDays = async (req: Request, res: Response): Promis
         const groupedClasses: Record<string, any[]> = {};
 
         formattedClasses.forEach((cls: { classDate: { toISOString: () => string; }; }) => {
-            const day = cls.classDate.toISOString().split('T')[0]; // Data no formato YYYY-MM-DD
+            const day = String(cls.classDate).split('T')[0];
             if (!groupedClasses[day]) {
                 groupedClasses[day] = [];
             }
