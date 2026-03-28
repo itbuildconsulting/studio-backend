@@ -279,7 +279,7 @@ export const getClassById = async (req: Request, res: Response): Promise<Respons
         // Buscar as bicicletas associadas à aula
         const bikes = await Bike.findAll({
             where: { classId: id },
-            attributes: ['bikeNumber', 'status', 'studentId'],
+            attributes: ['id', 'bikeNumber', 'status', 'studentId'],
         });
 
         // Para cada bicicleta, buscar o nome e data de nascimento do aluno associado
@@ -298,6 +298,7 @@ export const getClassById = async (req: Request, res: Response): Promise<Respons
                 }
 
                 return {
+                    id: bike.id, // ← adicionar
                     bikeNumber: bike.bikeNumber,
                     status: bike.status,
                     studentId: bike.studentId,
@@ -395,6 +396,7 @@ export const updateClass = async (req: Request, res: Response): Promise<Response
                         PersonId: teacherId,
                         studentId,
                         bikeId: bikeRecord.id,
+                        status: 1,
                     });
 
                     // Descontar crédito, se necessário
