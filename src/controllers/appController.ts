@@ -248,7 +248,7 @@ export const getClassById = async (req: Request, res: Response): Promise<Respons
 
         const bikes = await Bike.findAll({
             where: { classId: id },
-            attributes: ['bikeNumber', 'status']
+            attributes: ['id', 'bikeNumber', 'status', 'studentId'],
         });
 
         return res.status(200).json({
@@ -261,8 +261,10 @@ export const getClassById = async (req: Request, res: Response): Promise<Respons
                 teacherId: classData.teacherId || '',
                 teacherName: teacher ? teacher.name : '',
                 bikes: bikes.map(bike => ({
+                    id: bike.id,           // ← adicionar
                     bikeNumber: bike.bikeNumber,
-                    status: bike.status
+                    status: bike.status,
+                    studentId: bike.studentId, // ← adicionar
                 }))
             }
         });
@@ -497,13 +499,13 @@ export const addStudentToClassWithBikeNumber = async (req: Request, res: Respons
 
 
 export const cancelStudentPresenceInClass = async (req: Request, res: Response): Promise<Response> => {
-  const { classId, studentId } = req.body;
+  const { classId, studentId, bikeId } = req.body;
 
   const t = await sequelize.transaction();
   try {
-    if (!classId || !studentId) {
+    if (!classId || !studentId || !bikeId) {
       await t.rollback();
-      return res.status(400).json({ success: false, message: 'classId e studentId são obrigatórios.' });
+      return res.status(400).json({ success: false, message: 'classId, studentId e bikeId são obrigatórios.' });
     }
 
     // 1) Aula (lock)
@@ -529,19 +531,15 @@ export const cancelStudentPresenceInClass = async (req: Request, res: Response):
       });
     }*/
 
-    // 3) Vínculo do aluno na aula (lock)
+    // 3) Vínculo ATIVO — bate studentId + bikeId + status ativo
     const classStudent = await ClassStudent.findOne({
-      where: { classId, studentId },
-      transaction: t,
-      lock: t.LOCK.UPDATE,
+        where: { classId, studentId, bikeId, status: 1 }, // ✅ match preciso
+        transaction: t,
+        lock: t.LOCK.UPDATE,
     });
     if (!classStudent) {
-      await t.rollback();
-      return res.status(404).json({ success: false, message: 'Aluno não está registrado nesta aula.' });
-    }
-    if (classStudent.status === false) {
-      await t.rollback();
-      return res.status(400).json({ success: false, message: 'A presença já foi cancelada para este aluno.' });
+        await t.rollback();
+        return res.status(404).json({ success: false, message: 'Inscrição ativa não encontrada.' });
     }
 
     // 4) Soltar a bike (se houver)
