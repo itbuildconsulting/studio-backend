@@ -96,11 +96,11 @@ export const checkout = async (req: Request, res: Response, ): Promise<Response 
                 
                 // Endereço de cobrança (prioriza billingAddress do request)
                 const billingAddressData = {
-                    line_1: billingAddress?.address || personData.address,
+                    line_1: billingAddress?.address || personData.address || 'Não informado',
                     line_2: 'Casa',  // Pode ser expandido se necessário
-                    zip_code: billingAddress?.zipCode || personData.zipCode,
-                    city: billingAddress?.city || personData.city,
-                    state: billingAddress?.state || personData.state,
+                    zip_code: billingAddress?.zipCode || personData.zipCode || '00000000',
+                    city: billingAddress?.city || personData.city || 'Não informado',
+                    state: billingAddress?.state || personData.state || 'SP',
                     country: 'BR'
                 };
 
@@ -160,7 +160,7 @@ export const checkout = async (req: Request, res: Response, ): Promise<Response 
                 const result = await createTransaction(checkout);
                 //console.log("Result Payload:", JSON.stringify(result, null, 2));
                 if (!result.success || result.data.status !== 'paid') {
-                    console.error('Falha ao criar transação2:', result.message);
+                    console.error(`[personId: ${personId}] Falha ao criar transação (cartão):`, result.message);
                     return res.status(500).json({ success: false, error: 'Falha ao criar transação:', details: result.message });
                 }
 
@@ -171,7 +171,7 @@ export const checkout = async (req: Request, res: Response, ): Promise<Response 
                     try {
                         await createItemsAfterTransaction(result.data.id, personData.id, items);
                     } catch (error) {
-                        console.error('Falha ao criar itens:', error);
+                        console.error(`[personId: ${personId}] Falha ao criar itens:`, error);
                     }
 
                     if (updateBalanceResult.success) {
@@ -184,7 +184,7 @@ export const checkout = async (req: Request, res: Response, ): Promise<Response 
                 }
 
             } catch (fetchError) {
-                console.error('Erro ao buscar pessoa ou produtos:', fetchError);
+                console.error(`[personId: ${personId}] Erro ao buscar pessoa ou produtos:`, fetchError);
                 return res.status(500).json({ success: false, error: 'Erro ao buscar pessoa ou produtos' });
             }
         });
@@ -290,11 +290,11 @@ export const checkoutCash = async (req: Request, res: Response): Promise<Respons
                         email: personData.email,
                         document: personData.identity,
                         address: {
-                            line_1: personData.address,
+                            line_1: personData.address || 'Não informado',       // ✅ fallback
                             line_2: 'Casa',
-                            zip_code: personData.zipCode,
-                            city: personData.city,
-                            state: personData.state,
+                            zip_code: personData.zipCode || '00000000',          // ✅ fallback
+                            city: personData.city || 'Não informado',            // ✅ fallback
+                            state: personData.state || 'SP',                     // ✅ fallback
                             country: 'BR'
                         },
                         phones: {
@@ -321,7 +321,7 @@ export const checkoutCash = async (req: Request, res: Response): Promise<Respons
                 // Chamar o paymentController para processar a transação
                 const result = await createTransaction(checkout);
                 if (!result.success || result.data.status !== 'paid') {
-                    console.error('Falha ao criar transação:', result.message);
+                    console.error(`[personId: ${personId}] Falha ao criar transação (dinheiro):`, result.message);
                     return res.status(500).json({ success: false, error: 'Falha ao criar transação:', details: result.message, data: result.data });
                 }
 
@@ -333,7 +333,7 @@ export const checkoutCash = async (req: Request, res: Response): Promise<Respons
                     try {
                         await createItemsAfterTransaction(result.data.id, personData.id, items);
                     } catch (error) {
-                        console.error('Falha ao criar itens:', error);
+                        console.error(`[personId: ${personId}] Falha ao criar itens:`, error);
                     }
 
                     if (updateBalanceResult.success) {
@@ -346,7 +346,7 @@ export const checkoutCash = async (req: Request, res: Response): Promise<Respons
                 }
 
             } catch (fetchError) {
-                console.error('Erro ao buscar pessoa ou produtos:', fetchError);
+                console.error(`[personId: ${personId}] Erro ao buscar pessoa ou produtos:`, fetchError);
                 return res.status(500).json({ success: false, error: 'Erro ao buscar pessoa ou produtos' });
             }
         });
