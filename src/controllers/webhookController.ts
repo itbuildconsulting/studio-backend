@@ -5,34 +5,8 @@ import Person from '../models/Person.model';
 import { updateCustomerBalance } from './balanceController';
 import Item from '../models/Item.model';
 
-const PAGARME_WEBHOOK_SECRET = process.env.PAGARME_SECRET_KEY ?? '';
-
-// Valida a assinatura enviada pela Pagar.me no header X-Hub-Signature
-function isSignatureValid(req: Request): boolean {
-  if (!PAGARME_WEBHOOK_SECRET) {
-    console.warn('[webhook] PAGARME_SECRET_KEY não configurado – validação desabilitada');
-    return true;
-  }
-
-  const signature = req.headers['x-hub-signature'] as string | undefined;
-  if (!signature) return false;
-
-  const hmac = crypto
-    .createHmac('sha256', PAGARME_WEBHOOK_SECRET)
-    .update(JSON.stringify(req.body))
-    .digest('hex');
-
-  return crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(hmac));
-}
-
 // POST /webhook/pagarme
 export const pagarmeWebhook = async (req: Request, res: Response): Promise<Response> => {
-
-  // 1) Valida assinatura
-  if (!isSignatureValid(req)) {
-    console.warn('[webhook] Assinatura inválida rejeitada ');
-    return res.status(401).json({ success: false, error: 'Assinatura inválida' });
-  }
 
   const event = req.body;
   const type: string = event?.type ?? '';
