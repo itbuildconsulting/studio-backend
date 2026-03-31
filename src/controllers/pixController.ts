@@ -72,7 +72,7 @@ export const checkoutPix = async (req: Request, res: Response): Promise<Response
                     if (!product) {
                         throw new Error(`Produto com ID ${item.productId} não encontrado`);
                     }
-                    creditTotal += product.credit;
+                    creditTotal += product.credit * Number(item.quantity);
                     const totalForCheckout = Math.round(product.value * 100);
                     productType = product.productTypeId;
                     
