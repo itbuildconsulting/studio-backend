@@ -258,8 +258,8 @@ export const checkoutCash = async (req: Request, res: Response): Promise<Respons
                     if (!product) {
                         throw new Error(`Produto com ID ${item.productId} não encontrado`);
                     }
-                    creditTotal += product.credit;
-                    const total = product.value * item.quantity; 
+                    creditTotal += product.credit * Number(item.quantity);
+                    const total = product.value * Number(item.quantity); 
                     totalAmount += total;  // Soma o valor total dos produtos
 
                     const totalForCheckout = Math.round(product.value * 100); // Converte para centavos
