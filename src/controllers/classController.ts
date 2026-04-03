@@ -179,91 +179,85 @@ export const createMultipleClasses = async (req: Request, res: Response): Promis
 
 export const getAllClasses = async (req: Request, res: Response): Promise<void | Response> => {
     try {
-        authenticateToken(req, res, async () => {
-            try {
-                const { date, time, productType, teacherId, page = 1, pageSize = 10 } = req.body;
+        // ✅ BUG 2: removido o authenticateToken interno — a rota já autentica via middleware
+        const { date, time, productType, productTypeId, teacherId, page = 1, pageSize = 10 } = req.body;
 
-                // Critérios de busca dinâmica para aulas
-                const criteria: any = {};
+        const criteria: any = {};
 
-                // Definir data de hoje
-                const today = new Date();
-                const formattedToday = format(today, 'yyyy-MM-dd'); // Formatar a data de hoje para 'YYYY-MM-DD'
+        const today = new Date();
+        const formattedToday = format(today, 'yyyy-MM-dd');
 
-                if (date) {
-                    // Formatando a data recebida no formato 'DD/MM/YYYY' para 'YYYY-MM-DD'
-                    const parsedDate = parse(date, 'dd/MM/yyyy', new Date());
-                    criteria.date = format(parsedDate, 'yyyy-MM-dd'); // Formata para 'YYYY-MM-DD'
-                } else {
-                    // Se não for passada data, buscar a partir de hoje
-                    criteria.date = { [Op.gte]: formattedToday };
-                }
+        if (date) {
+            const parsedDate = parse(date, 'dd/MM/yyyy', new Date());
+            criteria.date = format(parsedDate, 'yyyy-MM-dd');
+        } else {
+            criteria.date = { [Op.gte]: formattedToday };
+        }
 
-                if (time) {
-                    criteria.time = time; // Busca por hora exata
-                }
+        if (time) {
+            criteria.time = time;
+        }
 
-                if (productType) {
-                    criteria.productTypeId = productType; // Filtro por ID do tipo de produto
-                }
+        // ✅ BUG 1: aceita productTypeId (frontend) ou productType (legado)
+        const resolvedProductType = productTypeId ?? productType;
+        if (resolvedProductType) {
+            criteria.productTypeId = resolvedProductType;
+        }
 
-                if (teacherId) {
-                    criteria.teacherId = teacherId; // Filtro por ID do professor
-                }
+        if (teacherId) {
+            criteria.teacherId = teacherId;
+        }
 
-                // Configurar paginação
-                const limit = parseInt(pageSize, 10); // Número de registros por página
-                const offset = (parseInt(page, 10) - 1) * limit; // Deslocamento
+        // Configurar paginação
+        const limit = parseInt(pageSize, 10); // Número de registros por página
+        const offset = (parseInt(page, 10) - 1) * limit; // Deslocamento
 
-                // Busca as aulas com os critérios aplicados e paginação
-                const { rows: classes, count: totalRecords } = await Class.findAndCountAll({
-                    where: criteria,
-                    limit,
-                    offset,
+        // Busca as aulas com os critérios aplicados e paginação
+        const { rows: classes, count: totalRecords } = await Class.findAndCountAll({
+            where: criteria,
+            limit,
+            offset,
+        });
+
+        if (!classes || classes.length === 0) {
+            return res.status(404).send('Nenhuma aula encontrada');
+        }
+
+        // Buscar os nomes manualmente
+        const enrichedClasses = await Promise.all(
+            classes.map(async (classItem) => {
+                const productType = await ProductType.findByPk(classItem.productTypeId, {
+                    attributes: ['id', 'name'],
                 });
 
-                if (!classes || classes.length === 0) {
-                    return res.status(404).send('Nenhuma aula encontrada');
-                }
-
-                // Buscar os nomes manualmente
-                const enrichedClasses = await Promise.all(
-                    classes.map(async (classItem) => {
-                        const productType = await ProductType.findByPk(classItem.productTypeId, {
-                            attributes: ['id', 'name'],
-                        });
-
-                        const teacher = await Person.findByPk(classItem.teacherId, {
-                            attributes: ['id', 'name'],
-                        });
-
-                        return {
-                            ...classItem.toJSON(),
-                            productType: productType ? productType.name : null,
-                            teacher: teacher ? teacher.name : null,
-                        };
-                    })
-                );
-
-                return res.status(200).json({
-                    success: true,
-                    data: enrichedClasses,
-                    pagination: {
-                        totalRecords,
-                        totalPages: Math.ceil(totalRecords / limit),
-                        currentPage: parseInt(page, 10),
-                        pageSize: limit,
-                    },
+                const teacher = await Person.findByPk(classItem.teacherId, {
+                    attributes: ['id', 'name'],
                 });
-            } catch (findError) {
-                console.error('Erro ao buscar aulas:', findError);
-                return res.status(500).send('Erro ao buscar aulas');
-            }
+
+                return {
+                    ...classItem.toJSON(),
+                    productType: productType ? productType.name : null,
+                    teacher: teacher ? teacher.name : null,
+                };
+            })
+        );
+
+        return res.status(200).json({
+            success: true,
+            data: enrichedClasses,
+            pagination: {
+                totalRecords,
+                totalPages: Math.ceil(totalRecords / limit),
+                currentPage: parseInt(page, 10),
+                pageSize: limit,
+            },
         });
     } catch (error) {
-        console.error('Erro ao validar token:', error);
-        return res.status(401).send('Token inválido');
+        console.error('Erro ao buscar aulas:', error);
+        return res.status(500).send('Erro ao buscar aulas');
     }
+        
+    
 };
 
 export const getClassById = async (req: Request, res: Response): Promise<Response> => {
