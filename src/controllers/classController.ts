@@ -215,6 +215,10 @@ export const getAllClasses = async (req: Request, res: Response): Promise<void |
         // Busca as aulas com os critérios aplicados e paginação
         const { rows: classes, count: totalRecords } = await Class.findAndCountAll({
             where: criteria,
+            order: [
+                ['date', 'ASC'],
+                ['time', 'ASC'],
+            ],
             limit,
             offset,
         });
