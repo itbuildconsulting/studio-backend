@@ -6,6 +6,7 @@ import sequelize from '../config/database';
 import { Op, Transaction } from 'sequelize';
 import Bike from '../models/Bike.model';
 import Credit from '../models/Credit.model';
+import Person from '../models/Person.model';
 
 export const addToWaitingList = async (req: Request, res: Response): Promise<Response> => {
     try {
@@ -324,5 +325,42 @@ export const removeFromWaitingList = async (req: Request, res: Response): Promis
     } catch (error) {
         console.error('Erro ao remover aluno da lista de espera:', error);
         return res.status(500).json({ success: false, message: 'Erro ao remover aluno da lista de espera' });
+    }
+};
+
+
+export const getWaitingListByClass = async (req: Request, res: Response): Promise<Response> => {
+    try {
+        const { classId } = req.params;
+
+        if (!classId) {
+            return res.status(400).json({ success: false, message: 'classId é obrigatório' });
+        }
+
+        const waitingList = await WaitingList.findAll({
+            where: { classId },
+            include: [
+                {
+                    model: Person,
+                    as: 'student',
+                    attributes: ['name'],
+                }
+            ],
+            order: [['order', 'ASC']],
+        });
+
+        const data = waitingList.map((entry: any) => ({
+            id: entry.id,
+            order: entry.order,
+            studentId: entry.studentId,
+            studentName: entry.student?.name || null,
+            joinedAt: entry.createdAt,
+        }));
+
+        return res.status(200).json({ success: true, data });
+
+    } catch (error) {
+        console.error('Erro ao buscar lista de espera da aula:', error);
+        return res.status(500).json({ success: false, message: 'Erro ao buscar lista de espera' });
     }
 };
