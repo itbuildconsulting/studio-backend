@@ -1,5 +1,5 @@
 import express from 'express';
-import { addToWaitingList, listMyWaitingListsPost, promoteFromWaitingList, promoteFromWaitingListWithBike, removeFromWaitingList } from '../controllers/waitingListController';
+import { addToWaitingList, getWaitingListByClass, listMyWaitingListsPost, promoteFromWaitingList, promoteFromWaitingListWithBike, removeFromWaitingList } from '../controllers/waitingListController';
 import { authenticateToken } from '../core/token/authenticateToken';
 
 const router = express.Router();
@@ -21,5 +21,7 @@ router.post('/mine', authenticateToken, listMyWaitingListsPost);
 router.delete('/remove', removeFromWaitingList);
 
 router.post('/waitingList/promote', authenticateToken, promoteFromWaitingListWithBike);
+
+router.get('/class/:classId', authenticateToken, getWaitingListByClass);
 
 export default router;

@@ -238,10 +238,16 @@ export const getAllClasses = async (req: Request, res: Response): Promise<void |
                     attributes: ['id', 'name'],
                 });
 
+                // ← contar alunos inscritos na aula
+                const studentCount = await ClassStudent.count({
+                    where: { classId: classItem.id }
+                });
+
                 return {
                     ...classItem.toJSON(),
                     productType: productType ? productType.name : null,
                     teacher: teacher ? teacher.name : null,
+                    studentCount,
                 };
             })
         );
@@ -420,7 +426,10 @@ export const updateClass = async (req: Request, res: Response): Promise<Response
             // Remover associações que não estão mais presentes no array `bikes`
             const bikesToKeep = bikes.map((bike: any) => bike.bikeNumber);
             for (const cs of existingClassStudents) {
+                if (!cs.bikeId || !classId) continue; // ← guard contra null
+
                 const bikeInDb = await Bike.findOne({ where: { id: cs.bikeId, classId } });
+
                 if (!bikeInDb || !bikesToKeep.includes(bikeInDb.bikeNumber)) {
                     await cs.destroy();
                 }
@@ -433,11 +442,12 @@ export const updateClass = async (req: Request, res: Response): Promise<Response
             data: classData,
         });
     } catch (error) {
-        console.error('Erro ao atualizar aula:', error);
+        const err = error instanceof Error ? error : new Error(String(error)); // ← cast seguro
+        console.error('Erro ao...', err);
         return res.status(500).json({
             success: false,
-            error: 'Erro ao atualizar aula',
-            details: error.message,
+            error: 'Erro ao...',
+            details: err.message,
         });
     }
 };
@@ -470,31 +480,33 @@ export const cancelClass = async (req: Request, res: Response): Promise<Response
             return res.status(404).send('Aula não encontrada');
         }
 
-        // Alterando o status da aula para 2 (cancelada)
-        classData.active = false;
+        const isActivating = !classData.active; // ← toggle
+        classData.active = isActivating;
         await classData.save();
 
-        // Buscando todos os alunos que estão inscritos na aula
-        const classStudents = await ClassStudent.findAll({ where: { classId: id } });
+        // Só executa a lógica de créditos ao CANCELAR, não ao reativar
+        if (!isActivating) {
+            const classStudents = await ClassStudent.findAll({ where: { classId: id } });
 
-        // Atualizando os status dos alunos na tabela ClassStudent e devolvendo crédito
-        for (const classStudent of classStudents) {
-            // Atualizando o status do aluno (ex: 'cancelado')
-            classStudent.status = false; // Exemplo de status
-            await classStudent.save();
+            for (const classStudent of classStudents) {
+                classStudent.status = false;
+                await classStudent.save();
 
-            // Devolver 1 crédito usando a função updateCustomerBalance
-            const student = await Person.findByPk(classStudent.studentId);
-            if (student) {
-                // Atualiza o saldo de crédito do aluno (devolve 1 crédito)
-                await updateCustomerBalance(student.id, 1, classStudent.transactionId, true, classData.productTypeId); // true indicando que é um crédito devolvido
+                if (!classStudent.studentId) continue; // ← guard contra null
+
+                const student = await Person.findByPk(classStudent.studentId);
+                if (student) {
+                    await updateCustomerBalance(student.id, 1, classStudent.transactionId, true, classData.productTypeId);
+                }
             }
+
+            return res.status(200).json({ success: true, message: 'Aula cancelada com sucesso e créditos devolvidos' });
         }
 
-        return res.status(200).send('Aula cancelada com sucesso e créditos devolvidos');
+        return res.status(200).json({ success: true, message: 'Aula reativada com sucesso' });
     } catch (error) {
-        console.error('Erro ao cancelar aula:', error);
-        return res.status(500).send('Erro ao cancelar aula');
+        console.error('Erro ao alterar status da aula:', error);
+        return res.status(500).send('Erro ao alterar status da aula');
     }
 };
 
