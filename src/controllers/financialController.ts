@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { Op } from 'sequelize';
 import Transactions from '../models/Transaction.model'; // Importando o modelo de transações
+import Item from '../models/Item.model';
 
 
 export const getFilteredTransactions = async (req: Request, res: Response): Promise<Response> => {
@@ -76,10 +77,10 @@ export const getTransactionById = async (req: Request, res: Response): Promise<R
     try {
         const { transactionId } = req.params;
 
-        // Retrieve transaction details by primary key (transactionId)
-        const transaction = await Transactions.findByPk(transactionId);
+        const transaction = await Transactions.findOne({
+            where: { transactionId }
+        });
 
-        // If transaction not found, return 404 response
         if (!transaction) {
             return res.status(404).json({
                 success: false,
@@ -87,7 +88,10 @@ export const getTransactionById = async (req: Request, res: Response): Promise<R
             });
         }
 
-        // Format created and updated dates
+        const items = await Item.findAll({
+            where: { transactionId }
+        });
+
         const transactionDetails = {
             transactionId: transaction.transactionId,
             amount: transaction.amount,
@@ -102,14 +106,25 @@ export const getTransactionById = async (req: Request, res: Response): Promise<R
             customerName: transaction.customerName,
             customerEmail: transaction.customerEmail,
             customerDocument: transaction.customerDocument,
-            closedAt: transaction.closedAt ? new Date(transaction.closedAt).toLocaleDateString('pt-BR') : null,
+            closedAt: transaction.closedAt
+                ? new Date(transaction.closedAt).toLocaleDateString('pt-BR')
+                : null,
+
+            // Adição dos items no retorno da API
+            items: items.map(item => ({
+                id: item.id,
+                itemCode: item.itemCode,
+                description: item.description,
+                quantity: item.quantity,
+                amount: item.amount,
+            }))
         };
 
-        // Return transaction details in the response
         return res.status(200).json({
             success: true,
             transaction: transactionDetails,
         });
+
     } catch (error) {
         console.error('Erro ao buscar transação:', error);
         return res.status(500).json({
