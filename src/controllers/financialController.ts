@@ -34,7 +34,7 @@ export const getFilteredTransactions = async (req: Request, res: Response): Prom
         // Busca no banco com os filtros e paginação
         const { rows: transactions, count: totalRecords } = await Transactions.findAndCountAll({
             where: filters,
-            attributes: ['transactionId', 'amount', 'studentId', 'status', 'createdAt', 'customerName'], // Seleciona apenas os campos necessários
+            attributes: ['transactionId', 'amount', 'studentId', 'status', 'createdAt', 'customerName', 'payment_method'], // Seleciona apenas os campos necessários
             order: [['createdAt', 'DESC']], // Ordena pelas transações mais recentes
             limit,
             offset,
@@ -47,6 +47,7 @@ export const getFilteredTransactions = async (req: Request, res: Response): Prom
             studentId: transaction.studentId,
             customerName: transaction.customerName,
             status: transaction.status,
+            payment_method: transaction.payment_method,
             //createdAt: new Date(transaction.createdAt).toLocaleDateString('pt-BR'), // Formata a data
             createdAt: transaction.createdAt
         }));
