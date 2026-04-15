@@ -5,6 +5,8 @@ import { authenticateToken } from '../core/token/authenticateToken';
 import { saveTransaction } from './transactionController';
 import { updateCustomerBalance } from './balanceController';
 import { checkPurchaseLimit, createItemsAfterTransaction } from './itemsController';
+import Transactions from '../models/Transaction.model';
+import Item from '../models/Item.model';
 
 interface ProductRequest {
     productId: string;
@@ -382,6 +384,34 @@ export const checkPixStatus = async (req: Request, res: Response): Promise<Respo
         const data = await response.json();
 
         if (response.ok) {
+            // Se o gateway retornar paid, verificar se ainda está pending localmente
+            if (data.status === 'paid') {
+                const transaction = await Transactions.findOne({
+                    where: { chargeId }
+                });
+
+                if (transaction && transaction.status === 'pending') {
+                    console.log('✅ PIX confirmado via polling, aplicando créditos...');
+
+                    await transaction.update({ status: 'paid', closedAt: new Date() });
+
+                    await updateCustomerBalance(
+                        transaction.studentId,
+                        transaction.balance,
+                        transaction.transactionId,
+                        true,
+                        (transaction as any).productTypeId
+                    );
+
+                    await Item.update(
+                        { status: 'ativo' },
+                        { where: { transactionId: transaction.transactionId } }
+                    );
+
+                    console.log('✅ Créditos aplicados via polling com sucesso');
+                }
+            }
+
             return res.status(200).json({
                 success: true,
                 data: {
