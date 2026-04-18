@@ -33,6 +33,8 @@ export const createClass = async (req: Request, res: Response): Promise<Response
             productTypeId,
             bikes,
             active,
+            title,
+            description,
         } = req.body;
 
         // Formatar a data corretamente
@@ -49,6 +51,8 @@ export const createClass = async (req: Request, res: Response): Promise<Response
             kickback,
             productTypeId,
             active,
+            title,
+            description,
         });
 
         // Processar cada bike do array `bikes` e garantir que as bikes existam na tabela `Bike`
@@ -111,6 +115,8 @@ export const createMultipleClasses = async (req: Request, res: Response): Promis
             productTypeId,
             bikes,
             active,
+            title,
+            description,
         } = req.body;
 
         // Criar as aulas para cada combinação de dia e horário
@@ -121,8 +127,8 @@ export const createMultipleClasses = async (req: Request, res: Response): Promis
             for (const h of time) {
                 // Criar a aula para o dia e horário atuais
                 const newClass = await Class.create({
-                    date: day, // O dia da semana deve ser convertido em uma data, se necessário
-                    time: h, // Usar o horário fornecido
+                    date: day,
+                    time: h,
                     teacherId,
                     limit,
                     hasCommission,
@@ -130,6 +136,8 @@ export const createMultipleClasses = async (req: Request, res: Response): Promis
                     kickback,
                     productTypeId,
                     active,
+                    title,
+                    description,
                 });
 
                 // Processar cada bike do array `bikes` e associar as bikes à aula
@@ -335,8 +343,10 @@ export const updateClass = async (req: Request, res: Response): Promise<Response
             kickbackRule,
             kickback,
             productTypeId,
-            bikes, // Array atualizado de { studentId, bikeNumber, deductCredits }
+            bikes,
             active,
+            title,
+            description,
         } = req.body;
 
         // Verificar se a aula existe
@@ -362,6 +372,8 @@ export const updateClass = async (req: Request, res: Response): Promise<Response
             kickback: kickback || classData.kickback,
             productTypeId: productTypeId || classData.productTypeId,
             active: active !== undefined ? active : classData.active,
+            title: title !== undefined ? title : classData.title,
+            description: description !== undefined ? description : classData.description,
         });
 
         // Atualizar as associações de alunos e bicicletas
