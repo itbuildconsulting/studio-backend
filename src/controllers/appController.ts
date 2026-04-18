@@ -161,6 +161,7 @@ export const balance = async (req: Request, res: Response): Promise<Response> =>
     
     const whereCondition: any = {
       date: { [Op.gte]: formattedStartDate, [Op.lte]: formattedEndDate },
+      active: true,
     };
     if (allowedProductTypes.length > 0) {
       whereCondition.productTypeId = { [Op.in]: allowedProductTypes };
