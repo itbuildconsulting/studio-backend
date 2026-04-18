@@ -14,6 +14,8 @@ interface ClassAttributes {
   kickback?: number;
   active: boolean;
   productTypeId: number;
+  title?: string;
+  description?: string;
 }
 
 // Interface para criação de novos registros, onde o campo `id` é opcional
@@ -31,6 +33,8 @@ class Class extends Model<ClassAttributes, ClassCreationAttributes> implements C
   public kickback?: number;
   public active!: boolean;
   public productTypeId!: number;
+  public title?: string;
+  public description?: string;
 
   // Timestamps
   public readonly createdAt!: Date;
@@ -82,6 +86,14 @@ Class.init(
         model: ProductType,
         key: 'id',
       },
+    },
+    title: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    description: {
+      type: DataTypes.TEXT,
+      allowNull: true,
     },
   },
   {
