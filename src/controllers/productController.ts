@@ -6,13 +6,14 @@ import Place from '../models/Place.model';
 // CREATE
 export const createProduct = async (req: Request, res: Response): Promise<Response> => {
     try {
-        const { 
-            name, 
-            credit, 
-            validateDate, 
-            productTypeId, 
-            value, 
+        const {
+            name,
+            credit,
+            validateDate,
+            productTypeId,
+            value,
             active,
+            purchaseLimit = 0,
             usageRestrictionType = 'none',
             usageRestrictionLimit = null
         } = req.body;
@@ -39,13 +40,14 @@ export const createProduct = async (req: Request, res: Response): Promise<Respon
         }
 
         // Criação do novo produto
-        const newProduct = await Product.create({ 
-            name, 
-            credit, 
-            validateDate, 
-            productTypeId, 
-            value, 
+        const newProduct = await Product.create({
+            name,
+            credit,
+            validateDate,
+            productTypeId,
+            value,
             active,
+            purchaseLimit,
             usageRestrictionType,
             usageRestrictionLimit,
         });
