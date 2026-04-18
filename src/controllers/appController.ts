@@ -198,7 +198,7 @@ export const hours = async (req: Request, res: Response): Promise<Response> => {
 
         const availableClasses = await Class.findAll({
             attributes: ['id', 'time'],
-            where: { date },
+            where: { date, active: true },
             order: [['time', 'ASC']]
         });
 
