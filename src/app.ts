@@ -31,7 +31,6 @@ import performanceRoutes from './routes/statisticsRoutes';
 import installmentRulesRoutes from './routes/installmentRulesRoutes';
 import paymentRoutes from './routes/paymentRoutes';
 import webhookRoutes from './routes/webhookRoutes';
-import './config/associations';
 
 const app: Application = express();
 
