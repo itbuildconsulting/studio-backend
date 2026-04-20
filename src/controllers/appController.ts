@@ -198,7 +198,7 @@ export const hours = async (req: Request, res: Response): Promise<Response> => {
         }
 
         const availableClasses = await Class.findAll({
-            attributes: ['id', 'time'],
+            attributes: ['id', 'time', 'title', 'teacherId'],
             where: { date, active: true },
             order: [['time', 'ASC']]
         });
@@ -207,9 +207,14 @@ export const hours = async (req: Request, res: Response): Promise<Response> => {
             return res.status(404).json({ message: 'Nenhum horário disponível para esta data' });
         }
 
-        const availableTimes = availableClasses.map(classData => ({
-            id: classData.id,
-            time: classData.time
+        const availableTimes = await Promise.all(availableClasses.map(async classData => {
+            const teacher = await Person.findByPk(classData.teacherId, { attributes: ['name'] });
+            return {
+                id: classData.id,
+                time: classData.time,
+                title: classData.title ?? null,
+                teacherName: teacher?.name ?? null,
+            };
         }));
 
         return res.status(200).json({
@@ -236,7 +241,7 @@ export const getClassById = async (req: Request, res: Response): Promise<Respons
         }
 
         const classData = await Class.findByPk(id, {
-            attributes: ['id', 'date', 'time', 'teacherId', 'productTypeId']
+            attributes: ['id', 'date', 'time', 'teacherId', 'productTypeId', 'title', 'description']
         });
 
         if (!classData) {
@@ -258,6 +263,8 @@ export const getClassById = async (req: Request, res: Response): Promise<Respons
                 id: classData.id,
                 date: classData.date,
                 time: classData.time,
+                title: classData.title ?? null,
+                description: classData.description ?? null,
                 getProductById: classData.productTypeId,
                 teacherId: classData.teacherId || '',
                 teacherName: teacher ? teacher.name : '',
