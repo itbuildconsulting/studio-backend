@@ -4,6 +4,7 @@ import Person from '../models/Person.model';
 import ClassStudent from '../models/ClassStudent.model';
 import Class from '../models/Class.model';
 import Credit from '../models/Credit.model';
+import { getPresenceFilter } from '../utils/presenceFilter';
 
 // ==================== CRÉDITOS EXPIRANDO ====================
 
@@ -156,7 +157,7 @@ export const getOccupancyByTime = async (req: Request, res: Response): Promise<R
             raw: true
         });
 
-        // Calcular taxa de ocupação por horário
+        const presenceFilter = await getPresenceFilter();
         const labels: string[] = [];
         const data: number[] = [];
 
@@ -165,20 +166,14 @@ export const getOccupancyByTime = async (req: Request, res: Response): Promise<R
             const time: any = timeSlotData.time;
             const totalClasses = parseInt(timeSlotData.totalClasses);
 
-            // Contar check-ins para este horário
+            // Contar presenças confirmadas para este horário
             const checkins = await ClassStudent.count({
                 include: [{
                     model: Class,
-                    where: {
-                        time,
-                        date: { [Op.between]: [start, end] },
-                        active: true
-                    },
+                    where: { time, date: { [Op.between]: [start, end] }, active: true },
                     attributes: []
                 }],
-                where: {
-                    checkin: { [Op.not]: null }
-                }
+                where: presenceFilter
             });
 
             const totalSpots = totalClasses * 20; // 20 bikes por aula
@@ -245,10 +240,11 @@ export const getTopTeachers = async (req: Request, res: Response): Promise<Respo
 
                 const classIds = teacherClasses.map((c: any) => c.id);
 
+                const presenceFilter = await getPresenceFilter();
                 const totalCheckins = await ClassStudent.count({
                     where: {
                         classId: { [Op.in]: classIds },
-                        checkin: { [Op.not]: null }
+                        ...presenceFilter
                     }
                 });
 
@@ -289,17 +285,22 @@ export const getOccupancyByDayOfWeek = async (req: Request, res: Response): Prom
         const now = new Date();
         const firstDayMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
+        const presenceFilter = await getPresenceFilter();
+
         const occupancyByDay = await ClassStudent.findAll({
             attributes: [
-                [fn('DAYOFWEEK', col('createdAt')), 'dayOfWeek'],
-                [fn('COUNT', col('id')), 'checkins']
+                [fn('DAYOFWEEK', col('Class.date')), 'dayOfWeek'],
+                [fn('COUNT', col('ClassStudent.id')), 'checkins']
             ],
-            where: {
-                checkin: { [Op.not]: null },
-                createdAt: { [Op.between]: [firstDayMonth, now] }
-            },
-            group: [fn('DAYOFWEEK', col('createdAt'))],
-            order: [[fn('DAYOFWEEK', col('createdAt')), 'ASC']],
+            include: [{
+                model: Class,
+                attributes: [],
+                where: { date: { [Op.between]: [firstDayMonth, now] } },
+                required: true
+            }],
+            where: presenceFilter,
+            group: [fn('DAYOFWEEK', col('Class.date'))],
+            order: [[fn('DAYOFWEEK', col('Class.date')), 'ASC']],
             raw: true
         });
 
@@ -334,6 +335,7 @@ export const getWeeklyTrends = async (req: Request, res: Response): Promise<Resp
         const labels: string[] = [];
         const data: number[] = [];
         const dayNames = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+        const presenceFilter = await getPresenceFilter();
 
         for (let i = 6; i >= 0; i--) {
             const d = new Date(now);
@@ -349,7 +351,7 @@ export const getWeeklyTrends = async (req: Request, res: Response): Promise<Resp
                     where: { date: dateStr },
                     required: true
                 }],
-                where: { checkin: { [Op.not]: null } }
+                where: presenceFilter
             });
 
             data.push(checkins);
