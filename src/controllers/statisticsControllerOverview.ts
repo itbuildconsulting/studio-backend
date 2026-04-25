@@ -141,7 +141,7 @@ export const getTopStudents = async (req: Request, res: Response): Promise<Respo
 
         const now = new Date();
 
-        // Dias distintos com aula no período — denominador comum para todos os alunos
+        // Dias distintos com aula no período — denominador da frequência
         const totalClassDays = await Class.count({
             distinct: true,
             col: 'date',
@@ -151,7 +151,21 @@ export const getTopStudents = async (req: Request, res: Response): Promise<Respo
             }
         });
 
-        // Buscar alunos com mais presenças confirmadas no período (apenas aulas passadas)
+        // Últimos 7 dias com aula — compartilhado entre todos os alunos
+        const sevenDaysAgo = new Date(now);
+        sevenDaysAgo.setDate(now.getDate() - 6);
+
+        const activeLast7 = await Class.findAll({
+            attributes: ['date'],
+            where: { date: { [Op.between]: [sevenDaysAgo, now] }, active: true },
+            group: ['date'],
+            raw: true
+        });
+
+        const toDateStr = (d: any) => new Date(d).toISOString().split('T')[0];
+        const activeDaySet = new Set(activeLast7.map((c: any) => toDateStr(c.date)));
+
+        // Buscar alunos com mais presenças confirmadas no período
         const topStudents = await ClassStudent.findAll({
             attributes: [
                 'studentId',
@@ -185,12 +199,35 @@ export const getTopStudents = async (req: Request, res: Response): Promise<Respo
                     ? Math.min(100, Math.round((uniqueDays / totalClassDays) * 100))
                     : 0;
 
+                // Presença nos últimos 7 dias
+                const studentLast7 = await ClassStudent.findAll({
+                    attributes: [[fn('DATE', col('Class.date')), 'classDate']],
+                    include: [{
+                        model: Class,
+                        attributes: [],
+                        where: { date: { [Op.between]: [sevenDaysAgo, now] } },
+                        required: true
+                    }],
+                    where: { studentId: studentData.studentId, ...presenceFilter },
+                    group: [fn('DATE', col('Class.date'))],
+                    raw: true
+                });
+                const studentDaySet = new Set(studentLast7.map((d: any) => toDateStr(d.classDate)));
+
+                const last7 = Array.from({ length: 7 }, (_, i) => {
+                    const d = new Date(sevenDaysAgo);
+                    d.setDate(sevenDaysAgo.getDate() + i);
+                    const dateStr = toDateStr(d);
+                    if (!activeDaySet.has(dateStr)) return 'no_class';
+                    return studentDaySet.has(dateStr) ? 'attended' : 'missed';
+                });
+
                 return {
                     studentId: studentData.studentId,
                     name: person?.name || 'Desconhecido',
                     classCount: parseInt(studentData.classCount),
-                    streak: uniqueDays,
-                    attendanceRate
+                    attendanceRate,
+                    last7
                 };
             })
         );
