@@ -36,7 +36,7 @@ router.post('/top-teachers', getTopTeachers);
 router.get('/occupancy-by-day', getOccupancyByDayOfWeek);
 
 // ==================== TENDÊNCIAS ====================
-router.get('/weekly-trends', getWeeklyTrends);
+router.post('/weekly-trends', getWeeklyTrends);
 
 // ==================== INSIGHTS ====================
 router.get('/insights', getAutomatedInsights);

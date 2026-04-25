@@ -141,6 +141,16 @@ export const getTopStudents = async (req: Request, res: Response): Promise<Respo
 
         const now = new Date();
 
+        // Dias distintos com aula no período — denominador comum para todos os alunos
+        const totalClassDays = await Class.count({
+            distinct: true,
+            col: 'date',
+            where: {
+                date: { [Op.between]: [start, now] },
+                active: true
+            }
+        });
+
         // Buscar alunos com mais presenças confirmadas no período (apenas aulas passadas)
         const topStudents = await ClassStudent.findAll({
             attributes: [
@@ -169,33 +179,17 @@ export const getTopStudents = async (req: Request, res: Response): Promise<Respo
                     attributes: ['id', 'name']
                 });
 
-                // Total de aulas passadas não canceladas (status = true ou null)
-                // Op.ne: false gera "status != 0" no MySQL que exclui NULL,
-                // por isso usamos Op.or para incluir registros sem status definido.
-                const scheduledClasses = await ClassStudent.count({
-                    include: [{
-                        model: Class,
-                        attributes: [],
-                        where: { date: { [Op.between]: [start, now] } },
-                        required: true
-                    }],
-                    where: {
-                        studentId: studentData.studentId,
-                        [Op.or]: [{ status: true }, { status: null }]
-                    }
-                });
-
-                const attendedClasses = parseInt(studentData.classCount);
-                const denominator = Math.max(attendedClasses, scheduledClasses);
-                const attendanceRate = denominator > 0
-                    ? Math.min(100, Math.round((attendedClasses / denominator) * 100))
+                // Frequência = dias que o aluno compareceu / dias que o estúdio teve aula
+                const uniqueDays = parseInt(studentData.uniqueDays || 0);
+                const attendanceRate = totalClassDays > 0
+                    ? Math.min(100, Math.round((uniqueDays / totalClassDays) * 100))
                     : 0;
 
                 return {
                     studentId: studentData.studentId,
                     name: person?.name || 'Desconhecido',
-                    classCount: attendedClasses,
-                    streak: parseInt(studentData.uniqueDays || 0),
+                    classCount: parseInt(studentData.classCount),
+                    streak: uniqueDays,
                     attendanceRate
                 };
             })
