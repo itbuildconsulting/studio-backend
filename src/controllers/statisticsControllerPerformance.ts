@@ -1,11 +1,9 @@
 import { Request, Response } from 'express';
-import { Op, fn, col, literal, WhereOptions } from 'sequelize';
+import { Op, fn, col, literal } from 'sequelize';
 import Person from '../models/Person.model';
 import ClassStudent from '../models/ClassStudent.model';
 import Class from '../models/Class.model';
 import Credit from '../models/Credit.model';
-import Product from '../models/Product.model';
-import ProductType from '../models/ProductType.model';
 
 // ==================== CRÉDITOS EXPIRANDO ====================
 
@@ -153,12 +151,6 @@ export const getOccupancyByTime = async (req: Request, res: Response): Promise<R
                 date: { [Op.between]: [start, end] },
                 active: true
             },
-            include: [{
-                model: ClassStudent,
-                attributes: [],
-                where: { checkin: { [Op.not]: null } },
-                required: false
-            }],
             group: ['time'],
             order: [['time', 'ASC']],
             raw: true
@@ -198,8 +190,7 @@ export const getOccupancyByTime = async (req: Request, res: Response): Promise<R
 
         return res.status(200).json({
             success: true,
-            labels,
-            data
+            data: { labels, data }
         });
 
     } catch (error) {
@@ -330,6 +321,50 @@ export const getOccupancyByDayOfWeek = async (req: Request, res: Response): Prom
         return res.status(500).json({
             success: false,
             message: 'Erro ao buscar ocupação por dia da semana',
+            error: error instanceof Error ? error.message : 'Erro desconhecido'
+        });
+    }
+};
+
+// ==================== TENDÊNCIAS SEMANAIS ====================
+
+export const getWeeklyTrends = async (req: Request, res: Response): Promise<Response> => {
+    try {
+        const now = new Date();
+        const labels: string[] = [];
+        const data: number[] = [];
+        const dayNames = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+
+        for (let i = 6; i >= 0; i--) {
+            const d = new Date(now);
+            d.setDate(now.getDate() - i);
+            const dateStr = d.toISOString().split('T')[0];
+
+            labels.push(dayNames[d.getDay()]);
+
+            const checkins = await ClassStudent.count({
+                include: [{
+                    model: Class,
+                    attributes: [],
+                    where: { date: dateStr },
+                    required: true
+                }],
+                where: { checkin: { [Op.not]: null } }
+            });
+
+            data.push(checkins);
+        }
+
+        return res.status(200).json({
+            success: true,
+            data: { labels, data }
+        });
+
+    } catch (error) {
+        console.error('Erro ao buscar tendências semanais:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Erro ao buscar tendências semanais',
             error: error instanceof Error ? error.message : 'Erro desconhecido'
         });
     }
