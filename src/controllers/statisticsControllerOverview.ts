@@ -1,12 +1,10 @@
 import { Request, Response } from 'express';
-import { Op, fn, col, literal, WhereOptions } from 'sequelize';
+import { Op, fn, col } from 'sequelize';
 import Person from '../models/Person.model';
 import ClassStudent from '../models/ClassStudent.model';
 import Class from '../models/Class.model';
 import Credit from '../models/Credit.model';
-import Transactions from '../models/Transaction.model';
-import Bike from '../models/Bike.model';
-import Product from '../models/Product.model';
+import { getPresenceFilter } from '../utils/presenceFilter';
 
 // ==================== VISÃO GERAL ====================
 
@@ -22,12 +20,14 @@ export const getOverviewMetrics = async (req: Request, res: Response): Promise<R
         const start = startDate ? new Date(startDate) : firstDayCurrentMonth;
         const end = endDate ? new Date(endDate) : now;
 
-        // Alunos ativos (fizeram pelo menos 1 check-in no período)
+        const presenceFilter = await getPresenceFilter();
+
+        // Alunos ativos (pelo menos 1 presença confirmada no período)
         const activeStudentsCount = await ClassStudent.count({
             distinct: true,
             col: 'studentId',
             where: {
-                checkin: { [Op.not]: null },
+                ...presenceFilter,
                 createdAt: { [Op.between]: [start, end] }
             }
         });
@@ -37,7 +37,7 @@ export const getOverviewMetrics = async (req: Request, res: Response): Promise<R
             distinct: true,
             col: 'studentId',
             where: {
-                checkin: { [Op.not]: null },
+                ...presenceFilter,
                 createdAt: { [Op.between]: [firstDayLastMonth, lastDayLastMonth] }
             }
         });
@@ -46,10 +46,10 @@ export const getOverviewMetrics = async (req: Request, res: Response): Promise<R
             ? ((activeStudentsCount - previousActiveStudentsCount) / previousActiveStudentsCount) * 100
             : 0;
 
-        // Total de check-ins no mês
+        // Total de presenças no período
         const totalCheckins = await ClassStudent.count({
             where: {
-                checkin: { [Op.not]: null },
+                ...presenceFilter,
                 createdAt: { [Op.between]: [start, end] }
             }
         });
@@ -133,8 +133,9 @@ export const getTopStudents = async (req: Request, res: Response): Promise<Respo
     try {
         const { limit = 10, period } = req.body;
         const start = resolvePeriodStart(period);
+        const presenceFilter = await getPresenceFilter();
 
-        // Buscar alunos com mais aulas (baseado na data da Class)
+        // Buscar alunos com mais presenças confirmadas no período
         const topStudents = await ClassStudent.findAll({
             attributes: [
                 'studentId',
@@ -144,11 +145,10 @@ export const getTopStudents = async (req: Request, res: Response): Promise<Respo
             include: [{
                 model: Class,
                 attributes: [],
-                where: {
-                    date: { [Op.gte]: start }
-                },
+                where: { date: { [Op.gte]: start } },
                 required: true
             }],
+            where: presenceFilter,
             group: ['studentId'],
             order: [[fn('COUNT', col('ClassStudent.classId')), 'DESC']],
             limit: parseInt(limit.toString()),
@@ -163,19 +163,15 @@ export const getTopStudents = async (req: Request, res: Response): Promise<Respo
                     attributes: ['id', 'name']
                 });
 
-                // Calcular taxa de presença
+                // Total de aulas inscritas no período (base para taxa de presença)
                 const scheduledClasses = await ClassStudent.count({
                     include: [{
                         model: Class,
                         attributes: [],
-                        where: {
-                            date: { [Op.gte]: start }
-                        },
+                        where: { date: { [Op.gte]: start } },
                         required: true
                     }],
-                    where: {
-                        studentId: studentData.studentId
-                    }
+                    where: { studentId: studentData.studentId }
                 });
 
                 const attendedClasses = parseInt(studentData.classCount);
@@ -296,6 +292,8 @@ export const getStudentsAtRisk = async (req: Request, res: Response): Promise<Re
         const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
         const endLastMonth = new Date(now.getFullYear(), now.getMonth(), 0);
 
+        const presenceFilter = await getPresenceFilter();
+
         // Alunos do mês atual
         const currentMonthStudents = await ClassStudent.findAll({
             attributes: [
@@ -303,7 +301,7 @@ export const getStudentsAtRisk = async (req: Request, res: Response): Promise<Re
                 [fn('COUNT', col('classId')), 'classCount']
             ],
             where: {
-                checkin: { [Op.not]: null },
+                ...presenceFilter,
                 createdAt: { [Op.between]: [currentMonth, now] }
             },
             group: ['studentId'],
@@ -317,7 +315,7 @@ export const getStudentsAtRisk = async (req: Request, res: Response): Promise<Re
                 [fn('COUNT', col('classId')), 'classCount']
             ],
             where: {
-                checkin: { [Op.not]: null },
+                ...presenceFilter,
                 createdAt: { [Op.between]: [lastMonth, endLastMonth] }
             },
             group: ['studentId'],
