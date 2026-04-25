@@ -12,6 +12,7 @@ import {
     getOccupancyByTime,
     getTopTeachers,
     getOccupancyByDayOfWeek,
+    getWeeklyTrends,
     getAutomatedInsights
 } from '../controllers/statisticsControllerPerformance';
 
@@ -33,6 +34,9 @@ router.post('/most-credits', getStudentsWithMostCredits);
 router.post('/occupancy-by-time', getOccupancyByTime);
 router.post('/top-teachers', getTopTeachers);
 router.get('/occupancy-by-day', getOccupancyByDayOfWeek);
+
+// ==================== TENDÊNCIAS ====================
+router.get('/weekly-trends', getWeeklyTrends);
 
 // ==================== INSIGHTS ====================
 router.get('/insights', getAutomatedInsights);

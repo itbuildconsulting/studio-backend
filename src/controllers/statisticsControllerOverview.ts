@@ -109,13 +109,30 @@ export const getOverviewMetrics = async (req: Request, res: Response): Promise<R
 
 // ==================== TOP ALUNOS ====================
 
+function resolvePeriodStart(period?: string): Date {
+    const now = new Date();
+    switch (period) {
+        case 'hoje':
+            return new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        case 'semana': {
+            const d = new Date(now);
+            d.setDate(now.getDate() - 7);
+            return d;
+        }
+        case 'trimestre': {
+            const d = new Date(now);
+            d.setMonth(now.getMonth() - 3);
+            return d;
+        }
+        default:
+            return new Date(now.getFullYear(), now.getMonth(), 1);
+    }
+}
+
 export const getTopStudents = async (req: Request, res: Response): Promise<Response> => {
     try {
         const { limit = 10, period } = req.body;
-
-        const now = new Date();
-        const firstDayMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-        const start = period ? new Date(period) : firstDayMonth;
+        const start = resolvePeriodStart(period);
 
         // Buscar alunos com mais aulas (baseado na data da Class)
         const topStudents = await ClassStudent.findAll({
