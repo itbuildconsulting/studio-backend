@@ -135,7 +135,9 @@ export const getTopStudents = async (req: Request, res: Response): Promise<Respo
         const start = resolvePeriodStart(period);
         const presenceFilter = await getPresenceFilter();
 
-        // Buscar alunos com mais presenças confirmadas no período
+        const now = new Date();
+
+        // Buscar alunos com mais presenças confirmadas no período (apenas aulas passadas)
         const topStudents = await ClassStudent.findAll({
             attributes: [
                 'studentId',
@@ -145,7 +147,7 @@ export const getTopStudents = async (req: Request, res: Response): Promise<Respo
             include: [{
                 model: Class,
                 attributes: [],
-                where: { date: { [Op.gte]: start } },
+                where: { date: { [Op.between]: [start, now] } },
                 required: true
             }],
             where: presenceFilter,
@@ -163,12 +165,12 @@ export const getTopStudents = async (req: Request, res: Response): Promise<Respo
                     attributes: ['id', 'name']
                 });
 
-                // Total de aulas inscritas no período (base para taxa de presença)
+                // Total de aulas passadas inscritas no período (base para taxa de presença)
                 const scheduledClasses = await ClassStudent.count({
                     include: [{
                         model: Class,
                         attributes: [],
-                        where: { date: { [Op.gte]: start } },
+                        where: { date: { [Op.between]: [start, now] } },
                         required: true
                     }],
                     where: { studentId: studentData.studentId }
