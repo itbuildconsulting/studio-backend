@@ -160,7 +160,8 @@ export const getOccupancyByTime = async (req: Request, res: Response): Promise<R
         const presenceFilter = await getPresenceFilter();
         const labels: string[] = [];
         const counts: number[] = [];  // nº alunos por horário
-        const data: number[] = [];    // % ocupação (mantido para o heatmap)
+        const spots: number[] = [];   // vagas totais (aulas × 12 bikes)
+        const data: number[] = [];    // % ocupação
 
         for (const timeSlot of occupancyByTime) {
             const timeSlotData: any = timeSlot;
@@ -179,14 +180,16 @@ export const getOccupancyByTime = async (req: Request, res: Response): Promise<R
             const totalSpots = totalClasses * 12;
             const occupancyRate = totalSpots > 0 ? (checkins / totalSpots) * 100 : 0;
 
-            labels.push(time);
+            // Remove os segundos do formato HH:MM:SS → HH:MM
+            labels.push(String(time).slice(0, 5));
             counts.push(checkins);
+            spots.push(totalSpots);
             data.push(parseFloat(occupancyRate.toFixed(1)));
         }
 
         return res.status(200).json({
             success: true,
-            data: { labels, counts, data }
+            data: { labels, counts, spots, data }
         });
 
     } catch (error) {
