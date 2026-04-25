@@ -165,7 +165,7 @@ export const getTopStudents = async (req: Request, res: Response): Promise<Respo
                     attributes: ['id', 'name']
                 });
 
-                // Total de aulas passadas inscritas no período (base para taxa de presença)
+                // Total de aulas passadas não canceladas (base para taxa de presença)
                 const scheduledClasses = await ClassStudent.count({
                     include: [{
                         model: Class,
@@ -173,7 +173,10 @@ export const getTopStudents = async (req: Request, res: Response): Promise<Respo
                         where: { date: { [Op.between]: [start, now] } },
                         required: true
                     }],
-                    where: { studentId: studentData.studentId }
+                    where: {
+                        studentId: studentData.studentId,
+                        status: { [Op.ne]: false }
+                    }
                 });
 
                 const attendedClasses = parseInt(studentData.classCount);
