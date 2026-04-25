@@ -86,15 +86,19 @@ export const getOverviewMetrics = async (req: Request, res: Response): Promise<R
             }
         }) || 0;
 
+        const avgStudentsPerClass = totalClassesInPeriod > 0
+            ? parseFloat((totalCheckins / totalClassesInPeriod).toFixed(1))
+            : 0;
+
         return res.status(200).json({
             success: true,
             activeStudents: activeStudentsCount,
             activeStudentsGrowth: parseFloat(activeStudentsGrowth.toFixed(1)),
-            totalCheckins,
+            avgStudentsPerClass,
             occupancyRate: parseFloat(occupancyRate.toString()),
             totalActiveCredits: Math.round(totalActiveCredits),
             creditsExpiringNext7Days: Math.round(creditsExpiringNext7Days),
-            npsScore: 'N/A' // Implementar se tiver sistema de avaliação
+            npsScore: 'N/A'
         });
 
     } catch (error) {
@@ -165,7 +169,9 @@ export const getTopStudents = async (req: Request, res: Response): Promise<Respo
                     attributes: ['id', 'name']
                 });
 
-                // Total de aulas passadas não canceladas (base para taxa de presença)
+                // Total de aulas passadas não canceladas (status = true ou null)
+                // Op.ne: false gera "status != 0" no MySQL que exclui NULL,
+                // por isso usamos Op.or para incluir registros sem status definido.
                 const scheduledClasses = await ClassStudent.count({
                     include: [{
                         model: Class,
@@ -175,13 +181,14 @@ export const getTopStudents = async (req: Request, res: Response): Promise<Respo
                     }],
                     where: {
                         studentId: studentData.studentId,
-                        status: { [Op.ne]: false }
+                        [Op.or]: [{ status: true }, { status: null }]
                     }
                 });
 
                 const attendedClasses = parseInt(studentData.classCount);
-                const attendanceRate = scheduledClasses > 0
-                    ? ((attendedClasses / scheduledClasses) * 100).toFixed(0)
+                const denominator = Math.max(attendedClasses, scheduledClasses);
+                const attendanceRate = denominator > 0
+                    ? Math.min(100, Math.round((attendedClasses / denominator) * 100))
                     : 0;
 
                 return {
@@ -189,7 +196,7 @@ export const getTopStudents = async (req: Request, res: Response): Promise<Respo
                     name: person?.name || 'Desconhecido',
                     classCount: attendedClasses,
                     streak: parseInt(studentData.uniqueDays || 0),
-                    attendanceRate: parseInt(attendanceRate.toString())
+                    attendanceRate
                 };
             })
         );
