@@ -62,7 +62,7 @@ export const getOverviewMetrics = async (req: Request, res: Response): Promise<R
             }
         });
 
-        const totalSpotsAvailable = totalClassesInPeriod * 20; // Assumindo 20 bikes por aula
+        const totalSpotsAvailable = totalClassesInPeriod * 12;
         const occupancyRate = totalSpotsAvailable > 0
             ? ((totalCheckins / totalSpotsAvailable) * 100).toFixed(1)
             : 0;

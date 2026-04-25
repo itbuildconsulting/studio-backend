@@ -176,7 +176,7 @@ export const getOccupancyByTime = async (req: Request, res: Response): Promise<R
                 where: presenceFilter
             });
 
-            const totalSpots = totalClasses * 20; // 20 bikes por aula
+            const totalSpots = totalClasses * 12;
             const occupancyRate = totalSpots > 0 ? (checkins / totalSpots) * 100 : 0;
 
             labels.push(time);
@@ -248,7 +248,7 @@ export const getTopTeachers = async (req: Request, res: Response): Promise<Respo
                     }
                 });
 
-                const totalSpots = classIds.length * 20;
+                const totalSpots = classIds.length * 12;
                 const averageOccupancy = totalSpots > 0
                     ? ((totalCheckins / totalSpots) * 100).toFixed(1)
                     : 0;
