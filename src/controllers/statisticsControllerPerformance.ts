@@ -159,14 +159,14 @@ export const getOccupancyByTime = async (req: Request, res: Response): Promise<R
 
         const presenceFilter = await getPresenceFilter();
         const labels: string[] = [];
-        const data: number[] = [];
+        const counts: number[] = [];  // nº alunos por horário
+        const data: number[] = [];    // % ocupação (mantido para o heatmap)
 
         for (const timeSlot of occupancyByTime) {
             const timeSlotData: any = timeSlot;
             const time: any = timeSlotData.time;
             const totalClasses = parseInt(timeSlotData.totalClasses);
 
-            // Contar presenças confirmadas para este horário
             const checkins = await ClassStudent.count({
                 include: [{
                     model: Class,
@@ -180,12 +180,13 @@ export const getOccupancyByTime = async (req: Request, res: Response): Promise<R
             const occupancyRate = totalSpots > 0 ? (checkins / totalSpots) * 100 : 0;
 
             labels.push(time);
+            counts.push(checkins);
             data.push(parseFloat(occupancyRate.toFixed(1)));
         }
 
         return res.status(200).json({
             success: true,
-            data: { labels, data }
+            data: { labels, counts, data }
         });
 
     } catch (error) {
@@ -327,35 +328,77 @@ export const getOccupancyByDayOfWeek = async (req: Request, res: Response): Prom
     }
 };
 
-// ==================== TENDÊNCIAS SEMANAIS ====================
+// ==================== TENDÊNCIAS POR DIA ====================
 
 export const getWeeklyTrends = async (req: Request, res: Response): Promise<Response> => {
     try {
+        const { startDate, endDate, period } = req.body;
         const now = new Date();
-        const labels: string[] = [];
-        const data: number[] = [];
-        const dayNames = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+        const firstDayMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+        const start = startDate ? new Date(startDate) : firstDayMonth;
+        const end = endDate ? new Date(endDate) : now;
         const presenceFilter = await getPresenceFilter();
+        const dayNames = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 
-        for (let i = 6; i >= 0; i--) {
-            const d = new Date(now);
-            d.setDate(now.getDate() - i);
-            const dateStr = d.toISOString().split('T')[0];
-
-            labels.push(dayNames[d.getDay()]);
-
-            const checkins = await ClassStudent.count({
+        if (!period || period === 'hoje' || period === 'semana') {
+            // Agrupa por dia da semana (Dom-Sáb), somando alunos no período
+            const byDow = await ClassStudent.findAll({
+                attributes: [
+                    [fn('DAYOFWEEK', col('Class.date')), 'dow'],
+                    [fn('COUNT', col('ClassStudent.id')), 'students']
+                ],
                 include: [{
                     model: Class,
                     attributes: [],
-                    where: { date: dateStr },
+                    where: { date: { [Op.between]: [start, end] } },
                     required: true
                 }],
-                where: presenceFilter
+                where: presenceFilter,
+                group: [fn('DAYOFWEEK', col('Class.date'))],
+                order: [[fn('DAYOFWEEK', col('Class.date')), 'ASC']],
+                raw: true
             });
 
-            data.push(checkins);
+            const data = [0, 0, 0, 0, 0, 0, 0];
+            byDow.forEach((row: any) => {
+                const idx = parseInt(row.dow) - 1;
+                data[idx] = parseInt(row.students);
+            });
+
+            return res.status(200).json({
+                success: true,
+                data: { labels: dayNames, data }
+            });
         }
+
+        // mes / trimestre — cada data real com aulas
+        const byDate = await ClassStudent.findAll({
+            attributes: [
+                [fn('DATE', col('Class.date')), 'classDate'],
+                [fn('COUNT', col('ClassStudent.id')), 'students']
+            ],
+            include: [{
+                model: Class,
+                attributes: [],
+                where: { date: { [Op.between]: [start, end] } },
+                required: true
+            }],
+            where: presenceFilter,
+            group: [fn('DATE', col('Class.date'))],
+            order: [[fn('DATE', col('Class.date')), 'ASC']],
+            raw: true
+        });
+
+        const labels: string[] = [];
+        const data: number[] = [];
+
+        byDate.forEach((row: any) => {
+            const d = new Date(row.classDate);
+            labels.push(
+                `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`
+            );
+            data.push(parseInt(row.students));
+        });
 
         return res.status(200).json({
             success: true,
@@ -363,10 +406,10 @@ export const getWeeklyTrends = async (req: Request, res: Response): Promise<Resp
         });
 
     } catch (error) {
-        console.error('Erro ao buscar tendências semanais:', error);
+        console.error('Erro ao buscar tendências por dia:', error);
         return res.status(500).json({
             success: false,
-            message: 'Erro ao buscar tendências semanais',
+            message: 'Erro ao buscar tendências por dia',
             error: error instanceof Error ? error.message : 'Erro desconhecido'
         });
     }
