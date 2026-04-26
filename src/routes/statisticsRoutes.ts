@@ -3,7 +3,8 @@ import {
     getOverviewMetrics,
     getTopStudents,
     getInactiveStudents,
-    getStudentsAtRisk
+    getStudentsAtRisk,
+    getDormantClients
 } from '../controllers/statisticsControllerOverview';
 
 import {
@@ -25,6 +26,7 @@ router.post('/overview', getOverviewMetrics);
 router.post('/top-students', getTopStudents);
 router.post('/inactive-students', getInactiveStudents);
 router.get('/students-at-risk', getStudentsAtRisk);
+router.get('/dormant-clients', getDormantClients);
 
 // ==================== CRÉDITOS ====================
 router.post('/expiring-credits', getCreditsExpiringSoon);
