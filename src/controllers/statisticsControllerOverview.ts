@@ -412,4 +412,66 @@ export const getStudentsAtRisk = async (req: Request, res: Response): Promise<Re
     }
 };
 
+// ==================== CLIENTES DORMENTES ====================
+
+export const getDormantClients = async (req: Request, res: Response): Promise<Response> => {
+    try {
+        const now = new Date();
+
+        // IDs que já fizeram pelo menos uma aula
+        const withClasses = await ClassStudent.findAll({
+            attributes: ['studentId'],
+            group: ['studentId'],
+            raw: true
+        });
+        const withClassIds = new Set(withClasses.map((r: any) => r.studentId));
+
+        // IDs que têm crédito válido ou histórico de compra
+        const withCredits = await Credit.findAll({
+            attributes: ['idCustomer'],
+            group: ['idCustomer'],
+            raw: true
+        });
+        const withCreditIds = new Set(withCredits.map((r: any) => r.idCustomer));
+
+        const excludedIds = new Set([...withClassIds, ...withCreditIds]);
+
+        // Clientes cadastrados sem nenhuma atividade
+        const dormant = await Person.findAll({
+            attributes: ['id', 'name', 'email', 'phone', 'createdAt'],
+            where: {
+                employee: 0,
+                active: 1,
+                ...(excludedIds.size > 0 ? { id: { [Op.notIn]: [...excludedIds] } } : {})
+            },
+            order: [['createdAt', 'DESC']],
+            raw: true
+        });
+
+        const data = dormant.map((p: any) => {
+            const daysSinceRegistration = Math.floor(
+                (now.getTime() - new Date(p.createdAt).getTime()) / (1000 * 60 * 60 * 24)
+            );
+            return {
+                id: p.id,
+                name: p.name,
+                email: p.email,
+                phone: p.phone,
+                registeredAt: p.createdAt,
+                daysSinceRegistration
+            };
+        });
+
+        return res.status(200).json({ success: true, data });
+
+    } catch (error) {
+        console.error('Erro ao buscar clientes dormentes:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Erro ao buscar clientes dormentes',
+            error: error instanceof Error ? error.message : 'Erro desconhecido'
+        });
+    }
+};
+
 // Continua no próximo arquivo...
