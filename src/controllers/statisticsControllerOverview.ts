@@ -426,41 +426,55 @@ export const getDormantClients = async (req: Request, res: Response): Promise<Re
         });
         const withClassIds = new Set(withClasses.map((r: any) => r.studentId));
 
-        // IDs que têm crédito válido ou histórico de compra
-        const withCredits = await Credit.findAll({
+        // IDs que já compraram algum crédito
+        const withPurchases = await Credit.findAll({
             attributes: ['idCustomer'],
             group: ['idCustomer'],
             raw: true
         });
-        const withCreditIds = new Set(withCredits.map((r: any) => r.idCustomer));
+        const withPurchaseIds = new Set(withPurchases.map((r: any) => r.idCustomer));
 
-        const excludedIds = new Set([...withClassIds, ...withCreditIds]);
+        // IDs com contrato ativo (crédito válido e não expirado)
+        const withActiveContract = await Credit.findAll({
+            attributes: ['idCustomer'],
+            where: { status: 'valid', expirationDate: { [Op.gte]: now } },
+            group: ['idCustomer'],
+            raw: true
+        });
+        const withActiveContractIds = new Set(withActiveContract.map((r: any) => r.idCustomer));
 
-        // Clientes cadastrados sem nenhuma atividade
-        const dormant = await Person.findAll({
+        // Todos os clientes ativos (não funcionários)
+        const allClients = await Person.findAll({
             attributes: ['id', 'name', 'email', 'phone', 'createdAt'],
-            where: {
-                employee: 0,
-                active: 1,
-                ...(excludedIds.size > 0 ? { id: { [Op.notIn]: [...excludedIds] } } : {})
-            },
+            where: { employee: 0, active: 1 },
             order: [['createdAt', 'DESC']],
             raw: true
         });
 
-        const data = dormant.map((p: any) => {
-            const daysSinceRegistration = Math.floor(
-                (now.getTime() - new Date(p.createdAt).getTime()) / (1000 * 60 * 60 * 24)
-            );
-            return {
-                id: p.id,
-                name: p.name,
-                email: p.email,
-                phone: p.phone,
-                registeredAt: p.createdAt,
-                daysSinceRegistration
-            };
-        });
+        // Montar flags e filtrar apenas quem tem pelo menos 1 condição dormante
+        const data = allClients
+            .map((p: any) => {
+                const hasNoClass = !withClassIds.has(p.id);
+                const hasNoPurchase = !withPurchaseIds.has(p.id);
+                const hasNoContract = !withActiveContractIds.has(p.id);
+
+                if (!hasNoClass && !hasNoPurchase && !hasNoContract) return null;
+
+                return {
+                    id: p.id,
+                    name: p.name,
+                    email: p.email,
+                    phone: p.phone,
+                    registeredAt: p.createdAt,
+                    daysSinceRegistration: Math.floor(
+                        (now.getTime() - new Date(p.createdAt).getTime()) / (1000 * 60 * 60 * 24)
+                    ),
+                    hasNoClass,
+                    hasNoPurchase,
+                    hasNoContract,
+                };
+            })
+            .filter(Boolean);
 
         return res.status(200).json({ success: true, data });
 
