@@ -246,9 +246,8 @@ export const getAllClasses = async (req: Request, res: Response): Promise<void |
                     attributes: ['id', 'name'],
                 });
 
-                // ← contar alunos inscritos na aula
                 const studentCount = await ClassStudent.count({
-                    where: { classId: classItem.id }
+                    where: { classId: classItem.id, status: true }
                 });
 
                 return {

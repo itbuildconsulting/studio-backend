@@ -18,15 +18,13 @@ export const getFinancialMetrics = async (req: Request, res: Response): Promise<
 
         // Criar where conditions com tipo correto
         const currentWhere: WhereOptions = {
-            createdAt: {
-                [Op.between]: [start, end]
-            }
+            createdAt: { [Op.between]: [start, end] },
+            status: 'paid'
         };
 
         const previousWhere: WhereOptions = {
-            createdAt: {
-                [Op.between]: [firstDayLastMonth, lastDayLastMonth]
-            }
+            createdAt: { [Op.between]: [firstDayLastMonth, lastDayLastMonth] },
+            status: 'paid'
         };
 
         // Buscar métricas do período atual
