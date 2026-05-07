@@ -696,7 +696,7 @@ export const getBirthdaysThisWeek = async (req: Request, res: Response): Promise
 
         // Gera os 7 próximos dias (hoje + 6)
         const days: { month: number; day: number }[] = [];
-        for (let i = 0; i < 7; i++) {
+        for (let i = 0; i <= 7; i++) {
             const d = new Date(now);
             d.setDate(now.getDate() + i);
             days.push({ month: d.getMonth() + 1, day: d.getDate() });
@@ -708,20 +708,17 @@ export const getBirthdaysThisWeek = async (req: Request, res: Response): Promise
             raw: true
         });
 
-        const parseBd = (raw: string) => {
-            const parts = raw.split('T')[0].split('-');
-            return { month: parseInt(parts[1], 10), day: parseInt(parts[2], 10) };
-        };
-
         const birthdays = (persons as any[])
             .filter((p) => {
                 if (!p.birthday) return false;
-                const { month, day } = parseBd(String(p.birthday));
-                return days.some((d) => d.month === month && d.day === day);
+                const bd = new Date(p.birthday);
+                return days.some(
+                    (d) => d.month === bd.getMonth() + 1 && d.day === bd.getDate() + 1
+                );
             })
             .map((p) => {
-                const { month, day } = parseBd(String(p.birthday));
-                const thisYearBd = new Date(now.getFullYear(), month - 1, day);
+                const bd = new Date(p.birthday);
+                const thisYearBd = new Date(now.getFullYear(), bd.getMonth(), bd.getDate() + 1);
                 const daysUntil = Math.round(
                     (thisYearBd.getTime() - new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime())
                     / (1000 * 60 * 60 * 24)
