@@ -708,17 +708,20 @@ export const getBirthdaysThisWeek = async (req: Request, res: Response): Promise
             raw: true
         });
 
+        const parseBd = (raw: string) => {
+            const parts = raw.split('T')[0].split('-');
+            return { month: parseInt(parts[1], 10), day: parseInt(parts[2], 10) };
+        };
+
         const birthdays = (persons as any[])
             .filter((p) => {
                 if (!p.birthday) return false;
-                const bd = new Date(p.birthday);
-                return days.some(
-                    (d) => d.month === bd.getMonth() + 1 && d.day === bd.getDate() + 1
-                );
+                const { month, day } = parseBd(String(p.birthday));
+                return days.some((d) => d.month === month && d.day === day);
             })
             .map((p) => {
-                const bd = new Date(p.birthday);
-                const thisYearBd = new Date(now.getFullYear(), bd.getMonth(), bd.getDate() + 1);
+                const { month, day } = parseBd(String(p.birthday));
+                const thisYearBd = new Date(now.getFullYear(), month - 1, day);
                 const daysUntil = Math.round(
                     (thisYearBd.getTime() - new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime())
                     / (1000 * 60 * 60 * 24)
