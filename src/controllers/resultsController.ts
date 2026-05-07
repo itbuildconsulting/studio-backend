@@ -112,11 +112,17 @@ export const getRevenueOverTime = async (req: Request, res: Response): Promise<R
                 groupFormat = '%Y-%m-%d';
                 labelFormat = (date) => date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
                 break;
+            case 'quarter':
+                start = new Date(now.getFullYear(), now.getMonth() - 3, 1);
+                groupFormat = '%Y-%m';
+                labelFormat = (date) => date.toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' });
+                break;
             case 'year':
                 start = new Date(now.getFullYear(), 0, 1);
                 groupFormat = '%Y-%m';
                 labelFormat = (date) => date.toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' });
                 break;
+            case 'custom':
             case 'month':
             default:
                 start = new Date(now.getFullYear(), now.getMonth(), 1);
