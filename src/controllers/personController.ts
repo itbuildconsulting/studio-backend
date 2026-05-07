@@ -690,6 +690,62 @@ export const updateStudentLevel = async (req: Request, res: Response): Promise<R
 
 
 
+export const getBirthdaysThisWeek = async (req: Request, res: Response): Promise<Response> => {
+    try {
+        const now = new Date();
+
+        // Gera os 7 próximos dias (hoje + 6)
+        const days: { month: number; day: number }[] = [];
+        for (let i = 0; i < 7; i++) {
+            const d = new Date(now);
+            d.setDate(now.getDate() + i);
+            days.push({ month: d.getMonth() + 1, day: d.getDate() });
+        }
+
+        const persons = await Person.findAll({
+            attributes: ['id', 'name', 'birthday', 'phone', 'email'],
+            where: { active: 1 },
+            raw: true
+        });
+
+        const birthdays = (persons as any[])
+            .filter((p) => {
+                if (!p.birthday) return false;
+                const bd = new Date(p.birthday);
+                return days.some(
+                    (d) => d.month === bd.getMonth() + 1 && d.day === bd.getDate() + 1
+                );
+            })
+            .map((p) => {
+                const bd = new Date(p.birthday);
+                const thisYearBd = new Date(now.getFullYear(), bd.getMonth(), bd.getDate() + 1);
+                const daysUntil = Math.round(
+                    (thisYearBd.getTime() - new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime())
+                    / (1000 * 60 * 60 * 24)
+                );
+                return {
+                    id: p.id,
+                    name: p.name,
+                    phone: p.phone,
+                    email: p.email,
+                    birthday: p.birthday,
+                    daysUntil,
+                    isToday: daysUntil === 0,
+                };
+            })
+            .sort((a, b) => a.daysUntil - b.daysUntil);
+
+        return res.status(200).json({ success: true, data: birthdays });
+    } catch (error) {
+        console.error('Erro ao buscar aniversariantes:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Erro ao buscar aniversariantes',
+            error: error instanceof Error ? error.message : 'Erro desconhecido'
+        });
+    }
+};
+
 export const validatePersonData = (data: any, edit: boolean): string | null => {
     const {
         name,

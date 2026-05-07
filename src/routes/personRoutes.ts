@@ -1,19 +1,20 @@
 import { Router } from 'express';
 import { authenticateToken } from '../core/token/authenticateToken'; // Middleware de autenticação
-import { 
-    createPerson, 
-    getAllPersons, 
-    getByCriteriaEmployee, 
-    getByCriteriaStudent, 
-    getDropdownEmployee, 
-    getDropdownStudent, 
-    getPersonById, 
-    updatePerson, 
-    deletePerson, 
+import {
+    createPerson,
+    getAllPersons,
+    getByCriteriaEmployee,
+    getByCriteriaStudent,
+    getDropdownEmployee,
+    getDropdownStudent,
+    getPersonById,
+    updatePerson,
+    deletePerson,
     validateUserExistsEmail,
     validateUserExistsIdentity,
     createPersonInternal,
-    updateStudentLevel
+    updateStudentLevel,
+    getBirthdaysThisWeek
 } from '../controllers/personController';
 
 const router = Router();
@@ -212,6 +213,8 @@ router.get('/student/dropdown', authenticateToken, getDropdownStudent);
  *       200:
  *         description: Detalhes da pessoa retornados
  */
+router.get('/birthdays/week', authenticateToken, getBirthdaysThisWeek);
+
 router.get('/:id', authenticateToken, getPersonById);
 
 /**
