@@ -151,7 +151,11 @@ export const getTopStudents = async (req: Request, res: Response): Promise<Respo
             }
         });
 
-        // Últimos 7 dias com aula — compartilhado entre todos os alunos
+        const toDateStr = (d: any) => new Date(d).toISOString().split('T')[0];
+
+        // ── Dados compartilhados por visão ────────────────────────────────────
+
+        // Visão diária (hoje/semana): últimos 7 dias com aula
         const sevenDaysAgo = new Date(now);
         sevenDaysAgo.setDate(now.getDate() - 6);
 
@@ -161,9 +165,47 @@ export const getTopStudents = async (req: Request, res: Response): Promise<Respo
             group: ['date'],
             raw: true
         });
-
-        const toDateStr = (d: any) => new Date(d).toISOString().split('T')[0];
         const activeDaySet = new Set(activeLast7.map((c: any) => toDateStr(c.date)));
+
+        // Visão semanal (mes): semanas do mês atual
+        type PeriodRange = { start: Date; end: Date; label: string };
+        let periodRanges: PeriodRange[] = [];
+        let periodHasClass: boolean[] = [];
+
+        if (period === 'mes') {
+            const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+            let d = new Date(monthStart);
+            let w = 1;
+            while (d <= now) {
+                const ws = new Date(d);
+                const we = new Date(d);
+                we.setDate(d.getDate() + 6);
+                const end = we > now ? new Date(now) : we;
+                periodRanges.push({ start: ws, end, label: `S${w}` });
+                d.setDate(d.getDate() + 7);
+                w++;
+            }
+        } else if (period === 'trimestre') {
+            for (let i = 2; i >= 0; i--) {
+                const ms = new Date(now.getFullYear(), now.getMonth() - i, 1);
+                const me = new Date(now.getFullYear(), now.getMonth() - i + 1, 0);
+                periodRanges.push({
+                    start: ms,
+                    end: me > now ? new Date(now) : me,
+                    label: ms.toLocaleDateString('pt-BR', { month: 'short' })
+                });
+            }
+        }
+
+        // Pré-calcula se houve aula em cada período (compartilhado)
+        if (periodRanges.length > 0) {
+            periodHasClass = await Promise.all(
+                periodRanges.map(async (r) => {
+                    const c = await Class.count({ where: { date: { [Op.between]: [r.start, r.end] }, active: true } });
+                    return c > 0;
+                })
+            );
+        }
 
         // Buscar alunos com mais presenças confirmadas no período
         const topStudents = await ClassStudent.findAll({
@@ -193,13 +235,12 @@ export const getTopStudents = async (req: Request, res: Response): Promise<Respo
                     attributes: ['id', 'name']
                 });
 
-                // Frequência = dias que o aluno compareceu / dias que o estúdio teve aula
                 const uniqueDays = parseInt(studentData.uniqueDays || 0);
                 const attendanceRate = totalClassDays > 0
                     ? Math.min(100, Math.round((uniqueDays / totalClassDays) * 100))
                     : 0;
 
-                // Presença nos últimos 7 dias
+                // Visão diária — últimos 7 dias
                 const studentLast7 = await ClassStudent.findAll({
                     attributes: [[fn('DATE', col('Class.date')), 'classDate']],
                     include: [{
@@ -222,12 +263,34 @@ export const getTopStudents = async (req: Request, res: Response): Promise<Respo
                     return studentDaySet.has(dateStr) ? 'attended' : 'missed';
                 });
 
+                // Visão semanal/mensal — períodos agregados
+                let periodData: { label: string; status: string }[] = [];
+                if (periodRanges.length > 0) {
+                    periodData = await Promise.all(
+                        periodRanges.map(async (r, idx) => {
+                            if (!periodHasClass[idx]) return { label: r.label, status: 'no_class' };
+                            const attended = await ClassStudent.count({
+                                include: [{
+                                    model: Class,
+                                    attributes: [],
+                                    where: { date: { [Op.between]: [r.start, r.end] } },
+                                    required: true
+                                }],
+                                where: { studentId: studentData.studentId, ...presenceFilter }
+                            });
+                            return { label: r.label, status: attended > 0 ? 'attended' : 'missed' };
+                        })
+                    );
+                }
+
                 return {
                     studentId: studentData.studentId,
                     name: person?.name || 'Desconhecido',
                     classCount: parseInt(studentData.classCount),
                     attendanceRate,
-                    last7
+                    last7,
+                    periodData,
+                    periodLabels: periodRanges.map(r => r.label)
                 };
             })
         );
