@@ -12,7 +12,8 @@ import {
     getOccupancyByTime,
     getTopTeachers,
     getOccupancyByDayOfWeek,
-    getAutomatedInsights
+    getAutomatedInsights,
+    getMonthlyComparison
 } from '../controllers/statisticsControllerPerformance';
 
 const router = Router();
@@ -36,5 +37,8 @@ router.get('/occupancy-by-day', getOccupancyByDayOfWeek);
 
 // ==================== INSIGHTS ====================
 router.get('/insights', getAutomatedInsights);
+
+// ==================== COMPARAÇÃO MENSAL ====================
+router.get('/monthly-comparison', getMonthlyComparison);
 
 export default router;

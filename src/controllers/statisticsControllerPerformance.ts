@@ -6,6 +6,7 @@ import Class from '../models/Class.model';
 import Credit from '../models/Credit.model';
 import Product from '../models/Product.model';
 import ProductType from '../models/ProductType.model';
+import Transactions from '../models/Transaction.model';
 
 // ==================== CRÉDITOS EXPIRANDO ====================
 
@@ -420,6 +421,40 @@ export const getAutomatedInsights = async (req: Request, res: Response): Promise
             success: false,
             message: 'Erro ao gerar insights',
             error: error instanceof Error ? error.message : 'Erro desconhecido'
+        });
+    }
+};
+
+export const getMonthlyComparison = async (req: Request, res: Response): Promise<Response> => {
+    try {
+        const now = new Date();
+        const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+        const monthEnd   = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+
+        const paidTx = await Transactions.findAll({
+            where: { status: 'paid', createdAt: { [Op.between]: [monthStart, monthEnd] } },
+            attributes: ['amount'],
+            raw: true,
+        });
+
+        const totalCents   = paidTx.reduce((s: number, t: any) => s + (t.amount ?? 0), 0);
+        const mrr          = totalCents / 100;
+        const averageTicket = paidTx.length > 0 ? mrr / paidTx.length : 0;
+
+        const [totalCount, overdueCount] = await Promise.all([
+            Transactions.count({ where: { createdAt: { [Op.between]: [monthStart, monthEnd] } } }),
+            Transactions.count({ where: { status: { [Op.in]: ['waiting_payment', 'refused', 'chargeback', 'pending_refund'] }, createdAt: { [Op.between]: [monthStart, monthEnd] } } }),
+        ]);
+
+        const delinquencyRate = totalCount > 0 ? Math.round((overdueCount / totalCount) * 100) : 0;
+
+        return res.status(200).json({ success: true, mrr, averageTicket, delinquencyRate });
+    } catch (error) {
+        console.error('Erro ao buscar comparação mensal:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Erro ao buscar comparação mensal',
+            error: error instanceof Error ? error.message : 'Erro desconhecido',
         });
     }
 };
