@@ -242,19 +242,17 @@ export const getAllClasses = async (req: Request, res: Response): Promise<void |
                     attributes: ['id', 'name'],
                 });
 
-                const teacher = await Person.findByPk(classItem.teacherId, {
-                    attributes: ['id', 'name'],
-                });
-
-                const studentCount = await ClassStudent.count({
-                    where: { classId: classItem.id, status: true }
-                });
+                const [teacher, enrolled] = await Promise.all([
+                    Person.findByPk(classItem.teacherId, { attributes: ['id', 'name'] }),
+                    ClassStudent.count({ where: { classId: classItem.id, status: true } }),
+                ]);
 
                 return {
                     ...classItem.toJSON(),
                     productType: productType ? productType.name : null,
                     teacher: teacher ? teacher.name : null,
-                    studentCount,
+                    enrolled,
+                    studentCount: enrolled,
                 };
             })
         );
