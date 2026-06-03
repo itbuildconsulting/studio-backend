@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { Op, fn, col, literal } from 'sequelize';
 import ClassStudent from '../models/ClassStudent.model'; // Ajuste o caminho do modelo
-import { startOfWeek, endOfWeek } from 'date-fns';
+import { startOfWeek, endOfWeek, format } from 'date-fns';
 import Transactions from '../models/Transaction.model';
 import Product from '../models/Product.model';
 import ProductType from '../models/ProductType.model';
@@ -202,6 +202,31 @@ export const getClassesForNextDays = async (req: Request, res: Response): Promis
         return res.status(500).json({
             success: false,
             message: 'Erro ao buscar aulas',
+            error: error instanceof Error ? error.message : 'Erro desconhecido',
+        });
+    }
+};
+
+export const getTodayCancellations = async (req: Request, res: Response): Promise<Response> => {
+    try {
+        const today = format(new Date(), 'yyyy-MM-dd');
+
+        const count = await ClassStudent.count({
+            where: { status: false },
+            include: [{
+                model: Class,
+                where: { date: today },
+                required: true,
+                attributes: [],
+            }],
+        });
+
+        return res.status(200).json({ success: true, data: { count } });
+    } catch (error) {
+        console.error('Erro ao buscar cancelamentos do dia:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Erro ao buscar cancelamentos do dia',
             error: error instanceof Error ? error.message : 'Erro desconhecido',
         });
     }
