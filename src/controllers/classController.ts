@@ -229,18 +229,17 @@ export const getAllClasses = async (req: Request, res: Response): Promise<void |
                 // Buscar os nomes manualmente
                 const enrichedClasses = await Promise.all(
                     classes.map(async (classItem) => {
-                        const productType = await ProductType.findByPk(classItem.productTypeId, {
-                            attributes: ['id', 'name'],
-                        });
-
-                        const teacher = await Person.findByPk(classItem.teacherId, {
-                            attributes: ['id', 'name'],
-                        });
+                        const [productType, teacher, enrolled] = await Promise.all([
+                            ProductType.findByPk(classItem.productTypeId, { attributes: ['id', 'name'] }),
+                            Person.findByPk(classItem.teacherId, { attributes: ['id', 'name'] }),
+                            ClassStudent.count({ where: { classId: classItem.id, status: true } }),
+                        ]);
 
                         return {
                             ...classItem.toJSON(),
                             productType: productType ? productType.name : null,
                             teacher: teacher ? teacher.name : null,
+                            enrolled,
                         };
                     })
                 );
