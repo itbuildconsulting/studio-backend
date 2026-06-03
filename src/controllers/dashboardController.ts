@@ -272,11 +272,17 @@ export const getBirthdays = async (req: Request, res: Response): Promise<Respons
         ]);
 
         const currentYear = today.getFullYear();
-        const mapPerson = (p: any) => ({
-            id: p.id,
-            name: p.name,
-            age: p.birthday ? currentYear - new Date(p.birthday).getFullYear() : null,
-        });
+        const mapPerson = (p: any) => {
+            const bday = p.birthday ? new Date(p.birthday) : null;
+            return {
+                id: p.id,
+                name: p.name,
+                age: bday ? currentYear - bday.getFullYear() : null,
+                date: bday
+                    ? `${String(bday.getUTCDate()).padStart(2, '0')}/${String(bday.getUTCMonth() + 1).padStart(2, '0')}`
+                    : null,
+            };
+        };
 
         return res.status(200).json({
             success: true,
