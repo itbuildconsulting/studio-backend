@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { Op, fn, col, literal } from 'sequelize';
+import { Op, fn, col, literal, where } from 'sequelize';
 import ClassStudent from '../models/ClassStudent.model'; // Ajuste o caminho do modelo
 import { startOfWeek, endOfWeek, format } from 'date-fns';
 import Transactions from '../models/Transaction.model';
@@ -7,6 +7,7 @@ import Product from '../models/Product.model';
 import ProductType from '../models/ProductType.model';
 import Place from '../models/Place.model';
 import Class from '../models/Class.model';
+import Person from '../models/Person.model';
 
 export const getStudentAttendance = async (req: Request, res: Response): Promise<Response> => {
     try {
@@ -227,6 +228,68 @@ export const getTodayCancellations = async (req: Request, res: Response): Promis
         return res.status(500).json({
             success: false,
             message: 'Erro ao buscar cancelamentos do dia',
+            error: error instanceof Error ? error.message : 'Erro desconhecido',
+        });
+    }
+};
+
+export const getBirthdays = async (req: Request, res: Response): Promise<Response> => {
+    try {
+        const today = new Date();
+        const todayMonth = today.getMonth() + 1;
+        const todayDay = today.getDate();
+
+        // Gera os próximos 6 dias (excluindo hoje)
+        const nextDays = Array.from({ length: 6 }, (_, i) => {
+            const d = new Date(today);
+            d.setDate(today.getDate() + i + 1);
+            return { month: d.getMonth() + 1, day: d.getDate() };
+        });
+
+        const [todayBirthdays, weekBirthdays] = await Promise.all([
+            Person.findAll({
+                where: {
+                    employee: 0,
+                    [Op.and]: [
+                        where(fn('MONTH', col('birthday')), todayMonth),
+                        where(fn('DAY', col('birthday')), todayDay),
+                    ],
+                },
+                attributes: ['id', 'name', 'birthday'],
+            }),
+            Person.findAll({
+                where: {
+                    employee: 0,
+                    [Op.or]: nextDays.map(({ month, day }) => ({
+                        [Op.and]: [
+                            where(fn('MONTH', col('birthday')), month),
+                            where(fn('DAY', col('birthday')), day),
+                        ],
+                    })),
+                },
+                attributes: ['id', 'name', 'birthday'],
+            }),
+        ]);
+
+        const currentYear = today.getFullYear();
+        const mapPerson = (p: any) => ({
+            id: p.id,
+            name: p.name,
+            age: p.birthday ? currentYear - new Date(p.birthday).getFullYear() : null,
+        });
+
+        return res.status(200).json({
+            success: true,
+            data: {
+                today: todayBirthdays.map(mapPerson),
+                week: weekBirthdays.map(mapPerson),
+            },
+        });
+    } catch (error) {
+        console.error('Erro ao buscar aniversariantes:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Erro ao buscar aniversariantes',
             error: error instanceof Error ? error.message : 'Erro desconhecido',
         });
     }
