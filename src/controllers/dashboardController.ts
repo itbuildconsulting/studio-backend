@@ -22,8 +22,8 @@ export const getStudentAttendance = async (req: Request, res: Response): Promise
 
         const attendance = await ClassStudent.findAll({
             attributes: [
-                [fn('DAYOFWEEK', col('Class.date')), 'dayOfWeek'],
-                [literal('COUNT(DISTINCT ClassStudent.studentId)'), 'attendanceCount'],
+                [literal('(WEEKDAY(`Class`.`date`) + 1)'), 'dayOfWeek'], // 1=Seg...7=Dom
+                [literal('COUNT(DISTINCT `ClassStudent`.`studentId`)'), 'attendanceCount'],
             ],
             include: [
                 {
@@ -31,16 +31,16 @@ export const getStudentAttendance = async (req: Request, res: Response): Promise
                     attributes: [],
                     where: {
                         date: dateRange,
-                        active: true,  // exclui aulas canceladas
+                        active: true,
                     },
                     required: true,
                 },
             ],
             where: {
-                status: true,  // exclui inscrições canceladas
+                status: true,
             },
-            group: [fn('DAYOFWEEK', col('Class.date'))],
-            order: [[fn('DAYOFWEEK', col('Class.date')), 'ASC']],
+            group: [literal('WEEKDAY(`Class`.`date`)')],
+            order: [[literal('WEEKDAY(`Class`.`date`)'), 'ASC']],
             raw: true,
         });
 
