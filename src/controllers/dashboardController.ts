@@ -22,13 +22,12 @@ export const getStudentAttendance = async (req: Request, res: Response): Promise
 
         const attendance = await ClassStudent.findAll({
             attributes: [
-                [literal('(WEEKDAY(`Class`.`date`) + 1)'), 'dayOfWeek'], // 1=Seg...7=Dom
                 [literal('COUNT(DISTINCT `ClassStudent`.`studentId`)'), 'attendanceCount'],
             ],
             include: [
                 {
                     model: Class,
-                    attributes: [],
+                    attributes: ['date'],
                     where: {
                         date: dateRange,
                         active: true,
@@ -39,15 +38,19 @@ export const getStudentAttendance = async (req: Request, res: Response): Promise
             where: {
                 status: true,
             },
-            group: [literal('WEEKDAY(`Class`.`date`)')],
-            order: [[literal('WEEKDAY(`Class`.`date`)'), 'ASC']],
+            group: [col('Class.date')],
+            order: [[col('Class.date'), 'ASC']],
             raw: true,
         });
 
-        const formattedAttendance = attendance.map((entry: any) => ({
-            dayOfWeek: parseInt(entry.dayOfWeek),
-            attendanceCount: parseInt(entry.attendanceCount),
-        }));
+        // Converte para 1=Seg...7=Dom (JS getUTCDay: 0=Dom...6=Sáb)
+        const formattedAttendance = attendance.map((entry: any) => {
+            const jsDay = new Date(entry['Class.date']).getUTCDay();
+            return {
+                dayOfWeek: jsDay === 0 ? 7 : jsDay,
+                attendanceCount: parseInt(entry.attendanceCount),
+            };
+        });
 
         return res.status(200).json({ success: true, data: formattedAttendance });
     } catch (error) {
