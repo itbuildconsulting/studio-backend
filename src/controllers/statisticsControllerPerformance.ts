@@ -563,9 +563,10 @@ export const getTicketPerClass = async (req: Request, res: Response): Promise<Re
             raw: true,
         });
 
-        const pricePerCredit = products.length > 0
-            ? products.reduce((sum: number, p: any) => sum + (parseFloat(p.value) / Number(p.credit)), 0) / products.length
-            : 0;
+        // Média ponderada: total de reais / total de créditos
+        const totalValue   = products.reduce((s: number, p: any) => s + parseFloat(p.value), 0);
+        const totalCredits = products.reduce((s: number, p: any) => s + Number(p.credit), 0);
+        const pricePerCredit = totalCredits > 0 ? totalValue / totalCredits : 0;
 
         // 2. Média de alunos por aula — últimos 30 dias, aulas ativas (query agregada)
         const classStudentCounts = await ClassStudent.findAll({
