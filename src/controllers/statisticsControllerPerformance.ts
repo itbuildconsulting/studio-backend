@@ -463,21 +463,47 @@ export const getMonthlyComparison = async (req: Request, res: Response): Promise
 export const getTicketPerClass = async (req: Request, res: Response): Promise<Response> => {
     try {
         const now = new Date();
-        const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-        const monthEnd   = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
         const fmt = (d: Date) => d.toISOString().split('T')[0];
 
-        const todayStr = fmt(now);
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(now.getDate() - 30);
 
-        const [revenueSum, classCount] = await Promise.all([
-            Transactions.sum('amount', { where: { status: 'paid', createdAt: { [Op.between]: [monthStart, now] } } }) as Promise<number>,
-            Class.count({ where: { date: { [Op.between]: [fmt(monthStart), todayStr] }, active: true } }),
-        ]);
+        // 1. Preço médio por crédito — média de (value / credit) dos produtos ativos
+        const products = await Product.findAll({
+            where: { active: 1, credit: { [Op.gt]: 0 } },
+            attributes: ['value', 'credit'],
+            raw: true,
+        });
 
-        const revenue = (revenueSum ?? 0) / 100;
-        const ticketPerClass = classCount > 0 ? revenue / classCount : 0;
+        const pricePerCredit = products.length > 0
+            ? products.reduce((sum: number, p: any) => sum + (parseFloat(p.value) / Number(p.credit)), 0) / products.length
+            : 0;
 
-        return res.status(200).json({ success: true, data: { ticketPerClass, revenue, classCount } });
+        // 2. Média de alunos por aula — últimos 30 dias, aulas ativas
+        const classes = await Class.findAll({
+            where: { date: { [Op.between]: [fmt(thirtyDaysAgo), fmt(now)] }, active: true },
+            attributes: ['id'],
+            raw: true,
+        });
+
+        let avgStudentsPerClass = 0;
+        if (classes.length > 0) {
+            const counts = await Promise.all(
+                (classes as any[]).map((c) => ClassStudent.count({ where: { classId: c.id, status: true } }))
+            );
+            avgStudentsPerClass = counts.reduce((a, b) => a + b, 0) / counts.length;
+        }
+
+        const ticketPerClass = parseFloat((pricePerCredit * avgStudentsPerClass).toFixed(2));
+
+        return res.status(200).json({
+            success: true,
+            data: {
+                ticketPerClass,
+                pricePerCredit: parseFloat(pricePerCredit.toFixed(2)),
+                avgStudentsPerClass: parseFloat(avgStudentsPerClass.toFixed(1)),
+            },
+        });
     } catch (error) {
         return res.status(500).json({ success: false, message: 'Erro ao buscar ticket por aula', error: error instanceof Error ? error.message : error });
     }
