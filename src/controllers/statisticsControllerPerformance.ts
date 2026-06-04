@@ -469,7 +469,11 @@ export const getTicketPerClass = async (req: Request, res: Response): Promise<Re
 
         // 1. Preço médio por crédito — média de (value / credit) dos produtos ativos
         const products = await Product.findAll({
-            where: { active: 1, credit: { [Op.gt]: 0 } },
+            where: {
+                active: 1,
+                credit: { [Op.gt]: 0 },
+                value: { [Op.gt]: 10 }, // exclui produtos teste/gratuidade
+            },
             attributes: ['value', 'credit'],
             raw: true,
         });
