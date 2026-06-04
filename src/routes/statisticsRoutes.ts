@@ -19,6 +19,7 @@ import {
     getRepurchaseInterval,
     getBoughtVsUsed,
     getCumulativeRevenue,
+    getMostPurchasedProducts,
 } from '../controllers/statisticsControllerPerformance';
 
 const router = Router();
@@ -52,5 +53,6 @@ router.get('/purchases-by-weekday', getPurchasesByWeekday);
 router.get('/repurchase-interval', getRepurchaseInterval);
 router.get('/bought-vs-used', getBoughtVsUsed);
 router.get('/cumulative-revenue', getCumulativeRevenue);
+router.get('/most-purchased-products', getMostPurchasedProducts);
 
 export default router;
