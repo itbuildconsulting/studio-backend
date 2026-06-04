@@ -553,28 +553,53 @@ export const getTicketPerClass = async (req: Request, res: Response): Promise<Re
         const thirtyDaysAgo = new Date();
         thirtyDaysAgo.setDate(now.getDate() - 30);
 
-        // 1. Preço médio por crédito — média de (value / credit) dos produtos ativos
-        const products = await Product.findAll({
-            where: {
-                active: 1,
-                credit: { [Op.gt]: 0 },
-                value: { [Op.gt]: 10 }, // exclui produtos teste/gratuidade
-            },
-            attributes: ['value', 'credit'],
+        const twelveMonthsAgo = new Date();
+        twelveMonthsAgo.setFullYear(now.getFullYear() - 1);
+
+        // 1. Preço por crédito real — receita total (12 meses) ÷ créditos vendidos (12 meses)
+        //    Exclui itens com amount = 0 (produtos teste, créditos promocionais/ilimitados gratuitos)
+        const paidTxRows = await Transactions.findAll({
+            where: { status: 'paid', createdAt: { [Op.gte]: twelveMonthsAgo } },
+            attributes: ['transactionId'],
             raw: true,
         });
 
-        // Preço por crédito real: total pago / total créditos emitidos
-        const [paidSum, creditRow] = await Promise.all([
-            Transactions.sum('amount', { where: { status: 'paid' } }) as Promise<number>,
-            Credit.findAll({
-                attributes: [[literal('SUM(availableCredits + usedCredits)'), 'totalCredits']],
+        const txIds = (paidTxRows as any[]).map(t => t.transactionId);
+        let totalCreditsSold = 0;
+        let totalPaidCents = 0;
+
+        if (txIds.length > 0) {
+            const paidItems = await Item.findAll({
+                where: {
+                    transactionId: { [Op.in]: txIds },
+                    amount: { [Op.gt]: 0 },
+                },
+                attributes: ['itemId', 'quantity', 'amount'],
                 raw: true,
-            }),
-        ]);
-        const totalPaid    = ((paidSum as any) || 0) / 100;
-        const totalCredits = parseInt((creditRow[0] as any)?.totalCredits || '0');
-        const pricePerCredit = totalCredits > 0 ? totalPaid / totalCredits : 0;
+            });
+
+            const productIds = [...new Set((paidItems as any[]).map(i => i.itemId))];
+            const products = await Product.findAll({
+                where: {
+                    id: { [Op.in]: productIds },
+                    credit: { [Op.gt]: 0 },
+                    value: { [Op.ne]: 10 }, // exclui produtos teste/ilimitados (preço fixo de R$10)
+                },
+                attributes: ['id', 'credit'],
+                raw: true,
+            });
+            const creditMap = new Map((products as any[]).map(p => [p.id, p.credit]));
+
+            for (const item of paidItems as any[]) {
+                const credits = creditMap.get(item.itemId);
+                if (!credits) continue;
+                totalCreditsSold += item.quantity * credits;
+                totalPaidCents   += item.amount;
+            }
+        }
+
+        const totalPaid = totalPaidCents / 100;
+        const pricePerCredit = totalCreditsSold > 0 ? totalPaid / totalCreditsSold : 0;
 
         // 2. Média de alunos por aula — últimos 30 dias, aulas ativas (query agregada)
         const classStudentCounts = await ClassStudent.findAll({
@@ -607,6 +632,8 @@ export const getTicketPerClass = async (req: Request, res: Response): Promise<Re
                 ticketPerClass,
                 pricePerCredit: parseFloat(pricePerCredit.toFixed(2)),
                 avgStudentsPerClass: parseFloat(avgStudentsPerClass.toFixed(1)),
+                totalCreditsSold,
+                periodMonths: 12,
             },
         });
     } catch (error) {
