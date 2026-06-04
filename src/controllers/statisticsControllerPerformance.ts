@@ -550,9 +550,11 @@ export const getTicketPerClass = async (req: Request, res: Response): Promise<Re
         const monthEnd   = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
         const fmt = (d: Date) => d.toISOString().split('T')[0];
 
+        const todayStr = fmt(now);
+
         const [revenueSum, classCount] = await Promise.all([
-            Transactions.sum('amount', { where: { status: 'paid', createdAt: { [Op.between]: [monthStart, monthEnd] } } }) as Promise<number>,
-            Class.count({ where: { date: { [Op.between]: [fmt(monthStart), fmt(monthEnd)] }, active: true } }),
+            Transactions.sum('amount', { where: { status: 'paid', createdAt: { [Op.between]: [monthStart, now] } } }) as Promise<number>,
+            Class.count({ where: { date: { [Op.between]: [fmt(monthStart), todayStr] }, active: true } }),
         ]);
 
         const revenue = (revenueSum ?? 0) / 100;
