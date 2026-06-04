@@ -741,6 +741,22 @@ export const getCumulativeRevenue = async (req: Request, res: Response): Promise
 
 export const getMostPurchasedProducts = async (req: Request, res: Response): Promise<Response> => {
     try {
+        const months = parseInt(req.query.months as string) || 6;
+        const startDate = new Date();
+        startDate.setMonth(startDate.getMonth() - months);
+
+        const showInactive = req.query.showInactive === 'true';
+
+        // IDs de produtos ativos (para filtrar quando showInactive=false)
+        let activeIds: number[] | null = null;
+        if (!showInactive) {
+            const activeProducts = await Product.findAll({ where: { active: 1 }, attributes: ['id'], raw: true });
+            activeIds = (activeProducts as any[]).map((p) => p.id);
+        }
+
+        const whereItem: any = { created_at: { [Op.gte]: startDate } };
+        if (activeIds !== null) whereItem.itemId = { [Op.in]: activeIds };
+
         const rows = await Item.findAll({
             attributes: [
                 'itemId',
@@ -748,6 +764,7 @@ export const getMostPurchasedProducts = async (req: Request, res: Response): Pro
                 [fn('COUNT', col('Item.id')), 'purchaseCount'],
                 [fn('SUM', col('quantity')), 'totalQuantity'],
             ],
+            where: whereItem,
             group: ['itemId', 'description'],
             order: [[fn('COUNT', col('Item.id')), 'DESC']],
             limit: 10,
