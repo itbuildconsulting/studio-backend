@@ -4,6 +4,7 @@ import Person from '../models/Person.model';
 import ClassStudent from '../models/ClassStudent.model';
 import Class from '../models/Class.model';
 import Credit from '../models/Credit.model';
+import Product from '../models/Product.model';
 import { getPresenceFilter } from '../utils/presenceFilter';
 import Transactions from '../models/Transaction.model';
 
@@ -562,19 +563,27 @@ export const getTicketPerClass = async (req: Request, res: Response): Promise<Re
             ? products.reduce((sum: number, p: any) => sum + (parseFloat(p.value) / Number(p.credit)), 0) / products.length
             : 0;
 
-        // 2. Média de alunos por aula — últimos 30 dias, aulas ativas
-        const classes = await Class.findAll({
-            where: { date: { [Op.between]: [fmt(thirtyDaysAgo), fmt(now)] }, active: true },
-            attributes: ['id'],
+        // 2. Média de alunos por aula — últimos 30 dias, aulas ativas (query agregada)
+        const classStudentCounts = await ClassStudent.findAll({
+            attributes: [
+                'classId',
+                [fn('COUNT', col('ClassStudent.studentId')), 'count'],
+            ],
+            include: [{
+                model: Class,
+                attributes: [],
+                where: { date: { [Op.between]: [fmt(thirtyDaysAgo), fmt(now)] }, active: true },
+                required: true,
+            }],
+            where: { status: true },
+            group: ['ClassStudent.classId'],
             raw: true,
         });
 
         let avgStudentsPerClass = 0;
-        if (classes.length > 0) {
-            const counts = await Promise.all(
-                (classes as any[]).map((c) => ClassStudent.count({ where: { classId: c.id, status: true } }))
-            );
-            avgStudentsPerClass = counts.reduce((a, b) => a + b, 0) / counts.length;
+        if ((classStudentCounts as any[]).length > 0) {
+            const total = (classStudentCounts as any[]).reduce((s, r) => s + parseInt(r.count), 0);
+            avgStudentsPerClass = total / (classStudentCounts as any[]).length;
         }
 
         const ticketPerClass = parseFloat((pricePerCredit * avgStudentsPerClass).toFixed(2));
