@@ -747,15 +747,19 @@ export const getMostPurchasedProducts = async (req: Request, res: Response): Pro
 
         const showInactive = req.query.showInactive === 'true';
 
-        // IDs de produtos ativos (para filtrar quando showInactive=false)
-        let activeIds: number[] | null = null;
-        if (!showInactive) {
-            const activeProducts = await Product.findAll({ where: { active: 1 }, attributes: ['id'], raw: true });
-            activeIds = (activeProducts as any[]).map((p) => p.id);
-        }
-
         const whereItem: any = { created_at: { [Op.gte]: startDate } };
-        if (activeIds !== null) whereItem.itemId = { [Op.in]: activeIds };
+
+        if (!showInactive) {
+            const inactiveProducts = await Product.findAll({
+                where: { active: 0 },
+                attributes: ['name'],
+                raw: true,
+            });
+            const inactiveNames = (inactiveProducts as any[]).map((p) => p.name);
+            if (inactiveNames.length > 0) {
+                whereItem.description = { [Op.notIn]: inactiveNames };
+            }
+        }
 
         const rows = await Item.findAll({
             attributes: [
