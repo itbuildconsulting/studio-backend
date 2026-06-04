@@ -13,7 +13,12 @@ import {
     getTopTeachers,
     getOccupancyByDayOfWeek,
     getAutomatedInsights,
-    getMonthlyComparison
+    getMonthlyComparison,
+    getTicketPerClass,
+    getPurchasesByWeekday,
+    getRepurchaseInterval,
+    getBoughtVsUsed,
+    getCumulativeRevenue,
 } from '../controllers/statisticsControllerPerformance';
 
 const router = Router();
@@ -40,5 +45,12 @@ router.get('/insights', getAutomatedInsights);
 
 // ==================== COMPARAÇÃO MENSAL ====================
 router.get('/monthly-comparison', getMonthlyComparison);
+
+// ==================== ANÁLISE FINANCEIRA ====================
+router.get('/ticket-per-class', getTicketPerClass);
+router.get('/purchases-by-weekday', getPurchasesByWeekday);
+router.get('/repurchase-interval', getRepurchaseInterval);
+router.get('/bought-vs-used', getBoughtVsUsed);
+router.get('/cumulative-revenue', getCumulativeRevenue);
 
 export default router;

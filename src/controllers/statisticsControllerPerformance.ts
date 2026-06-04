@@ -458,3 +458,148 @@ export const getMonthlyComparison = async (req: Request, res: Response): Promise
         });
     }
 };
+// ==================== TICKET MÉDIO POR AULA ====================
+
+export const getTicketPerClass = async (req: Request, res: Response): Promise<Response> => {
+    try {
+        const now = new Date();
+        const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+        const monthEnd   = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+        const fmt = (d: Date) => d.toISOString().split('T')[0];
+
+        const [revenueSum, classCount] = await Promise.all([
+            Transactions.sum('amount', { where: { status: 'paid', createdAt: { [Op.between]: [monthStart, monthEnd] } } }) as Promise<number>,
+            Class.count({ where: { date: { [Op.between]: [fmt(monthStart), fmt(monthEnd)] }, active: true } }),
+        ]);
+
+        const revenue = (revenueSum ?? 0) / 100;
+        const ticketPerClass = classCount > 0 ? revenue / classCount : 0;
+
+        return res.status(200).json({ success: true, data: { ticketPerClass, revenue, classCount } });
+    } catch (error) {
+        return res.status(500).json({ success: false, message: 'Erro ao buscar ticket por aula', error: error instanceof Error ? error.message : error });
+    }
+};
+
+// ==================== COMPRAS POR DIA DA SEMANA ====================
+
+export const getPurchasesByWeekday = async (req: Request, res: Response): Promise<Response> => {
+    try {
+        const now = new Date();
+        const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+
+        const transactions = await Transactions.findAll({
+            where: { status: 'paid', createdAt: { [Op.gte]: monthStart } },
+            attributes: ['createdAt', 'amount'],
+            raw: true,
+        });
+
+        const DAYS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+        const counts = Array(7).fill(0);
+        const amounts = Array(7).fill(0);
+
+        for (const t of transactions as any[]) {
+            const day = new Date(t.createdAt).getDay();
+            counts[day]++;
+            amounts[day] += (t.amount ?? 0) / 100;
+        }
+
+        const data = DAYS.map((label, i) => ({ label, count: counts[i], amount: amounts[i] }));
+        return res.status(200).json({ success: true, data });
+    } catch (error) {
+        return res.status(500).json({ success: false, message: 'Erro ao buscar compras por dia', error: error instanceof Error ? error.message : error });
+    }
+};
+
+// ==================== INTERVALO MÉDIO ENTRE COMPRAS ====================
+
+export const getRepurchaseInterval = async (req: Request, res: Response): Promise<Response> => {
+    try {
+        const transactions = await Transactions.findAll({
+            where: { status: 'paid', studentId: { [Op.not]: null } },
+            attributes: ['studentId', 'createdAt'],
+            order: [['studentId', 'ASC'], ['createdAt', 'ASC']],
+            raw: true,
+        });
+
+        const byStudent: Record<number, Date[]> = {};
+        for (const t of transactions as any[]) {
+            if (!byStudent[t.studentId]) byStudent[t.studentId] = [];
+            byStudent[t.studentId].push(new Date(t.createdAt));
+        }
+
+        const gaps: number[] = [];
+        for (const dates of Object.values(byStudent)) {
+            for (let i = 1; i < dates.length; i++) {
+                const days = (dates[i].getTime() - dates[i - 1].getTime()) / (1000 * 60 * 60 * 24);
+                gaps.push(days);
+            }
+        }
+
+        const avgDays = gaps.length > 0 ? Math.round(gaps.reduce((a, b) => a + b, 0) / gaps.length) : null;
+        return res.status(200).json({ success: true, data: { avgDays, sampleSize: gaps.length } });
+    } catch (error) {
+        return res.status(500).json({ success: false, message: 'Erro ao calcular intervalo de recompra', error: error instanceof Error ? error.message : error });
+    }
+};
+
+// ==================== COMPRARAM VS. USARAM ====================
+
+export const getBoughtVsUsed = async (req: Request, res: Response): Promise<Response> => {
+    try {
+        const [bought, used] = await Promise.all([
+            Transactions.count({ col: 'studentId', distinct: true, where: { status: 'paid', studentId: { [Op.not]: null } } }),
+            ClassStudent.count({ col: 'studentId', distinct: true, where: { status: true } }),
+        ]);
+
+        return res.status(200).json({ success: true, data: { bought, used, notUsed: Math.max(0, bought - used) } });
+    } catch (error) {
+        return res.status(500).json({ success: false, message: 'Erro ao buscar compraram vs. usaram', error: error instanceof Error ? error.message : error });
+    }
+};
+
+// ==================== RECEITA ACUMULADA MÊS ATUAL VS. ANTERIOR ====================
+
+export const getCumulativeRevenue = async (req: Request, res: Response): Promise<Response> => {
+    try {
+        const now = new Date();
+        const y = now.getFullYear();
+        const m = now.getMonth();
+
+        const currentStart = new Date(y, m, 1);
+        const currentEnd   = new Date(y, m + 1, 0, 23, 59, 59);
+        const prevStart    = new Date(y, m - 1, 1);
+        const prevEnd      = new Date(y, m, 0, 23, 59, 59);
+
+        const fetchDailyAmounts = async (start: Date, end: Date) => {
+            const rows = await Transactions.findAll({
+                where: { status: 'paid', createdAt: { [Op.between]: [start, end] } },
+                attributes: [
+                    [fn('DAY', col('createdAt')), 'day'],
+                    [fn('SUM', col('amount')), 'total'],
+                ],
+                group: [fn('DAY', col('createdAt'))],
+                order: [[fn('DAY', col('createdAt')), 'ASC']],
+                raw: true,
+            });
+            const daysInMonth = end.getDate();
+            const map: Record<number, number> = {};
+            for (const r of rows as any[]) map[parseInt(r.day)] = parseFloat(r.total) / 100;
+            let cumulative = 0;
+            return Array.from({ length: daysInMonth }, (_, i) => {
+                cumulative += map[i + 1] ?? 0;
+                return parseFloat(cumulative.toFixed(2));
+            });
+        };
+
+        const [current, previous] = await Promise.all([
+            fetchDailyAmounts(currentStart, currentEnd),
+            fetchDailyAmounts(prevStart, prevEnd),
+        ]);
+
+        const days = Array.from({ length: Math.max(current.length, previous.length) }, (_, i) => i + 1);
+        return res.status(200).json({ success: true, data: { days, current, previous } });
+    } catch (error) {
+        return res.status(500).json({ success: false, message: 'Erro ao buscar receita acumulada', error: error instanceof Error ? error.message : error });
+    }
+};
