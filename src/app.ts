@@ -31,6 +31,7 @@ import performanceRoutes from './routes/statisticsRoutes';
 import installmentRulesRoutes from './routes/installmentRulesRoutes';
 import paymentRoutes from './routes/paymentRoutes';
 import webhookRoutes from './routes/webhookRoutes';
+import npsRoutes from './routes/npsRoutes';
 
 const app: Application = express();
 
@@ -77,7 +78,8 @@ app.use('/performance', performanceRoutes);
 app.use('/installment-rules', installmentRulesRoutes);
 app.use('/payment', paymentRoutes);
 
-app.use('/webhook', webhookRoutes); 
+app.use('/webhook', webhookRoutes);
+app.use('/nps', npsRoutes);
 
 
 // Configuração do Swagger

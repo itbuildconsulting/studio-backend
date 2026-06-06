@@ -306,7 +306,7 @@ export const getByCriteriaEmployee = async (req: Request, res: Response): Promis
         const limit = parseInt(pageSize, 10);
         const offset = (parseInt(page, 10) - 1) * limit;
 
-        const { count, rows } = await Person.findAndCountAll({
+        const { count: totalRecords, rows } = await Person.findAndCountAll({
             where: criteria,
             attributes: { exclude: ['password', 'resetToken', 'tokenVersion'] },
             limit,
@@ -314,16 +314,27 @@ export const getByCriteriaEmployee = async (req: Request, res: Response): Promis
             order: [['createdAt', 'DESC']],
         });
 
-        const totalPages = Math.ceil(count / limit);
+        const employeesWithLevel = await Promise.all(
+            rows.map(async (person) => {
+                let levelInfo = null;
+                if (person.employee_level) {
+                    const level = await Level.findByPk(person.employee_level);
+                    if (level) {
+                        levelInfo = { id: level.id, name: level.name, color: level.color };
+                    }
+                }
+                return { ...person.toJSON(), levelInfo };
+            })
+        );
 
         return res.status(200).json({
             success: true,
-            data: rows,
+            data: employeesWithLevel,
             pagination: {
-                total: count,
-                page: parseInt(page, 10),
+                totalRecords,
+                totalPages: Math.ceil(totalRecords / limit),
+                currentPage: parseInt(page, 10),
                 pageSize: limit,
-                totalPages,
             },
         });
     } catch (error) {
