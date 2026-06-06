@@ -729,3 +729,94 @@ export const getMostPurchasedProducts = async (req: Request, res: Response): Pro
         return res.status(500).json({ success: false, message: 'Erro ao buscar produtos mais comprados', error: error instanceof Error ? error.message : error });
     }
 };
+
+// ==================== COMPRADORES POR PRODUTO ====================
+
+export const getProductBuyers = async (req: Request, res: Response): Promise<Response> => {
+    try {
+        const { productId, months } = req.query;
+
+        if (!productId) {
+            return res.status(400).json({ success: false, message: 'productId é obrigatório.' });
+        }
+
+        // Período opcional
+        const whereTransaction: any = { status: 'paid' };
+        if (months) {
+            const since = new Date();
+            since.setMonth(since.getMonth() - Number(months));
+            whereTransaction.createdAt = { [Op.gte]: since };
+        }
+
+        // Transações pagas no período
+        const paidTxRows = await Transactions.findAll({
+            where: whereTransaction,
+            attributes: ['transactionId'],
+            raw: true,
+        });
+        const txIds = (paidTxRows as any[]).map(t => t.transactionId);
+
+        if (txIds.length === 0) {
+            return res.status(200).json({ success: true, data: { product: null, buyers: [], totalBuyers: 0, totalPurchases: 0 } });
+        }
+
+        // Produto
+        const product = await Product.findByPk(Number(productId), { attributes: ['id', 'name', 'credit', 'value'], raw: true });
+
+        // Itens desse produto nessas transações (exclui gratuitos e produtos R$10)
+        const items = await Item.findAll({
+            where: {
+                transactionId: { [Op.in]: txIds },
+                itemId: Number(productId),
+                amount: { [Op.gt]: 0 },
+            },
+            attributes: ['studentId', 'quantity', 'amount', 'created_at'],
+            raw: true,
+        });
+
+        // Agrupa por studentId
+        const buyerMap = new Map<number, { quantity: number; purchases: number; lastDate: Date | null }>();
+        for (const item of items as any[]) {
+            const sid = item.studentId;
+            if (!sid) continue;
+            const existing = buyerMap.get(sid) ?? { quantity: 0, purchases: 0, lastDate: null };
+            existing.quantity  += item.quantity ?? 1;
+            existing.purchases += 1;
+            const d = item.created_at ? new Date(item.created_at) : null;
+            if (d && (!existing.lastDate || d > existing.lastDate)) existing.lastDate = d;
+            buyerMap.set(sid, existing);
+        }
+
+        // Enriquece com nomes
+        const studentIds = [...buyerMap.keys()];
+        const persons = await Person.findAll({
+            where: { id: { [Op.in]: studentIds } },
+            attributes: ['id', 'name', 'email'],
+            raw: true,
+        });
+        const personMap = new Map((persons as any[]).map(p => [p.id, p]));
+
+        const buyers = [...buyerMap.entries()]
+            .map(([sid, stats]) => ({
+                studentId:   sid,
+                studentName: personMap.get(sid)?.name  ?? '—',
+                studentEmail:personMap.get(sid)?.email ?? '—',
+                purchases:   stats.purchases,
+                totalCredits:stats.quantity,
+                lastPurchase:stats.lastDate,
+            }))
+            .sort((a, b) => b.purchases - a.purchases);
+
+        return res.status(200).json({
+            success: true,
+            data: {
+                product,
+                buyers,
+                totalBuyers:   buyers.length,
+                totalPurchases:buyers.reduce((s, b) => s + b.purchases, 0),
+            },
+        });
+    } catch (error) {
+        return res.status(500).json({ success: false, message: 'Erro ao buscar compradores por produto', error: error instanceof Error ? error.message : error });
+    }
+};
