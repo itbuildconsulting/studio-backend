@@ -32,9 +32,6 @@ import installmentRulesRoutes from './routes/installmentRulesRoutes';
 import paymentRoutes from './routes/paymentRoutes';
 import webhookRoutes from './routes/webhookRoutes';
 import npsRoutes from './routes/npsRoutes';
-import { crmRouter, makeTrackOpenHandler } from '@avera/crm-backend';
-import { injectCrmDb } from './crm/crmMiddleware';
-import { crmDb } from './crm/crmDb';
 import { authenticateToken } from './core/token/authenticateToken';
 
 const app: Application = express();
@@ -84,10 +81,20 @@ app.use('/payment', paymentRoutes);
 app.use('/webhook', webhookRoutes);
 app.use('/nps', npsRoutes);
 
-// CRM
-const trackOpen = makeTrackOpenHandler(async () => crmDb);
-app.get('/api/crm/track/open/:clientId/:logId', trackOpen);
-app.use('/api/crm', authenticateToken, injectCrmDb, crmRouter);
+// CRM (habilitado via CRM_ENABLED=true)
+if (process.env.CRM_ENABLED === 'true') {
+  try {
+    const { crmRouter, makeTrackOpenHandler } = require('@avera/crm-backend');
+    const { injectCrmDb } = require('./crm/crmMiddleware');
+    const { crmDb } = require('./crm/crmDb');
+    const trackOpen = makeTrackOpenHandler(async () => crmDb);
+    app.get('/api/crm/track/open/:clientId/:logId', trackOpen);
+    app.use('/api/crm', authenticateToken, injectCrmDb, crmRouter);
+    console.log('[CRM] Rotas registradas');
+  } catch (e) {
+    console.warn('[CRM] Módulo não disponível, rotas desabilitadas:', (e as Error).message);
+  }
+}
 
 // Configuração do Swagger
 swaggerSetup(app);
