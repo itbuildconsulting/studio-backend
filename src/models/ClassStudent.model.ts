@@ -9,6 +9,7 @@ class ClassStudent extends Model {
   public studentId!: number | null;
   public bikeId!: number | null;
   public checkin!: number | null;
+  public checkin_at!: Date | null;
   public createdAt!: Date;
   public updatedAt!: Date;
   public status!: boolean;
