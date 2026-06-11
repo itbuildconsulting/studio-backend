@@ -19,8 +19,8 @@ interface TransactionData {
         email: string;
         document: string;
     };
-    created_at: string;
-    updated_at: string;
+    createdAt: string;
+    updatedAt: string;
     closed_at: string;
 }
 

@@ -88,10 +88,10 @@ export const login = async (req: Request, res: Response): Promise<Response> => {
         name: person.name,
         id: person.id,
         email: person.email,
-        level: !level ? null : level.name, // Agora enviamos o nome do nível ao invés do ID
+        employee_level: person.employee_level,
+        level: !level ? null : level.name,
         color: !level ? null : level.color,
         student_level: person.student_level,
-
     });
 
   } catch (error: any) {

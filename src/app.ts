@@ -31,6 +31,7 @@ import performanceRoutes from './routes/statisticsRoutes';
 import installmentRulesRoutes from './routes/installmentRulesRoutes';
 import paymentRoutes from './routes/paymentRoutes';
 import webhookRoutes from './routes/webhookRoutes';
+import npsRoutes from './routes/npsRoutes';
 import { crmRouter, makeTrackOpenHandler } from '@avera/crm-backend';
 import { injectCrmDb } from './crm/crmMiddleware';
 import { crmDb } from './crm/crmDb';
@@ -81,6 +82,7 @@ app.use('/performance', performanceRoutes);
 app.use('/installment-rules', installmentRulesRoutes);
 app.use('/payment', paymentRoutes);
 app.use('/webhook', webhookRoutes);
+app.use('/nps', npsRoutes);
 
 // CRM
 const trackOpen = makeTrackOpenHandler(async () => crmDb);

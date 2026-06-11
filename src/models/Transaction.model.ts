@@ -22,10 +22,12 @@ interface TransactionAttributes {
   discountPercent: number;
   discountAmount: number;
   closedAt: Date;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 // Interface opcional para criação parcial (atributos opcionais)
-interface TransactionCreationAttributes extends Optional<TransactionAttributes, 'transactionId'> {}
+interface TransactionCreationAttributes extends Optional<TransactionAttributes, 'transactionId' | 'createdAt' | 'updatedAt'> {}
 
 // Classe que representa o modelo de transações
 class Transactions extends Model<TransactionAttributes, TransactionCreationAttributes> implements TransactionAttributes {
@@ -132,6 +134,12 @@ Transactions.init({
   closedAt: {
     type: DataTypes.DATE,
     allowNull: false,
+  },
+   createdAt: {
+    type: DataTypes.DATE,
+  },
+  updatedAt: {
+    type: DataTypes.DATE,
   },
 }, {
   sequelize,

@@ -1,48 +1,58 @@
 import { Request, Response } from 'express';
-import { Op, fn, col, literal } from 'sequelize';
+import { Op, fn, col, literal, where } from 'sequelize';
 import ClassStudent from '../models/ClassStudent.model'; // Ajuste o caminho do modelo
-import { startOfWeek, endOfWeek } from 'date-fns';
+import { startOfWeek, endOfWeek, format } from 'date-fns';
 import Transactions from '../models/Transaction.model';
 import Product from '../models/Product.model';
 import ProductType from '../models/ProductType.model';
 import Place from '../models/Place.model';
 import Class from '../models/Class.model';
+import Person from '../models/Person.model';
 
 export const getStudentAttendance = async (req: Request, res: Response): Promise<Response> => {
     try {
         const { startDate, endDate } = req.body;
 
-        // Determinar o intervalo de datas
-        let dateRange = {
+        const dateRange = {
             [Op.between]: [
-                startDate ? new Date(startDate) : startOfWeek(new Date()), // Início da semana ou data fornecida
-                endDate ? new Date(endDate) : endOfWeek(new Date()), // Fim da semana ou data fornecida
+                startDate ? new Date(startDate) : startOfWeek(new Date()),
+                endDate ? new Date(endDate) : endOfWeek(new Date()),
             ],
         };
 
-        // Consultar a tabela classStudent para calcular a frequência
         const attendance = await ClassStudent.findAll({
             attributes: [
-                [fn('DAYOFWEEK', col('createdAt')), 'dayOfWeek'], // Extrai o dia da semana
-                [fn('COUNT', col('studentId')), 'attendanceCount'], // Conta as presenças por dia
+                [literal('COUNT(DISTINCT `ClassStudent`.`studentId`)'), 'attendanceCount'],
+            ],
+            include: [
+                {
+                    model: Class,
+                    attributes: ['date'],
+                    where: {
+                        date: dateRange,
+                        active: true,
+                    },
+                    required: true,
+                },
             ],
             where: {
-                createdAt: dateRange, // Filtrar pelo intervalo de datas
+                status: true,
             },
-            group: [fn('DAYOFWEEK', col('createdAt'))], // Agrupa por dia da semana
-            order: [fn('DAYOFWEEK', col('createdAt'))], // Ordena pelo dia da semana
+            group: [col('Class.date')],
+            order: [[col('Class.date'), 'ASC']],
+            raw: true,
         });
 
-        // Formatar a resposta
-        const formattedAttendance = attendance.map((entry: any) => ({
-            dayOfWeek: parseInt(entry.get('dayOfWeek')), // Dia da semana como número
-            attendanceCount: parseInt(entry.get('attendanceCount')), // Total de presenças
-        }));
-
-        return res.status(200).json({
-            success: true,
-            data: formattedAttendance,
+        // Converte para 1=Seg...7=Dom (JS getUTCDay: 0=Dom...6=Sáb)
+        const formattedAttendance = attendance.map((entry: any) => {
+            const jsDay = new Date(entry['Class.date']).getUTCDay();
+            return {
+                dayOfWeek: jsDay === 0 ? 7 : jsDay,
+                attendanceCount: parseInt(entry.attendanceCount),
+            };
         });
+
+        return res.status(200).json({ success: true, data: formattedAttendance });
     } catch (error) {
         console.error('Erro ao buscar frequência:', error);
         return res.status(500).json({
@@ -54,36 +64,36 @@ export const getStudentAttendance = async (req: Request, res: Response): Promise
 };
 
 
+// PATCH para src/controllers/dashboardController.ts
+// Substituir o bloco do getMonthlySales:
+
 export const getMonthlySales = async (req: Request, res: Response): Promise<Response> => {
     try {
         const { year } = req.body;
 
-        // Verifica se o ano foi fornecido, caso contrário, utiliza o ano atual
         const currentYear = year || new Date().getFullYear();
 
-        // Consulta a tabela Transactions para calcular as vendas mensais
         const sales = await Transactions.findAll({
             attributes: [
-                [fn('MONTH', col('createdAt')), 'month'], // Extrai o mês da data
-                [fn('SUM', col('amount')), 'totalSales'], // Soma o total de vendas por mês
+                [fn('MONTH', col('createdAt')), 'month'],
+                [fn('SUM', col('amount')), 'totalSales'],
             ],
-            /*where: {
+            where: {                                          // ✅ DESCOMENTADO
                 createdAt: {
                     [Op.between]: [
-                        new Date(`${currentYear}-01-01`), // Início do ano
-                        new Date(`${currentYear}-12-31`), // Fim do ano
+                        new Date(`${currentYear}-01-01`),
+                        new Date(`${currentYear}-12-31`),
                     ],
                 },
-                status: 'paid', // Considere apenas vendas concluídas (opcional)
-            },*/
-            group: [fn('MONTH', col('createdAt'))], // Agrupa por mês
-            order: [[literal('month'), 'ASC']], // Ordena os resultados pelos meses
+                status: 'paid',                             // ✅ só transações pagas
+            },
+            group: [fn('MONTH', col('createdAt'))],
+            order: [[literal('month'), 'ASC']],
         });
 
-        // Formata o resultado
         const formattedSales = sales.map((entry: any) => ({
-            month: parseInt(entry.get('month')), // Número do mês (1 = Janeiro, 2 = Fevereiro, etc.)
-            totalSales: parseFloat(entry.get('totalSales')), // Soma total de vendas no mês
+            month: parseInt(entry.get('month')),
+            totalSales: parseFloat(entry.get('totalSales')),
         }));
 
         return res.status(200).json({
@@ -125,7 +135,10 @@ const getLocation = async (productType: string): Promise<string> => {
 // Função para contar o número de alunos em uma aula
 const getStudentCount = async (classId: number): Promise<number> => {
     return await ClassStudent.count({
-        where: { classId },
+        where: { 
+            classId,
+            status: true,  // ✅ só inscrições ativas
+        },
     });
 };
 
@@ -140,7 +153,7 @@ export const getClassesForNextDays = async (req: Request, res: Response): Promis
 
         // Buscar as aulas no intervalo de datas
         const classes = await Class.findAll({
-            attributes: ['id', 'time', 'productType', 'date'], // Atributos principais
+            attributes: ['id', 'time', 'productTypeId', 'date'], // Atributos principais
             where: {
                 date: {
                     [Op.between]: [today, threeDaysFromNow],
@@ -152,16 +165,24 @@ export const getClassesForNextDays = async (req: Request, res: Response): Promis
         // Processar cada aula e buscar os dados adicionais
         const formattedClasses = await Promise.all(
             classes.map(async (cls: any) => {
-                const location = await getLocation(cls.productType); // Buscar localização
-                const studentCount = await getStudentCount(cls.id); // Contar alunos
+                const productTypeId = cls.get('productTypeId'); // ✅ usa .get() para garantir o valor
+                const classId = cls.get('id');
+
+                const location = productTypeId              // ✅ guard: só chama se existir
+                    ? await getLocation(productTypeId)
+                    : 'Local não especificado';
+
+                const studentCount = classId
+                    ? await getStudentCount(classId)
+                    : 0;
 
                 return {
-                    id: cls.id,
-                    time: cls.time,
-                    productType: cls.productType,
+                    id: classId,
+                    time: cls.get('time'),
+                    productTypeId,
                     location,
                     studentCount,
-                    classDate: cls.date,
+                    classDate: cls.get('date'),
                 };
             })
         );
@@ -170,7 +191,7 @@ export const getClassesForNextDays = async (req: Request, res: Response): Promis
         const groupedClasses: Record<string, any[]> = {};
 
         formattedClasses.forEach((cls: { classDate: { toISOString: () => string; }; }) => {
-            const day = cls.classDate.toISOString().split('T')[0]; // Data no formato YYYY-MM-DD
+            const day = String(cls.classDate).split('T')[0];
             if (!groupedClasses[day]) {
                 groupedClasses[day] = [];
             }
@@ -186,6 +207,99 @@ export const getClassesForNextDays = async (req: Request, res: Response): Promis
         return res.status(500).json({
             success: false,
             message: 'Erro ao buscar aulas',
+            error: error instanceof Error ? error.message : 'Erro desconhecido',
+        });
+    }
+};
+
+export const getTodayCancellations = async (req: Request, res: Response): Promise<Response> => {
+    try {
+        const today = format(new Date(), 'yyyy-MM-dd');
+
+        const count = await ClassStudent.count({
+            where: { status: false },
+            include: [{
+                model: Class,
+                where: { date: today },
+                required: true,
+                attributes: [],
+            }],
+        });
+
+        return res.status(200).json({ success: true, data: { count } });
+    } catch (error) {
+        console.error('Erro ao buscar cancelamentos do dia:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Erro ao buscar cancelamentos do dia',
+            error: error instanceof Error ? error.message : 'Erro desconhecido',
+        });
+    }
+};
+
+export const getBirthdays = async (req: Request, res: Response): Promise<Response> => {
+    try {
+        const today = new Date();
+        const todayMonth = today.getMonth() + 1;
+        const todayDay = today.getDate();
+
+        // Gera os próximos 6 dias (excluindo hoje)
+        const nextDays = Array.from({ length: 6 }, (_, i) => {
+            const d = new Date(today);
+            d.setDate(today.getDate() + i + 1);
+            return { month: d.getMonth() + 1, day: d.getDate() };
+        });
+
+        const [todayBirthdays, weekBirthdays] = await Promise.all([
+            Person.findAll({
+                where: {
+                    employee: 0,
+                    [Op.and]: [
+                        where(fn('MONTH', col('birthday')), todayMonth),
+                        where(fn('DAY', col('birthday')), todayDay),
+                    ],
+                },
+                attributes: ['id', 'name', 'birthday'],
+            }),
+            Person.findAll({
+                where: {
+                    employee: 0,
+                    [Op.or]: nextDays.map(({ month, day }) => ({
+                        [Op.and]: [
+                            where(fn('MONTH', col('birthday')), month),
+                            where(fn('DAY', col('birthday')), day),
+                        ],
+                    })),
+                },
+                attributes: ['id', 'name', 'birthday'],
+            }),
+        ]);
+
+        const currentYear = today.getFullYear();
+        const mapPerson = (p: any) => {
+            const bday = p.birthday ? new Date(p.birthday) : null;
+            return {
+                id: p.id,
+                name: p.name,
+                age: bday ? currentYear - bday.getFullYear() : null,
+                date: bday
+                    ? `${String(bday.getUTCDate()).padStart(2, '0')}/${String(bday.getUTCMonth() + 1).padStart(2, '0')}`
+                    : null,
+            };
+        };
+
+        return res.status(200).json({
+            success: true,
+            data: {
+                today: todayBirthdays.map(mapPerson),
+                week: weekBirthdays.map(mapPerson),
+            },
+        });
+    } catch (error) {
+        console.error('Erro ao buscar aniversariantes:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Erro ao buscar aniversariantes',
             error: error instanceof Error ? error.message : 'Erro desconhecido',
         });
     }

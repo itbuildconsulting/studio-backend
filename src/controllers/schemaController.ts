@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import sequelize from "../config/database";
 import { registerAllModels } from "../models/register";
+import Class from "../models/Class.model";
 
 export async function checkSchema(req: Request, res: Response) {
   try {
@@ -65,5 +66,15 @@ export async function checkSchema(req: Request, res: Response) {
   } catch (e: any) {
     console.error("Schema check error:", e);
     return res.status(500).json({ success: false, message: e?.message || "Erro ao inspecionar schema" });
+  }
+}
+
+export async function syncClassSchema(req: Request, res: Response) {
+  try {
+    await Class.sync({ alter: true });
+    return res.status(200).json({ success: true, message: "Tabela 'class' sincronizada com sucesso" });
+  } catch (e: any) {
+    console.error("Sync error:", e);
+    return res.status(500).json({ success: false, message: e?.message || "Erro ao sincronizar schema" });
   }
 }

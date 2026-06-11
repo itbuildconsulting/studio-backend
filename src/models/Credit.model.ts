@@ -11,6 +11,9 @@ class Credit extends Model {
   public creditBatch!: string;      // Lote de créditos (por exemplo, ID da transação)
   public origin?: string;           // Origem do crédito (compra, bônus, etc.)
   public lastUpdated?: Date;           // Origem do crédito (compra, bônus, etc.)
+
+  public readonly createdAt!: Date;
+  public readonly updatedAt!: Date;
 }
 
 Credit.init(
@@ -63,7 +66,6 @@ Credit.init(
   {
     tableName: 'credits',
     sequelize, // Conexão com o banco
-    timestamps: true, // Para criar createdAt e updatedAt automaticamente
     indexes: [
       {
         fields: ['idCustomer'], // Facilita busca por todos os créditos de um usuário

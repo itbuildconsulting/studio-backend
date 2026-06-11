@@ -1,81 +1,16 @@
 import { Router } from 'express';
-import { verifyOtp } from '../controllers/optController';
-import { verifyEmailLink } from '../controllers/authVerifyController';
+import { verifyOtp, sendOtp, verifyEmailByToken } from '../controllers/optController';
 
 const router = Router();
 
-/**
- * @swagger
- * tags:
- *   name: Auth
- *   description: Operações de autenticação
- */
-
-/**
- * @swagger
- * /login:
- *   post:
- *     summary: Realiza o login do usuário
- *     tags: [Auth]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               email:
- *                 type: string
- *               password:
- *                 type: string
- *     responses:
- *       200:
- *         description: Login realizado com sucesso
- *       401:
- *         description: Credenciais inválidas
- */
+// Verifica o código de 6 dígitos digitado no app
 router.post('/otp/verify', verifyOtp);
 
-/**
- * @swagger
- * /auth/verify:
- *   get:
- *     summary: Verifica o email através do magic link
- *     tags: [Auth Verification]
- *     parameters:
- *       - in: query
- *         name: token
- *         required: true
- *         schema:
- *           type: string
- *         description: Token JWT de verificação de email
- *     responses:
- *       200:
- *         description: Página HTML de sucesso - conta verificada
- *         content:
- *           text/html:
- *             schema:
- *               type: string
- *       400:
- *         description: Token inválido ou expirado
- *         content:
- *           text/html:
- *             schema:
- *               type: string
- *       404:
- *         description: Usuário não encontrado
- *         content:
- *           text/html:
- *             schema:
- *               type: string
- *       500:
- *         description: Erro interno do servidor
- *         content:
- *           text/html:
- *             schema:
- *               type: string
- */
-router.get('/verify', verifyEmailLink);
+// Reenvio de código pelo app
+router.post('/otp/send', sendOtp);
 
+// Ativação via botão do e-mail (link mágico)
+// GET /auth/verify?token=xxx
+router.get('/verify', verifyEmailByToken);
 
 export default router;

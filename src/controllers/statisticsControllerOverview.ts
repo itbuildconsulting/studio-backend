@@ -1,12 +1,10 @@
 import { Request, Response } from 'express';
-import { Op, fn, col, literal, WhereOptions } from 'sequelize';
+import { Op, fn, col } from 'sequelize';
 import Person from '../models/Person.model';
 import ClassStudent from '../models/ClassStudent.model';
 import Class from '../models/Class.model';
 import Credit from '../models/Credit.model';
-import Transactions from '../models/Transaction.model';
-import Bike from '../models/Bike.model';
-import Product from '../models/Product.model';
+import { getPresenceFilter } from '../utils/presenceFilter';
 
 // ==================== VISÃO GERAL ====================
 
@@ -22,12 +20,14 @@ export const getOverviewMetrics = async (req: Request, res: Response): Promise<R
         const start = startDate ? new Date(startDate) : firstDayCurrentMonth;
         const end = endDate ? new Date(endDate) : now;
 
-        // Alunos ativos (fizeram pelo menos 1 check-in no período)
+        const presenceFilter = await getPresenceFilter();
+
+        // Alunos ativos (pelo menos 1 presença confirmada no período)
         const activeStudentsCount = await ClassStudent.count({
             distinct: true,
             col: 'studentId',
             where: {
-                checkin: { [Op.not]: null },
+                ...presenceFilter,
                 createdAt: { [Op.between]: [start, end] }
             }
         });
@@ -37,7 +37,7 @@ export const getOverviewMetrics = async (req: Request, res: Response): Promise<R
             distinct: true,
             col: 'studentId',
             where: {
-                checkin: { [Op.not]: null },
+                ...presenceFilter,
                 createdAt: { [Op.between]: [firstDayLastMonth, lastDayLastMonth] }
             }
         });
@@ -46,10 +46,10 @@ export const getOverviewMetrics = async (req: Request, res: Response): Promise<R
             ? ((activeStudentsCount - previousActiveStudentsCount) / previousActiveStudentsCount) * 100
             : 0;
 
-        // Total de check-ins no mês
+        // Total de presenças no período
         const totalCheckins = await ClassStudent.count({
             where: {
-                checkin: { [Op.not]: null },
+                ...presenceFilter,
                 createdAt: { [Op.between]: [start, end] }
             }
         });
@@ -62,7 +62,7 @@ export const getOverviewMetrics = async (req: Request, res: Response): Promise<R
             }
         });
 
-        const totalSpotsAvailable = totalClassesInPeriod * 20; // Assumindo 20 bikes por aula
+        const totalSpotsAvailable = totalClassesInPeriod * 12;
         const occupancyRate = totalSpotsAvailable > 0
             ? ((totalCheckins / totalSpotsAvailable) * 100).toFixed(1)
             : 0;
@@ -86,15 +86,19 @@ export const getOverviewMetrics = async (req: Request, res: Response): Promise<R
             }
         }) || 0;
 
+        const avgStudentsPerClass = totalClassesInPeriod > 0
+            ? parseFloat((totalCheckins / totalClassesInPeriod).toFixed(1))
+            : 0;
+
         return res.status(200).json({
             success: true,
             activeStudents: activeStudentsCount,
             activeStudentsGrowth: parseFloat(activeStudentsGrowth.toFixed(1)),
-            totalCheckins,
+            avgStudentsPerClass,
             occupancyRate: parseFloat(occupancyRate.toString()),
             totalActiveCredits: Math.round(totalActiveCredits),
             creditsExpiringNext7Days: Math.round(creditsExpiringNext7Days),
-            npsScore: 'N/A' // Implementar se tiver sistema de avaliação
+            npsScore: 'N/A'
         });
 
     } catch (error) {
@@ -109,15 +113,101 @@ export const getOverviewMetrics = async (req: Request, res: Response): Promise<R
 
 // ==================== TOP ALUNOS ====================
 
+function resolvePeriodStart(period?: string): Date {
+    const now = new Date();
+    switch (period) {
+        case 'hoje':
+            return new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        case 'semana': {
+            const d = new Date(now);
+            d.setDate(now.getDate() - 7);
+            return d;
+        }
+        case 'trimestre': {
+            const d = new Date(now);
+            d.setMonth(now.getMonth() - 3);
+            return d;
+        }
+        default:
+            return new Date(now.getFullYear(), now.getMonth(), 1);
+    }
+}
+
 export const getTopStudents = async (req: Request, res: Response): Promise<Response> => {
     try {
         const { limit = 10, period } = req.body;
+        const start = resolvePeriodStart(period);
+        const presenceFilter = await getPresenceFilter();
 
         const now = new Date();
-        const firstDayMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-        const start = period ? new Date(period) : firstDayMonth;
 
-        // Buscar alunos com mais aulas (baseado na data da Class)
+        // Dias distintos com aula no período — denominador da frequência
+        const totalClassDays = await Class.count({
+            distinct: true,
+            col: 'date',
+            where: {
+                date: { [Op.between]: [start, now] },
+                active: true
+            }
+        });
+
+        const toDateStr = (d: any) => new Date(d).toISOString().split('T')[0];
+
+        // ── Dados compartilhados por visão ────────────────────────────────────
+
+        // Visão diária (hoje/semana): últimos 7 dias com aula
+        const sevenDaysAgo = new Date(now);
+        sevenDaysAgo.setDate(now.getDate() - 6);
+
+        const activeLast7 = await Class.findAll({
+            attributes: ['date'],
+            where: { date: { [Op.between]: [sevenDaysAgo, now] }, active: true },
+            group: ['date'],
+            raw: true
+        });
+        const activeDaySet = new Set(activeLast7.map((c: any) => toDateStr(c.date)));
+
+        // Visão semanal (mes): semanas do mês atual
+        type PeriodRange = { start: Date; end: Date; label: string };
+        let periodRanges: PeriodRange[] = [];
+        let periodHasClass: boolean[] = [];
+
+        if (period === 'mes') {
+            const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+            let d = new Date(monthStart);
+            let w = 1;
+            while (d <= now) {
+                const ws = new Date(d);
+                const we = new Date(d);
+                we.setDate(d.getDate() + 6);
+                const end = we > now ? new Date(now) : we;
+                periodRanges.push({ start: ws, end, label: `S${w}` });
+                d.setDate(d.getDate() + 7);
+                w++;
+            }
+        } else if (period === 'trimestre') {
+            for (let i = 2; i >= 0; i--) {
+                const ms = new Date(now.getFullYear(), now.getMonth() - i, 1);
+                const me = new Date(now.getFullYear(), now.getMonth() - i + 1, 0);
+                periodRanges.push({
+                    start: ms,
+                    end: me > now ? new Date(now) : me,
+                    label: ms.toLocaleDateString('pt-BR', { month: 'short' })
+                });
+            }
+        }
+
+        // Pré-calcula se houve aula em cada período (compartilhado)
+        if (periodRanges.length > 0) {
+            periodHasClass = await Promise.all(
+                periodRanges.map(async (r) => {
+                    const c = await Class.count({ where: { date: { [Op.between]: [r.start, r.end] }, active: true } });
+                    return c > 0;
+                })
+            );
+        }
+
+        // Buscar alunos com mais presenças confirmadas no período
         const topStudents = await ClassStudent.findAll({
             attributes: [
                 'studentId',
@@ -127,11 +217,10 @@ export const getTopStudents = async (req: Request, res: Response): Promise<Respo
             include: [{
                 model: Class,
                 attributes: [],
-                where: {
-                    date: { [Op.gte]: start }
-                },
+                where: { date: { [Op.between]: [start, now] } },
                 required: true
             }],
+            where: presenceFilter,
             group: ['studentId'],
             order: [[fn('COUNT', col('ClassStudent.classId')), 'DESC']],
             limit: parseInt(limit.toString()),
@@ -146,32 +235,62 @@ export const getTopStudents = async (req: Request, res: Response): Promise<Respo
                     attributes: ['id', 'name']
                 });
 
-                // Calcular taxa de presença
-                const scheduledClasses = await ClassStudent.count({
+                const uniqueDays = parseInt(studentData.uniqueDays || 0);
+                const attendanceRate = totalClassDays > 0
+                    ? Math.min(100, Math.round((uniqueDays / totalClassDays) * 100))
+                    : 0;
+
+                // Visão diária — últimos 7 dias
+                const studentLast7 = await ClassStudent.findAll({
+                    attributes: [[fn('DATE', col('Class.date')), 'classDate']],
                     include: [{
                         model: Class,
                         attributes: [],
-                        where: {
-                            date: { [Op.gte]: start }
-                        },
+                        where: { date: { [Op.between]: [sevenDaysAgo, now] } },
                         required: true
                     }],
-                    where: {
-                        studentId: studentData.studentId
-                    }
+                    where: { studentId: studentData.studentId, ...presenceFilter },
+                    group: [fn('DATE', col('Class.date'))],
+                    raw: true
+                });
+                const studentDaySet = new Set(studentLast7.map((d: any) => toDateStr(d.classDate)));
+
+                const last7 = Array.from({ length: 7 }, (_, i) => {
+                    const d = new Date(sevenDaysAgo);
+                    d.setDate(sevenDaysAgo.getDate() + i);
+                    const dateStr = toDateStr(d);
+                    if (!activeDaySet.has(dateStr)) return 'no_class';
+                    return studentDaySet.has(dateStr) ? 'attended' : 'missed';
                 });
 
-                const attendedClasses = parseInt(studentData.classCount);
-                const attendanceRate = scheduledClasses > 0
-                    ? ((attendedClasses / scheduledClasses) * 100).toFixed(0)
-                    : 0;
+                // Visão semanal/mensal — períodos agregados
+                let periodData: { label: string; status: string }[] = [];
+                if (periodRanges.length > 0) {
+                    periodData = await Promise.all(
+                        periodRanges.map(async (r, idx) => {
+                            if (!periodHasClass[idx]) return { label: r.label, status: 'no_class' };
+                            const attended = await ClassStudent.count({
+                                include: [{
+                                    model: Class,
+                                    attributes: [],
+                                    where: { date: { [Op.between]: [r.start, r.end] } },
+                                    required: true
+                                }],
+                                where: { studentId: studentData.studentId, ...presenceFilter }
+                            });
+                            return { label: r.label, status: attended > 0 ? 'attended' : 'missed' };
+                        })
+                    );
+                }
 
                 return {
                     studentId: studentData.studentId,
                     name: person?.name || 'Desconhecido',
-                    classCount: attendedClasses,
-                    streak: parseInt(studentData.uniqueDays || 0),
-                    attendanceRate: parseInt(attendanceRate.toString())
+                    classCount: parseInt(studentData.classCount),
+                    attendanceRate,
+                    last7,
+                    periodData,
+                    periodLabels: periodRanges.map(r => r.label)
                 };
             })
         );
@@ -279,6 +398,8 @@ export const getStudentsAtRisk = async (req: Request, res: Response): Promise<Re
         const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
         const endLastMonth = new Date(now.getFullYear(), now.getMonth(), 0);
 
+        const presenceFilter = await getPresenceFilter();
+
         // Alunos do mês atual
         const currentMonthStudents = await ClassStudent.findAll({
             attributes: [
@@ -286,7 +407,7 @@ export const getStudentsAtRisk = async (req: Request, res: Response): Promise<Re
                 [fn('COUNT', col('classId')), 'classCount']
             ],
             where: {
-                checkin: { [Op.not]: null },
+                ...presenceFilter,
                 createdAt: { [Op.between]: [currentMonth, now] }
             },
             group: ['studentId'],
@@ -300,7 +421,7 @@ export const getStudentsAtRisk = async (req: Request, res: Response): Promise<Re
                 [fn('COUNT', col('classId')), 'classCount']
             ],
             where: {
-                checkin: { [Op.not]: null },
+                ...presenceFilter,
                 createdAt: { [Op.between]: [lastMonth, endLastMonth] }
             },
             group: ['studentId'],
@@ -349,6 +470,82 @@ export const getStudentsAtRisk = async (req: Request, res: Response): Promise<Re
         return res.status(500).json({
             success: false,
             message: 'Erro ao buscar alunos em risco',
+            error: error instanceof Error ? error.message : 'Erro desconhecido'
+        });
+    }
+};
+
+// ==================== CLIENTES DORMENTES ====================
+
+export const getDormantClients = async (req: Request, res: Response): Promise<Response> => {
+    try {
+        const now = new Date();
+
+        // IDs que já fizeram pelo menos uma aula
+        const withClasses = await ClassStudent.findAll({
+            attributes: ['studentId'],
+            group: ['studentId'],
+            raw: true
+        });
+        const withClassIds = new Set(withClasses.map((r: any) => r.studentId));
+
+        // IDs que já compraram algum crédito
+        const withPurchases = await Credit.findAll({
+            attributes: ['idCustomer'],
+            group: ['idCustomer'],
+            raw: true
+        });
+        const withPurchaseIds = new Set(withPurchases.map((r: any) => r.idCustomer));
+
+        // IDs com contrato ativo (crédito válido e não expirado)
+        const withActiveContract = await Credit.findAll({
+            attributes: ['idCustomer'],
+            where: { status: 'valid', expirationDate: { [Op.gte]: now } },
+            group: ['idCustomer'],
+            raw: true
+        });
+        const withActiveContractIds = new Set(withActiveContract.map((r: any) => r.idCustomer));
+
+        // Todos os clientes ativos (não funcionários)
+        const allClients = await Person.findAll({
+            attributes: ['id', 'name', 'email', 'phone', 'createdAt'],
+            where: { employee: 0, active: 1 },
+            order: [['createdAt', 'DESC']],
+            raw: true
+        });
+
+        // Montar flags e filtrar apenas quem tem pelo menos 1 condição dormante
+        const data = allClients
+            .map((p: any) => {
+                const hasNoClass = !withClassIds.has(p.id);
+                const hasNoPurchase = !withPurchaseIds.has(p.id);
+                const hasNoContract = !withActiveContractIds.has(p.id);
+
+                if (!hasNoClass && !hasNoPurchase && !hasNoContract) return null;
+
+                return {
+                    id: p.id,
+                    name: p.name,
+                    email: p.email,
+                    phone: p.phone,
+                    registeredAt: p.createdAt,
+                    daysSinceRegistration: Math.floor(
+                        (now.getTime() - new Date(p.createdAt).getTime()) / (1000 * 60 * 60 * 24)
+                    ),
+                    hasNoClass,
+                    hasNoPurchase,
+                    hasNoContract,
+                };
+            })
+            .filter(Boolean);
+
+        return res.status(200).json({ success: true, data });
+
+    } catch (error) {
+        console.error('Erro ao buscar clientes dormentes:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Erro ao buscar clientes dormentes',
             error: error instanceof Error ? error.message : 'Erro desconhecido'
         });
     }

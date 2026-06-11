@@ -42,8 +42,8 @@ export const seedController = {
             await WaitingList.sync(); //OK
             await NotificationToken.sync(); //OK
             await OtpCode.sync(); //OK
-            await ContractSignature.sync();//OK
             await ContractVersion.sync()//OK
+            await ContractSignature.sync();//OK            
             await ParQ.sync() //OK
 
             //await sequelize.sync({ alter: true });

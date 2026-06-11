@@ -33,6 +33,8 @@ export const createClass = async (req: Request, res: Response): Promise<Response
             productTypeId,
             bikes,
             active,
+            title,
+            description,
         } = req.body;
 
         // Formatar a data corretamente
@@ -49,6 +51,8 @@ export const createClass = async (req: Request, res: Response): Promise<Response
             kickback,
             productTypeId,
             active,
+            title,
+            description,
         });
 
         // Processar cada bike do array `bikes` e garantir que as bikes existam na tabela `Bike`
@@ -111,6 +115,8 @@ export const createMultipleClasses = async (req: Request, res: Response): Promis
             productTypeId,
             bikes,
             active,
+            title,
+            description,
         } = req.body;
 
         // Criar as aulas para cada combinação de dia e horário
@@ -121,8 +127,8 @@ export const createMultipleClasses = async (req: Request, res: Response): Promis
             for (const h of time) {
                 // Criar a aula para o dia e horário atuais
                 const newClass = await Class.create({
-                    date: day, // O dia da semana deve ser convertido em uma data, se necessário
-                    time: h, // Usar o horário fornecido
+                    date: day,
+                    time: h,
                     teacherId,
                     limit,
                     hasCommission,
@@ -130,6 +136,8 @@ export const createMultipleClasses = async (req: Request, res: Response): Promis
                     kickback,
                     productTypeId,
                     active,
+                    title,
+                    description,
                 });
 
                 // Processar cada bike do array `bikes` e associar as bikes à aula
@@ -179,91 +187,92 @@ export const createMultipleClasses = async (req: Request, res: Response): Promis
 
 export const getAllClasses = async (req: Request, res: Response): Promise<void | Response> => {
     try {
-        authenticateToken(req, res, async () => {
-            try {
-                const { date, time, productType, teacherId, page = 1, pageSize = 10 } = req.body;
+        // ✅ BUG 2: removido o authenticateToken interno — a rota já autentica via middleware
+        const { date, time, productType, productTypeId, teacherId, page = 1, pageSize = 10 } = req.body;
 
-                // Critérios de busca dinâmica para aulas
-                const criteria: any = {};
+        const criteria: any = {};
 
-                // Definir data de hoje
-                const today = new Date();
-                const formattedToday = format(today, 'yyyy-MM-dd'); // Formatar a data de hoje para 'YYYY-MM-DD'
+        const today = new Date();
+        const formattedToday = format(today, 'yyyy-MM-dd');
 
-                if (date) {
-                    // Formatando a data recebida no formato 'DD/MM/YYYY' para 'YYYY-MM-DD'
-                    const parsedDate = parse(date, 'dd/MM/yyyy', new Date());
-                    criteria.date = format(parsedDate, 'yyyy-MM-dd'); // Formata para 'YYYY-MM-DD'
-                } else {
-                    // Se não for passada data, buscar a partir de hoje
-                    criteria.date = { [Op.gte]: formattedToday };
-                }
+        if (date) {
+            const parsedDate = parse(date, 'dd/MM/yyyy', new Date());
+            criteria.date = format(parsedDate, 'yyyy-MM-dd');
+        } else {
+            criteria.date = { [Op.gte]: formattedToday };
+        }
 
-                if (time) {
-                    criteria.time = time; // Busca por hora exata
-                }
+        if (time) {
+            criteria.time = time;
+        }
 
-                if (productType) {
-                    criteria.productTypeId = productType; // Filtro por ID do tipo de produto
-                }
+        // ✅ BUG 1: aceita productTypeId (frontend) ou productType (legado)
+        const resolvedProductType = productTypeId ?? productType;
+        if (resolvedProductType) {
+            criteria.productTypeId = resolvedProductType;
+        }
 
-                if (teacherId) {
-                    criteria.teacherId = teacherId; // Filtro por ID do professor
-                }
+        if (teacherId) {
+            criteria.teacherId = teacherId;
+        }
 
-                // Configurar paginação
-                const limit = parseInt(pageSize, 10); // Número de registros por página
-                const offset = (parseInt(page, 10) - 1) * limit; // Deslocamento
+        // Configurar paginação
+        const limit = parseInt(pageSize, 10); // Número de registros por página
+        const offset = (parseInt(page, 10) - 1) * limit; // Deslocamento
 
-                // Busca as aulas com os critérios aplicados e paginação
-                const { rows: classes, count: totalRecords } = await Class.findAndCountAll({
-                    where: criteria,
-                    limit,
-                    offset,
+        // Busca as aulas com os critérios aplicados e paginação
+        const { rows: classes, count: totalRecords } = await Class.findAndCountAll({
+            where: criteria,
+            order: [
+                ['date', 'ASC'],
+                ['time', 'ASC'],
+            ],
+            limit,
+            offset,
+        });
+
+        if (!classes || classes.length === 0) {
+            return res.status(404).send('Nenhuma aula encontrada');
+        }
+
+        // Buscar os nomes manualmente
+        const enrichedClasses = await Promise.all(
+            classes.map(async (classItem) => {
+                const productType = await ProductType.findByPk(classItem.productTypeId, {
+                    attributes: ['id', 'name'],
                 });
 
-                if (!classes || classes.length === 0) {
-                    return res.status(404).send('Nenhuma aula encontrada');
-                }
+                const [teacher, enrolled] = await Promise.all([
+                    Person.findByPk(classItem.teacherId, { attributes: ['id', 'name'] }),
+                    ClassStudent.count({ where: { classId: classItem.id, status: true } }),
+                ]);
 
-                // Buscar os nomes manualmente
-                const enrichedClasses = await Promise.all(
-                    classes.map(async (classItem) => {
-                        const productType = await ProductType.findByPk(classItem.productTypeId, {
-                            attributes: ['id', 'name'],
-                        });
+                return {
+                    ...classItem.toJSON(),
+                    productType: productType ? productType.name : null,
+                    teacher: teacher ? teacher.name : null,
+                    enrolled,
+                    studentCount: enrolled,
+                };
+            })
+        );
 
-                        const teacher = await Person.findByPk(classItem.teacherId, {
-                            attributes: ['id', 'name'],
-                        });
-
-                        return {
-                            ...classItem.toJSON(),
-                            productType: productType ? productType.name : null,
-                            teacher: teacher ? teacher.name : null,
-                        };
-                    })
-                );
-
-                return res.status(200).json({
-                    success: true,
-                    data: enrichedClasses,
-                    pagination: {
-                        totalRecords,
-                        totalPages: Math.ceil(totalRecords / limit),
-                        currentPage: parseInt(page, 10),
-                        pageSize: limit,
-                    },
-                });
-            } catch (findError) {
-                console.error('Erro ao buscar aulas:', findError);
-                return res.status(500).send('Erro ao buscar aulas');
-            }
+        return res.status(200).json({
+            success: true,
+            data: enrichedClasses,
+            pagination: {
+                totalRecords,
+                totalPages: Math.ceil(totalRecords / limit),
+                currentPage: parseInt(page, 10),
+                pageSize: limit,
+            },
         });
     } catch (error) {
-        console.error('Erro ao validar token:', error);
-        return res.status(401).send('Token inválido');
+        console.error('Erro ao buscar aulas:', error);
+        return res.status(500).send('Erro ao buscar aulas');
     }
+        
+    
 };
 
 export const getClassById = async (req: Request, res: Response): Promise<Response> => {
@@ -279,7 +288,7 @@ export const getClassById = async (req: Request, res: Response): Promise<Respons
         // Buscar as bicicletas associadas à aula
         const bikes = await Bike.findAll({
             where: { classId: id },
-            attributes: ['bikeNumber', 'status', 'studentId'],
+            attributes: ['id', 'bikeNumber', 'status', 'studentId'],
         });
 
         // Para cada bicicleta, buscar o nome e data de nascimento do aluno associado
@@ -298,6 +307,7 @@ export const getClassById = async (req: Request, res: Response): Promise<Respons
                 }
 
                 return {
+                    id: bike.id, // ← adicionar
                     bikeNumber: bike.bikeNumber,
                     status: bike.status,
                     studentId: bike.studentId,
@@ -330,8 +340,10 @@ export const updateClass = async (req: Request, res: Response): Promise<Response
             kickbackRule,
             kickback,
             productTypeId,
-            bikes, // Array atualizado de { studentId, bikeNumber, deductCredits }
+            bikes,
             active,
+            title,
+            description,
         } = req.body;
 
         // Verificar se a aula existe
@@ -357,6 +369,8 @@ export const updateClass = async (req: Request, res: Response): Promise<Response
             kickback: kickback || classData.kickback,
             productTypeId: productTypeId || classData.productTypeId,
             active: active !== undefined ? active : classData.active,
+            title: title !== undefined ? title : classData.title,
+            description: description !== undefined ? description : classData.description,
         });
 
         // Atualizar as associações de alunos e bicicletas
@@ -395,6 +409,7 @@ export const updateClass = async (req: Request, res: Response): Promise<Response
                         PersonId: teacherId,
                         studentId,
                         bikeId: bikeRecord.id,
+                        status: 1,
                     });
 
                     // Descontar crédito, se necessário
@@ -420,7 +435,10 @@ export const updateClass = async (req: Request, res: Response): Promise<Response
             // Remover associações que não estão mais presentes no array `bikes`
             const bikesToKeep = bikes.map((bike: any) => bike.bikeNumber);
             for (const cs of existingClassStudents) {
+                if (!cs.bikeId || !classId) continue; // ← guard contra null
+
                 const bikeInDb = await Bike.findOne({ where: { id: cs.bikeId, classId } });
+
                 if (!bikeInDb || !bikesToKeep.includes(bikeInDb.bikeNumber)) {
                     await cs.destroy();
                 }
@@ -433,11 +451,12 @@ export const updateClass = async (req: Request, res: Response): Promise<Response
             data: classData,
         });
     } catch (error) {
-        console.error('Erro ao atualizar aula:', error);
+        const err = error instanceof Error ? error : new Error(String(error)); // ← cast seguro
+        console.error('Erro ao...', err);
         return res.status(500).json({
             success: false,
-            error: 'Erro ao atualizar aula',
-            details: error.message,
+            error: 'Erro ao...',
+            details: err.message,
         });
     }
 };
@@ -470,31 +489,33 @@ export const cancelClass = async (req: Request, res: Response): Promise<Response
             return res.status(404).send('Aula não encontrada');
         }
 
-        // Alterando o status da aula para 2 (cancelada)
-        classData.active = false;
+        const isActivating = !classData.active; // ← toggle
+        classData.active = isActivating;
         await classData.save();
 
-        // Buscando todos os alunos que estão inscritos na aula
-        const classStudents = await ClassStudent.findAll({ where: { classId: id } });
+        // Só executa a lógica de créditos ao CANCELAR, não ao reativar
+        if (!isActivating) {
+            const classStudents = await ClassStudent.findAll({ where: { classId: id } });
 
-        // Atualizando os status dos alunos na tabela ClassStudent e devolvendo crédito
-        for (const classStudent of classStudents) {
-            // Atualizando o status do aluno (ex: 'cancelado')
-            classStudent.status = false; // Exemplo de status
-            await classStudent.save();
+            for (const classStudent of classStudents) {
+                classStudent.status = false;
+                await classStudent.save();
 
-            // Devolver 1 crédito usando a função updateCustomerBalance
-            const student = await Person.findByPk(classStudent.studentId);
-            if (student) {
-                // Atualiza o saldo de crédito do aluno (devolve 1 crédito)
-                await updateCustomerBalance(student.id, 1, classStudent.transactionId, true, classData.productTypeId); // true indicando que é um crédito devolvido
+                if (!classStudent.studentId) continue; // ← guard contra null
+
+                const student = await Person.findByPk(classStudent.studentId);
+                if (student) {
+                    await updateCustomerBalance(student.id, 1, classStudent.transactionId, true, classData.productTypeId);
+                }
             }
+
+            return res.status(200).json({ success: true, message: 'Aula cancelada com sucesso e créditos devolvidos' });
         }
 
-        return res.status(200).send('Aula cancelada com sucesso e créditos devolvidos');
+        return res.status(200).json({ success: true, message: 'Aula reativada com sucesso' });
     } catch (error) {
-        console.error('Erro ao cancelar aula:', error);
-        return res.status(500).send('Erro ao cancelar aula');
+        console.error('Erro ao alterar status da aula:', error);
+        return res.status(500).send('Erro ao alterar status da aula');
     }
 };
 
