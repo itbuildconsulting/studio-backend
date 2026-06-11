@@ -40,6 +40,10 @@ ClassStudent.init(
       type: DataTypes.INTEGER,
       allowNull: true,
     },
+    checkin_at: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
     bikeId: {
       type: DataTypes.INTEGER,
       allowNull: true,

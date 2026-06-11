@@ -28,6 +28,13 @@ import parqRoutes from './routes/parqRoutes';
 import contractRoutes from './routes/contractRoutes';
 import resultsRoutes from './routes/resultsRoutes';
 import performanceRoutes from './routes/statisticsRoutes';
+import installmentRulesRoutes from './routes/installmentRulesRoutes';
+import paymentRoutes from './routes/paymentRoutes';
+import webhookRoutes from './routes/webhookRoutes';
+import { crmRouter, makeTrackOpenHandler } from '@avera/crm-backend';
+import { injectCrmDb } from './crm/crmMiddleware';
+import { crmDb } from './crm/crmDb';
+import { authenticateToken } from './core/token/authenticateToken';
 
 const app: Application = express();
 
@@ -71,7 +78,14 @@ app.use('/parq', parqRoutes);
 app.use('/contracts', contractRoutes);
 app.use('/results', resultsRoutes);
 app.use('/performance', performanceRoutes);
+app.use('/installment-rules', installmentRulesRoutes);
+app.use('/payment', paymentRoutes);
+app.use('/webhook', webhookRoutes);
 
+// CRM
+const trackOpen = makeTrackOpenHandler(async () => crmDb);
+app.get('/api/crm/track/open/:clientId/:logId', trackOpen);
+app.use('/api/crm', authenticateToken, injectCrmDb, crmRouter);
 
 // Configuração do Swagger
 swaggerSetup(app);
