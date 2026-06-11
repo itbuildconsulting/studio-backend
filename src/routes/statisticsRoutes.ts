@@ -23,6 +23,7 @@ import {
     getCumulativeRevenue,
     getMostPurchasedProducts,
     getProductBuyers,
+    getTrialNoConversion,
 } from '../controllers/statisticsControllerPerformance';
 
 const router = Router();
@@ -62,5 +63,8 @@ router.get('/bought-vs-used', getBoughtVsUsed);
 router.get('/cumulative-revenue', getCumulativeRevenue);
 router.get('/most-purchased-products', getMostPurchasedProducts);
 router.get('/product-buyers', getProductBuyers);
+
+// ==================== AULA EXPERIMENTAL SEM CONVERSÃO ====================
+router.get('/trial-no-conversion', getTrialNoConversion);
 
 export default router;

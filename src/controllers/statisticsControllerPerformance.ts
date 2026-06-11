@@ -905,3 +905,74 @@ export const getProductBuyers = async (req: Request, res: Response): Promise<Res
         return res.status(500).json({ success: false, message: 'Erro ao buscar compradores por produto', error: error instanceof Error ? error.message : error });
     }
 };
+
+// ==================== AULA EXPERIMENTAL SEM CONVERSÃO ====================
+
+export const getTrialNoConversion = async (req: Request, res: Response): Promise<Response> => {
+    try {
+        // 1. Encontra produtos "experimentais" pelo nome
+        const trialProducts = await Product.findAll({
+            where: {
+                name: { [Op.like]: '%experimental%' }
+            },
+            attributes: ['id'],
+            raw: true,
+        });
+
+        const trialIds = trialProducts.map((p: any) => p.id);
+
+        if (trialIds.length === 0) {
+            return res.json({ success: true, data: [], meta: { total: 0 } });
+        }
+
+        // 2. Alunos que compraram o produto experimental (transação paga)
+        const trialItems = await Item.findAll({
+            where: { itemId: { [Op.in]: trialIds } },
+            include: [{ model: Transactions, as: 'transaction', where: { status: 'paid' }, required: true }],
+            attributes: ['studentId'],
+            raw: true,
+        });
+
+        const trialStudentIds = [...new Set(trialItems.map((i: any) => i.studentId).filter(Boolean))] as number[];
+
+        if (trialStudentIds.length === 0) {
+            return res.json({ success: true, data: [], meta: { total: 0 } });
+        }
+
+        // 3. Alunos que também compraram outros produtos (converteram)
+        const convertedItems = await Item.findAll({
+            where: {
+                studentId: { [Op.in]: trialStudentIds },
+                itemId: { [Op.notIn]: trialIds },
+            },
+            include: [{ model: Transactions, as: 'transaction', where: { status: 'paid' }, required: true }],
+            attributes: ['studentId'],
+            raw: true,
+        });
+
+        const convertedIds = new Set(convertedItems.map((i: any) => i.studentId));
+
+        // 4. Não convertidos = compraram só o experimental
+        const nonConvertedIds = trialStudentIds.filter(id => !convertedIds.has(id));
+
+        if (nonConvertedIds.length === 0) {
+            return res.json({ success: true, data: [], meta: { total: 0 } });
+        }
+
+        // 5. Busca dados das pessoas
+        const persons = await Person.findAll({
+            where: { id: { [Op.in]: nonConvertedIds } },
+            attributes: ['id', 'name', 'email', 'phone'],
+            order: [['name', 'ASC']],
+            raw: true,
+        });
+
+        return res.json({
+            success: true,
+            data: persons,
+            meta: { total: persons.length },
+        });
+    } catch (error) {
+        return res.status(500).json({ success: false, message: 'Erro ao buscar alunos sem conversão', error: error instanceof Error ? error.message : error });
+    }
+};
