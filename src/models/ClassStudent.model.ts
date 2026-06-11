@@ -9,6 +9,7 @@ class ClassStudent extends Model {
   public studentId!: number | null;
   public bikeId!: number | null;
   public checkin!: number | null;
+  public checkinAt!: Date | null;
   public createdAt!: Date;
   public updatedAt!: Date;
   public status!: boolean;
@@ -39,6 +40,11 @@ ClassStudent.init(
     checkin: {
       type: DataTypes.INTEGER,
       allowNull: true,
+    },
+    checkinAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      field: 'checkin_at',
     },
     bikeId: {
       type: DataTypes.INTEGER,
