@@ -1,0 +1,21 @@
+import { Request, Response, RequestHandler } from 'express';
+import { GetTenantDbBySlug } from '../../types';
+export declare const listTemplates: (req: Request, res: Response) => Promise<Response>;
+export declare const getTemplate: (req: Request, res: Response) => Promise<Response>;
+export declare const createTemplate: (req: Request, res: Response) => Promise<Response>;
+export declare const updateTemplate: (req: Request, res: Response) => Promise<Response>;
+export declare const deleteTemplate: (req: Request, res: Response) => Promise<Response>;
+export declare const listRules: (req: Request, res: Response) => Promise<Response>;
+export declare const getRule: (req: Request, res: Response) => Promise<Response>;
+export declare const createRule: (req: Request, res: Response) => Promise<Response>;
+export declare const updateRule: (req: Request, res: Response) => Promise<Response>;
+export declare const toggleRule: (req: Request, res: Response) => Promise<Response>;
+export declare const deleteRule: (req: Request, res: Response) => Promise<Response>;
+export declare const listLogs: (req: Request, res: Response) => Promise<Response>;
+export declare const testTemplate: (req: Request, res: Response) => Promise<Response>;
+export declare const runEngine: (req: Request, res: Response) => Promise<Response>;
+export declare const getLogStats: (req: Request, res: Response) => Promise<Response>;
+export declare function makeTrackOpenHandler(getTenantDbBySlug: GetTenantDbBySlug): RequestHandler;
+export declare const getPushRecipients: (req: Request, res: Response) => Promise<Response>;
+export declare const sendManualPush: (req: Request, res: Response) => Promise<Response>;
+//# sourceMappingURL=CrmController.d.ts.map
