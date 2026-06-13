@@ -60,15 +60,18 @@ class CrmEngine {
             return 0;
         await this.queueLogs(eligible, rule);
         if (rule.push_title && rule.push_body) {
-            try {
-                await (0, pushService_1.sendPushToPersons)(this.db, eligible.map((u) => u.id), {
-                    title: rule.push_title,
-                    body: rule.push_body,
-                    data: rule.push_url ? { url: rule.push_url } : undefined,
-                });
-            }
-            catch (err) {
-                console.error(`[CrmEngine] Push failed for rule ${rule.id}:`, err);
+            for (const user of eligible) {
+                const vars = { nome: user.name, email: user.email };
+                try {
+                    await (0, pushService_1.sendPushToPersons)(this.db, [user.id], {
+                        title: this.renderText(rule.push_title, vars),
+                        body: this.renderText(rule.push_body, vars),
+                        data: rule.push_url ? { url: rule.push_url } : undefined,
+                    });
+                }
+                catch (err) {
+                    console.error(`[CrmEngine] Push failed for rule ${rule.id}, user ${user.id}:`, err);
+                }
             }
         }
         return eligible.length;
@@ -257,6 +260,9 @@ class CrmEngine {
     }
     resolveSubject(subject, vars) {
         return subject.replace(/\{\{(\w+)\}\}/g, (_, key) => vars[key] ?? '');
+    }
+    renderText(text, vars) {
+        return text.replace(/\{\{(\w+)\}\}/g, (_, key) => vars[key] ?? '');
     }
     cooldownHours(triggerType) {
         const map = {

@@ -407,11 +407,36 @@ const sendManualPush = async (req, res) => {
         }
         const db = getDb(req);
         const url = typeof req.body.url === 'string' ? req.body.url.trim() : undefined;
-        const result = await (0, pushService_1.sendPushToPersons)(db, ids, {
-            title: title.trim(),
-            body: body.trim(),
-            data: url ? { url } : undefined,
-        });
+        const hasVars = /\{\{\w+\}\}/.test(title) || /\{\{\w+\}\}/.test(body);
+        let result;
+        if (hasVars) {
+            const users = await db.ClientUser.findAll({
+                attributes: ['id', 'name', 'email'],
+                where: { id: ids },
+                raw: true,
+            });
+            let sent = 0;
+            let disabled = 0;
+            const renderText = (text, vars) => text.replace(/\{\{(\w+)\}\}/g, (_, k) => vars[k] ?? '');
+            for (const user of users) {
+                const vars = { nome: user.name, email: user.email };
+                const r = await (0, pushService_1.sendPushToPersons)(db, [user.id], {
+                    title: renderText(title.trim(), vars),
+                    body: renderText(body.trim(), vars),
+                    data: url ? { url } : undefined,
+                });
+                sent += r.sent;
+                disabled += r.disabled;
+            }
+            result = { sent, disabled };
+        }
+        else {
+            result = await (0, pushService_1.sendPushToPersons)(db, ids, {
+                title: title.trim(),
+                body: body.trim(),
+                data: url ? { url } : undefined,
+            });
+        }
         const status = result.sent === 0 ? 'failed' : result.sent < ids.length ? 'partial' : 'sent';
         await db.PushLog.create({
             title: title.trim(),

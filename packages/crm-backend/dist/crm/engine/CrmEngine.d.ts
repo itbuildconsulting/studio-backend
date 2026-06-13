@@ -17,6 +17,7 @@ export declare class CrmEngine {
     private filterByCooldown;
     private queueLogs;
     private resolveSubject;
+    private renderText;
     private cooldownHours;
     private delayToMs;
     private uniqueUsers;
