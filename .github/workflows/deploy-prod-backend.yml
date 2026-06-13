@@ -14,6 +14,16 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v3
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Instala dependências e builda no runner
+        run: |
+          npm ci
+          npm run build
+
       - name: Setup SSH
         run: |
           mkdir -p ~/.ssh
@@ -21,28 +31,36 @@ jobs:
           chmod 600 ~/.ssh/id_rsa
           ssh-keyscan -H 212.85.2.8 >> ~/.ssh/known_hosts
 
+      - name: Sincroniza código e node_modules via rsync
+        run: |
+          rsync -avz --delete \
+            --exclude='.git' \
+            --exclude='.env*' \
+            -e "ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no" \
+            ./ root@212.85.2.8:/var/www/prod/spingo-backend/
+
       - name: Criar .env remoto
         run: |
           ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no root@212.85.2.8 "cat <<EOF > /var/www/prod/spingo-backend/.env
-            PORT=${{ secrets.PORT }}
-            DB_HOST=${{ secrets.DB_HOST }}
-            DB_NAME=${{ secrets.DB_NAME }}
-            DB_USER=${{ secrets.DB_USER }}
-            DB_PASS=${{ secrets.DB_PASS }}
-            EMAIL_USER=${{ secrets.EMAIL_USER }}
-            EMAIL_PASS=${{ secrets.EMAIL_PASS }}
-            JWT_SECRET=${{ secrets.JWT_SECRET }}
-            PAGARME_SECRET_KEY=${{ secrets.PAGARME_SECRET_KEY }}
+          PORT=${{ secrets.PORT }}
+          DB_HOST=${{ secrets.DB_HOST }}
+          DB_NAME=${{ secrets.DB_NAME }}
+          DB_USER=${{ secrets.DB_USER }}
+          DB_PASS=${{ secrets.DB_PASS }}
+          EMAIL_USER=${{ secrets.EMAIL_USER }}
+          EMAIL_PASS=${{ secrets.EMAIL_PASS }}
+          JWT_SECRET=${{ secrets.JWT_SECRET }}
+          PAGARME_SECRET_KEY=${{ secrets.PAGARME_SECRET_KEY }}
+          PAGARME_WEBHOOK_SECRET=${{ secrets.PAGARME_WEBHOOK_SECRET }}
+          CRM_ENABLED=true
           EOF"
 
-      - name: Deploy Backend
+      - name: Reinicia PM2
         run: |
           ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no root@212.85.2.8 << 'EOF'
+            set -e
             cd /var/www/prod/spingo-backend
-            git pull origin release
-            npm install
-            npm run build
-             PORT=4200 NODE_ENV=production pm2 restart spingo-backend-prod --update-env || \
-              PORT=4200 NODE_ENV=production pm2 start dist/index.js --name spingo-backend-prod
+            PORT=4200 NODE_ENV=production pm2 restart spingo-backend-prod --update-env || \
+            PORT=4200 NODE_ENV=production pm2 start dist/index.js --name spingo-backend-prod
             pm2 save
           EOF
