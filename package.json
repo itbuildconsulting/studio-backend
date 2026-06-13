@@ -16,7 +16,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@avera/crm-backend": "github:Avera-Tech/modules-crm-backend#master",
+    "@avera/crm-backend": "file:./packages/crm-backend",
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
     "date-fns": "^4.1.0",

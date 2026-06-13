@@ -19,11 +19,6 @@ jobs:
         with:
           node-version: 20
 
-      - name: Configura acesso a repos privados via token
-        run: |
-          git config --global url."https://x-access-token:${{ secrets.GH_PAT }}@github.com/".insteadOf "git@github.com:"
-          git config --global url."https://x-access-token:${{ secrets.GH_PAT }}@github.com/".insteadOf "ssh://git@github.com/"
-
       - name: Instala dependências e builda no runner
         run: |
           npm install --legacy-peer-deps
