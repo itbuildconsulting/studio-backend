@@ -14,6 +14,7 @@ export declare class CrmEngine {
     private evalBirthday;
     private evalPostClass;
     private evalWinBack;
+    private evalPeriodic;
     private filterByCooldown;
     private queueLogs;
     private resolveSubject;

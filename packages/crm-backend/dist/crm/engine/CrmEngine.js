@@ -48,13 +48,16 @@ class CrmEngine {
             case 'win_back':
                 users = await this.evalWinBack(rule, config);
                 break;
+            case 'periodic':
+                users = await this.evalPeriodic(rule, config);
+                break;
             default:
                 console.warn(`[CrmEngine] Unknown trigger_type: ${rule.trigger_type}`);
                 return 0;
         }
         if (users.length === 0)
             return 0;
-        const cooldownHours = this.cooldownHours(rule.trigger_type);
+        const cooldownHours = this.cooldownHours(rule.trigger_type, config);
         const eligible = await this.filterByCooldown(users, rule.id, cooldownHours);
         if (eligible.length === 0)
             return 0;
@@ -227,6 +230,27 @@ class CrmEngine {
         }).then((rows) => new Set(rows.map((r) => r.userId)));
         return candidates.filter(u => !stillActiveIds.has(u.id));
     }
+    // 8. Periodic — all active users, filtered by frequency/day config
+    async evalPeriodic(_rule, config) {
+        const frequency = config.frequency ?? 'weekly';
+        const now = new Date();
+        if (frequency === 'weekly') {
+            const dayOfWeek = config.day_of_week ?? 1;
+            if (now.getDay() !== Number(dayOfWeek))
+                return [];
+        }
+        else if (frequency === 'monthly') {
+            const dayOfMonth = config.day_of_month ?? 1;
+            if (now.getDate() !== Number(dayOfMonth))
+                return [];
+        }
+        // 'interval': no day check — cooldown handles spacing
+        const users = await this.db.ClientUser.findAll({
+            attributes: ['id', 'email', 'name'],
+            where: { active: true },
+        });
+        return users.map(u => ({ id: u.id, email: u.email, name: u.name }));
+    }
     // ─── Helpers ─────────────────────────────────────────────────────────────────
     async filterByCooldown(users, ruleId, cooldownHours) {
         if (cooldownHours <= 0)
@@ -264,7 +288,15 @@ class CrmEngine {
     renderText(text, vars) {
         return text.replace(/\{\{(\w+)\}\}/g, (_, key) => vars[key] ?? '');
     }
-    cooldownHours(triggerType) {
+    cooldownHours(triggerType, config) {
+        if (triggerType === 'periodic') {
+            const freq = config?.frequency ?? 'weekly';
+            if (freq === 'monthly')
+                return 28 * 24;
+            if (freq === 'interval')
+                return Math.max(1, (Number(config?.every_n_days) || 7) - 1) * 24;
+            return 6 * 24; // weekly default
+        }
         const map = {
             welcome: 0,
             plan_expiring: 24,
