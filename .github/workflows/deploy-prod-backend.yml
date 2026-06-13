@@ -21,7 +21,7 @@ jobs:
 
       - name: Instala dependências e builda no runner
         run: |
-          npm ci
+          npm install --legacy-peer-deps
           npm run build
 
       - name: Setup SSH
