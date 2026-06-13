@@ -88,8 +88,8 @@ if (process.env.CRM_ENABLED === 'true') {
     const { injectCrmDb } = require('./crm/crmMiddleware');
     const { crmDb } = require('./crm/crmDb');
     const trackOpen = makeTrackOpenHandler(async () => crmDb);
-    app.get('/api/crm/track/open/:clientId/:logId', trackOpen);
-    app.use('/api/crm', authenticateToken, injectCrmDb, crmRouter);
+    app.get('/crm/track/open/:clientId/:logId', trackOpen);
+    app.use('/crm', authenticateToken, injectCrmDb, crmRouter);
     console.log('[CRM] Rotas registradas');
   } catch (e) {
     console.warn('[CRM] Módulo não disponível, rotas desabilitadas:', (e as Error).message);
