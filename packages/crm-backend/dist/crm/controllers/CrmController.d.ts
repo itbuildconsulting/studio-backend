@@ -18,4 +18,5 @@ export declare const getLogStats: (req: Request, res: Response) => Promise<Respo
 export declare function makeTrackOpenHandler(getTenantDbBySlug: GetTenantDbBySlug): RequestHandler;
 export declare const getPushRecipients: (req: Request, res: Response) => Promise<Response>;
 export declare const sendManualPush: (req: Request, res: Response) => Promise<Response>;
+export declare const listPushLogs: (req: Request, res: Response) => Promise<Response>;
 //# sourceMappingURL=CrmController.d.ts.map

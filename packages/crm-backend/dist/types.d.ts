@@ -4,6 +4,7 @@ export interface CrmDb {
     EmailTemplate: ModelStatic<any>;
     AutomationRule: ModelStatic<any>;
     EmailLog: ModelStatic<any>;
+    PushLog: ModelStatic<any>;
     NotificationToken: ModelStatic<any>;
     ClientUser: ModelStatic<any>;
     StudentCredit: ModelStatic<any>;

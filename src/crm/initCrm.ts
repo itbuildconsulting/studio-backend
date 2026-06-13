@@ -2,12 +2,14 @@ import sequelize from '../config/database';
 import EmailTemplate  from '../models/EmailTemplate.model';
 import AutomationRule from '../models/AutomationRule.model';
 import EmailLog       from '../models/EmailLog.model';
+import PushLog        from '../models/PushLog.model';
 
 export async function initCrmTables(): Promise<void> {
   // Create new CRM tables if they don't exist yet
   await EmailTemplate.sync();
   await AutomationRule.sync();
   await EmailLog.sync();
+  await PushLog.sync();
 
   // Add checkin_at to classStudent (MySQL ignores ADD COLUMN if already exists via IF NOT EXISTS)
   await sequelize.query(

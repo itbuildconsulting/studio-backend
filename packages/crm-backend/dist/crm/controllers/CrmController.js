@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.sendManualPush = exports.getPushRecipients = exports.getLogStats = exports.runEngine = exports.testTemplate = exports.listLogs = exports.deleteRule = exports.toggleRule = exports.updateRule = exports.createRule = exports.getRule = exports.listRules = exports.deleteTemplate = exports.updateTemplate = exports.createTemplate = exports.getTemplate = exports.listTemplates = void 0;
+exports.listPushLogs = exports.sendManualPush = exports.getPushRecipients = exports.getLogStats = exports.runEngine = exports.testTemplate = exports.listLogs = exports.deleteRule = exports.toggleRule = exports.updateRule = exports.createRule = exports.getRule = exports.listRules = exports.deleteTemplate = exports.updateTemplate = exports.createTemplate = exports.getTemplate = exports.listTemplates = void 0;
 exports.makeTrackOpenHandler = makeTrackOpenHandler;
 const sequelize_1 = require("sequelize");
 const CrmEngine_1 = require("../engine/CrmEngine");
@@ -405,9 +405,21 @@ const sendManualPush = async (req, res) => {
         if (ids.length === 0) {
             return res.status(400).json({ success: false, message: 'personIds inválidos' });
         }
-        const result = await (0, pushService_1.sendPushToPersons)(getDb(req), ids, {
+        const db = getDb(req);
+        const result = await (0, pushService_1.sendPushToPersons)(db, ids, {
             title: title.trim(),
             body: body.trim(),
+        });
+        const status = result.sent === 0 ? 'failed' : result.sent < ids.length ? 'partial' : 'sent';
+        await db.PushLog.create({
+            title: title.trim(),
+            body: body.trim(),
+            recipient_count: ids.length,
+            sent_count: result.sent,
+            disabled_count: result.disabled,
+            person_ids: JSON.stringify(ids),
+            status,
+            sent_at: new Date(),
         });
         return res.json({ success: true, data: result });
     }
@@ -417,4 +429,22 @@ const sendManualPush = async (req, res) => {
     }
 };
 exports.sendManualPush = sendManualPush;
+const listPushLogs = async (req, res) => {
+    try {
+        const { PushLog } = getDb(req);
+        const limit = Math.min(Number(req.query.limit ?? 50), 200);
+        const offset = Number(req.query.offset ?? 0);
+        const { rows, count } = await PushLog.findAndCountAll({
+            order: [['sent_at', 'DESC']],
+            limit,
+            offset,
+        });
+        return res.json({ success: true, data: rows, meta: { total: count } });
+    }
+    catch (err) {
+        console.error('listPushLogs error:', err);
+        return res.status(500).json({ success: false, message: 'Erro ao listar histórico de push' });
+    }
+};
+exports.listPushLogs = listPushLogs;
 //# sourceMappingURL=CrmController.js.map

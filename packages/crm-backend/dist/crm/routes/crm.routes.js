@@ -25,5 +25,6 @@ router.post('/engine/run', CrmController_1.runEngine);
 // ─── Push Manual ──────────────────────────────────────────────────────────────
 router.get('/push/recipients', CrmController_1.getPushRecipients);
 router.post('/push/send', CrmController_1.sendManualPush);
+router.get('/push/logs', CrmController_1.listPushLogs);
 exports.default = router;
 //# sourceMappingURL=crm.routes.js.map
