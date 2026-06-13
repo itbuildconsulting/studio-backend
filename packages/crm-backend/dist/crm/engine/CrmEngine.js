@@ -64,6 +64,7 @@ class CrmEngine {
                 await (0, pushService_1.sendPushToPersons)(this.db, eligible.map((u) => u.id), {
                     title: rule.push_title,
                     body: rule.push_body,
+                    data: rule.push_url ? { url: rule.push_url } : undefined,
                 });
             }
             catch (err) {

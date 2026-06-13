@@ -13,12 +13,13 @@ interface AutomationRuleAttributes {
   delay_unit: 'minutes' | 'hours' | 'days';
   push_title?: string | null;
   push_body?: string | null;
+  push_url?: string | null;
   active: boolean;
   createdAt?: Date;
   updatedAt?: Date;
 }
 
-type Creation = Optional<AutomationRuleAttributes, 'id' | 'description' | 'trigger_config' | 'delay_value' | 'delay_unit' | 'push_title' | 'push_body' | 'active'>;
+type Creation = Optional<AutomationRuleAttributes, 'id' | 'description' | 'trigger_config' | 'delay_value' | 'delay_unit' | 'push_title' | 'push_body' | 'push_url' | 'active'>;
 
 class AutomationRule extends Model<AutomationRuleAttributes, Creation> implements AutomationRuleAttributes {
   declare id: number;
@@ -31,6 +32,7 @@ class AutomationRule extends Model<AutomationRuleAttributes, Creation> implement
   declare delay_unit: 'minutes' | 'hours' | 'days';
   declare push_title: string | null;
   declare push_body: string | null;
+  declare push_url: string | null;
   declare active: boolean;
   declare readonly createdAt: Date;
   declare readonly updatedAt: Date;
@@ -48,6 +50,7 @@ AutomationRule.init(
     delay_unit:     { type: DataTypes.ENUM('minutes', 'hours', 'days'), allowNull: false, defaultValue: 'hours' },
     push_title:     { type: DataTypes.STRING, allowNull: true },
     push_body:      { type: DataTypes.STRING, allowNull: true },
+    push_url:       { type: DataTypes.STRING(500), allowNull: true },
     active:         { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
   },
   { sequelize, tableName: 'automation_rules' },

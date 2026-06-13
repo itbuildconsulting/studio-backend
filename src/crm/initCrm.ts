@@ -13,6 +13,16 @@ export async function initCrmTables(): Promise<void> {
   await PushLog.sync();
   await PushTemplate.sync();
 
+  // Add push_url to automation_rules (ignored if already exists)
+  await sequelize.query(
+    'ALTER TABLE automation_rules ADD COLUMN IF NOT EXISTS push_url VARCHAR(500) NULL',
+  );
+
+  // Add url to push_templates (ignored if already exists)
+  await sequelize.query(
+    'ALTER TABLE push_templates ADD COLUMN IF NOT EXISTS url VARCHAR(500) NULL',
+  );
+
   // Add checkin_at to classStudent (MySQL ignores ADD COLUMN if already exists via IF NOT EXISTS)
   await sequelize.query(
     'ALTER TABLE classStudent ADD COLUMN IF NOT EXISTS checkin_at DATETIME NULL',

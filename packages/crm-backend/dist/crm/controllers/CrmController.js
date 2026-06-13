@@ -406,9 +406,11 @@ const sendManualPush = async (req, res) => {
             return res.status(400).json({ success: false, message: 'personIds inválidos' });
         }
         const db = getDb(req);
+        const url = typeof req.body.url === 'string' ? req.body.url.trim() : undefined;
         const result = await (0, pushService_1.sendPushToPersons)(db, ids, {
             title: title.trim(),
             body: body.trim(),
+            data: url ? { url } : undefined,
         });
         const status = result.sent === 0 ? 'failed' : result.sent < ids.length ? 'partial' : 'sent';
         await db.PushLog.create({
@@ -445,11 +447,14 @@ exports.listPushTemplates = listPushTemplates;
 const createPushTemplate = async (req, res) => {
     try {
         const { PushTemplate } = getDb(req);
-        const { name, title, body } = req.body;
+        const { name, title, body, url } = req.body;
         if (!name || !title || !body) {
             return res.status(400).json({ success: false, message: 'name, title e body são obrigatórios' });
         }
-        const template = await PushTemplate.create({ name: name.trim(), title: title.trim(), body: body.trim() });
+        const template = await PushTemplate.create({
+            name: name.trim(), title: title.trim(), body: body.trim(),
+            url: url ? url.trim() : null,
+        });
         return res.status(201).json({ success: true, data: template, message: 'Template criado com sucesso' });
     }
     catch (err) {
@@ -464,11 +469,12 @@ const updatePushTemplate = async (req, res) => {
         const template = await PushTemplate.findByPk(Number(req.params.id));
         if (!template)
             return res.status(404).json({ success: false, message: 'Template não encontrado' });
-        const { name, title, body } = req.body;
+        const { name, title, body, url } = req.body;
         await template.update({
             ...(name !== undefined ? { name: name.trim() } : {}),
             ...(title !== undefined ? { title: title.trim() } : {}),
             ...(body !== undefined ? { body: body.trim() } : {}),
+            ...(url !== undefined ? { url: url ? url.trim() : null } : {}),
         });
         return res.json({ success: true, data: template, message: 'Template atualizado com sucesso' });
     }
