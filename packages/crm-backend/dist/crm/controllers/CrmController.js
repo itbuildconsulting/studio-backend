@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.listPushLogs = exports.sendManualPush = exports.getPushRecipients = exports.getLogStats = exports.runEngine = exports.testTemplate = exports.listLogs = exports.deleteRule = exports.toggleRule = exports.updateRule = exports.createRule = exports.getRule = exports.listRules = exports.deleteTemplate = exports.updateTemplate = exports.createTemplate = exports.getTemplate = exports.listTemplates = void 0;
+exports.listPushLogs = exports.deletePushTemplate = exports.updatePushTemplate = exports.createPushTemplate = exports.listPushTemplates = exports.sendManualPush = exports.getPushRecipients = exports.getLogStats = exports.runEngine = exports.testTemplate = exports.listLogs = exports.deleteRule = exports.toggleRule = exports.updateRule = exports.createRule = exports.getRule = exports.listRules = exports.deleteTemplate = exports.updateTemplate = exports.createTemplate = exports.getTemplate = exports.listTemplates = void 0;
 exports.makeTrackOpenHandler = makeTrackOpenHandler;
 const sequelize_1 = require("sequelize");
 const CrmEngine_1 = require("../engine/CrmEngine");
@@ -429,6 +429,70 @@ const sendManualPush = async (req, res) => {
     }
 };
 exports.sendManualPush = sendManualPush;
+// ─── Push Templates ───────────────────────────────────────────────────────────
+const listPushTemplates = async (req, res) => {
+    try {
+        const { PushTemplate } = getDb(req);
+        const templates = await PushTemplate.findAll({ order: [['name', 'ASC']] });
+        return res.json({ success: true, data: templates });
+    }
+    catch (err) {
+        console.error('listPushTemplates error:', err);
+        return res.status(500).json({ success: false, message: 'Erro ao listar templates de push' });
+    }
+};
+exports.listPushTemplates = listPushTemplates;
+const createPushTemplate = async (req, res) => {
+    try {
+        const { PushTemplate } = getDb(req);
+        const { name, title, body } = req.body;
+        if (!name || !title || !body) {
+            return res.status(400).json({ success: false, message: 'name, title e body são obrigatórios' });
+        }
+        const template = await PushTemplate.create({ name: name.trim(), title: title.trim(), body: body.trim() });
+        return res.status(201).json({ success: true, data: template, message: 'Template criado com sucesso' });
+    }
+    catch (err) {
+        console.error('createPushTemplate error:', err);
+        return res.status(500).json({ success: false, message: 'Erro ao criar template de push' });
+    }
+};
+exports.createPushTemplate = createPushTemplate;
+const updatePushTemplate = async (req, res) => {
+    try {
+        const { PushTemplate } = getDb(req);
+        const template = await PushTemplate.findByPk(Number(req.params.id));
+        if (!template)
+            return res.status(404).json({ success: false, message: 'Template não encontrado' });
+        const { name, title, body } = req.body;
+        await template.update({
+            ...(name !== undefined ? { name: name.trim() } : {}),
+            ...(title !== undefined ? { title: title.trim() } : {}),
+            ...(body !== undefined ? { body: body.trim() } : {}),
+        });
+        return res.json({ success: true, data: template, message: 'Template atualizado com sucesso' });
+    }
+    catch (err) {
+        console.error('updatePushTemplate error:', err);
+        return res.status(500).json({ success: false, message: 'Erro ao atualizar template de push' });
+    }
+};
+exports.updatePushTemplate = updatePushTemplate;
+const deletePushTemplate = async (req, res) => {
+    try {
+        const { PushTemplate } = getDb(req);
+        const template = await PushTemplate.findByPk(Number(req.params.id));
+        if (!template)
+            return res.status(404).json({ success: false, message: 'Template não encontrado' });
+        await template.destroy();
+        return res.json({ success: true, message: 'Template removido com sucesso' });
+    }
+    catch (err) {
+        console.error('deletePushTemplate error:', err);
+        return res.status(500).json({ success: false, message: 'Erro ao remover template de push' });
+    }
+};
+exports.deletePushTemplate = deletePushTemplate;
 const listPushLogs = async (req, res) => {
     try {
         const { PushLog } = getDb(req);

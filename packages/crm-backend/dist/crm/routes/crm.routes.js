@@ -26,5 +26,10 @@ router.post('/engine/run', CrmController_1.runEngine);
 router.get('/push/recipients', CrmController_1.getPushRecipients);
 router.post('/push/send', CrmController_1.sendManualPush);
 router.get('/push/logs', CrmController_1.listPushLogs);
+// ─── Push Templates ───────────────────────────────────────────────────────────
+router.get('/push/templates', CrmController_1.listPushTemplates);
+router.post('/push/templates', CrmController_1.createPushTemplate);
+router.put('/push/templates/:id', CrmController_1.updatePushTemplate);
+router.delete('/push/templates/:id', CrmController_1.deletePushTemplate);
 exports.default = router;
 //# sourceMappingURL=crm.routes.js.map
