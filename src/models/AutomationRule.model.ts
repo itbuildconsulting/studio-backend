@@ -1,25 +1,25 @@
 import { DataTypes, Model, Optional } from 'sequelize';
 import sequelize from '../config/database';
 import EmailTemplate from './EmailTemplate.model';
+import PushTemplate from './PushTemplate.model';
 
 interface AutomationRuleAttributes {
   id: number;
   name: string;
   description?: string | null;
-  trigger_type: 'welcome' | 'plan_expiring' | 'credits_low' | 'student_inactive' | 'birthday' | 'post_class' | 'win_back';
+  trigger_type: 'welcome' | 'plan_expiring' | 'credits_low' | 'student_inactive' | 'birthday' | 'post_class' | 'win_back' | 'periodic';
   trigger_config?: string | null;
-  template_id: number;
+  channel: 'email' | 'push';
+  template_id?: number | null;
+  push_template_id?: number | null;
   delay_value: number;
   delay_unit: 'minutes' | 'hours' | 'days';
-  push_title?: string | null;
-  push_body?: string | null;
-  push_url?: string | null;
   active: boolean;
   createdAt?: Date;
   updatedAt?: Date;
 }
 
-type Creation = Optional<AutomationRuleAttributes, 'id' | 'description' | 'trigger_config' | 'delay_value' | 'delay_unit' | 'push_title' | 'push_body' | 'push_url' | 'active'>;
+type Creation = Optional<AutomationRuleAttributes, 'id' | 'description' | 'trigger_config' | 'channel' | 'template_id' | 'push_template_id' | 'delay_value' | 'delay_unit' | 'active'>;
 
 class AutomationRule extends Model<AutomationRuleAttributes, Creation> implements AutomationRuleAttributes {
   declare id: number;
@@ -27,12 +27,11 @@ class AutomationRule extends Model<AutomationRuleAttributes, Creation> implement
   declare description: string | null;
   declare trigger_type: AutomationRuleAttributes['trigger_type'];
   declare trigger_config: string | null;
-  declare template_id: number;
+  declare channel: 'email' | 'push';
+  declare template_id: number | null;
+  declare push_template_id: number | null;
   declare delay_value: number;
   declare delay_unit: 'minutes' | 'hours' | 'days';
-  declare push_title: string | null;
-  declare push_body: string | null;
-  declare push_url: string | null;
   declare active: boolean;
   declare readonly createdAt: Date;
   declare readonly updatedAt: Date;
@@ -40,22 +39,22 @@ class AutomationRule extends Model<AutomationRuleAttributes, Creation> implement
 
 AutomationRule.init(
   {
-    id:             { type: DataTypes.INTEGER.UNSIGNED, autoIncrement: true, primaryKey: true },
-    name:           { type: DataTypes.STRING, allowNull: false },
-    description:    { type: DataTypes.TEXT, allowNull: true },
-    trigger_type:   { type: DataTypes.ENUM('welcome', 'plan_expiring', 'credits_low', 'student_inactive', 'birthday', 'post_class', 'win_back'), allowNull: false },
-    trigger_config: { type: DataTypes.TEXT, allowNull: true },
-    template_id:    { type: DataTypes.INTEGER.UNSIGNED, allowNull: false },
-    delay_value:    { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
-    delay_unit:     { type: DataTypes.ENUM('minutes', 'hours', 'days'), allowNull: false, defaultValue: 'hours' },
-    push_title:     { type: DataTypes.STRING, allowNull: true },
-    push_body:      { type: DataTypes.STRING, allowNull: true },
-    push_url:       { type: DataTypes.STRING(500), allowNull: true },
-    active:         { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
+    id:               { type: DataTypes.INTEGER.UNSIGNED, autoIncrement: true, primaryKey: true },
+    name:             { type: DataTypes.STRING, allowNull: false },
+    description:      { type: DataTypes.TEXT, allowNull: true },
+    trigger_type:     { type: DataTypes.ENUM('welcome', 'plan_expiring', 'credits_low', 'student_inactive', 'birthday', 'post_class', 'win_back', 'periodic'), allowNull: false },
+    trigger_config:   { type: DataTypes.TEXT, allowNull: true },
+    channel:          { type: DataTypes.ENUM('email', 'push'), allowNull: false, defaultValue: 'email' },
+    template_id:      { type: DataTypes.INTEGER.UNSIGNED, allowNull: true },
+    push_template_id: { type: DataTypes.INTEGER.UNSIGNED, allowNull: true },
+    delay_value:      { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
+    delay_unit:       { type: DataTypes.ENUM('minutes', 'hours', 'days'), allowNull: false, defaultValue: 'hours' },
+    active:           { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
   },
   { sequelize, tableName: 'automation_rules' },
 );
 
-AutomationRule.belongsTo(EmailTemplate, { as: 'template', foreignKey: 'template_id' });
+AutomationRule.belongsTo(EmailTemplate, { as: 'template',     foreignKey: 'template_id' });
+AutomationRule.belongsTo(PushTemplate,  { as: 'pushTemplate', foreignKey: 'push_template_id' });
 
 export default AutomationRule;

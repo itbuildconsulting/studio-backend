@@ -13,9 +13,27 @@ export async function initCrmTables(): Promise<void> {
   await PushLog.sync();
   await PushTemplate.sync();
 
-  // Add push_url to automation_rules (ignored if already exists)
+  // Add push_url (legacy, kept for backward compat)
   await sequelize.query(
     'ALTER TABLE automation_rules ADD COLUMN IF NOT EXISTS push_url VARCHAR(500) NULL',
+  );
+
+  // Add channel and push_template_id columns
+  await sequelize.query(
+    "ALTER TABLE automation_rules ADD COLUMN IF NOT EXISTS channel ENUM('email','push') NOT NULL DEFAULT 'email'",
+  );
+  await sequelize.query(
+    'ALTER TABLE automation_rules ADD COLUMN IF NOT EXISTS push_template_id INT UNSIGNED NULL',
+  );
+
+  // Allow template_id to be NULL (push-only rules have no email template)
+  await sequelize.query(
+    'ALTER TABLE automation_rules MODIFY COLUMN template_id INT UNSIGNED NULL',
+  );
+
+  // Extend trigger_type ENUM to include periodic
+  await sequelize.query(
+    "ALTER TABLE automation_rules MODIFY COLUMN trigger_type ENUM('welcome','plan_expiring','credits_low','student_inactive','birthday','post_class','win_back','periodic') NOT NULL",
   );
 
   // Add url to push_templates (ignored if already exists)

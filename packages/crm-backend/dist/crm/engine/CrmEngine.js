@@ -61,19 +61,25 @@ class CrmEngine {
         const eligible = await this.filterByCooldown(users, rule.id, cooldownHours);
         if (eligible.length === 0)
             return 0;
-        await this.queueLogs(eligible, rule);
-        if (rule.push_title && rule.push_body) {
-            for (const user of eligible) {
-                const vars = { nome: user.name, email: user.email };
-                try {
-                    await (0, pushService_1.sendPushToPersons)(this.db, [user.id], {
-                        title: this.renderText(rule.push_title, vars),
-                        body: this.renderText(rule.push_body, vars),
-                        data: rule.push_url ? { url: rule.push_url } : undefined,
-                    });
-                }
-                catch (err) {
-                    console.error(`[CrmEngine] Push failed for rule ${rule.id}, user ${user.id}:`, err);
+        const channel = rule.channel ?? 'email';
+        if (channel === 'email') {
+            await this.queueLogs(eligible, rule);
+        }
+        else if (channel === 'push' && rule.push_template_id) {
+            const pushTpl = await this.db.PushTemplate.findByPk(rule.push_template_id);
+            if (pushTpl) {
+                for (const user of eligible) {
+                    const vars = { nome: user.name, email: user.email };
+                    try {
+                        await (0, pushService_1.sendPushToPersons)(this.db, [user.id], {
+                            title: this.renderText(pushTpl.title, vars),
+                            body: this.renderText(pushTpl.body, vars),
+                            data: pushTpl.url ? { url: pushTpl.url } : undefined,
+                        });
+                    }
+                    catch (err) {
+                        console.error(`[CrmEngine] Push failed for rule ${rule.id}, user ${user.id}:`, err);
+                    }
                 }
             }
         }

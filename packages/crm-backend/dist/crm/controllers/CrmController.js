@@ -100,14 +100,17 @@ exports.deleteTemplate = deleteTemplate;
 // ─── AutomationRule ───────────────────────────────────────────────────────────
 const listRules = async (req, res) => {
     try {
-        const { AutomationRule, EmailTemplate } = getDb(req);
+        const { AutomationRule, EmailTemplate, PushTemplate } = getDb(req);
         const { active } = req.query;
         const where = {};
         if (active !== undefined)
             where.active = active === 'true';
         const rules = await AutomationRule.findAll({
             where,
-            include: [{ model: EmailTemplate, as: 'template', attributes: ['id', 'name', 'subject', 'category'] }],
+            include: [
+                { model: EmailTemplate, as: 'template', attributes: ['id', 'name', 'subject', 'category'] },
+                { model: PushTemplate, as: 'pushTemplate', attributes: ['id', 'name', 'title', 'body'] },
+            ],
             order: [['trigger_type', 'ASC'], ['name', 'ASC']],
         });
         return res.json({ success: true, data: rules });
@@ -136,23 +139,34 @@ const getRule = async (req, res) => {
 exports.getRule = getRule;
 const createRule = async (req, res) => {
     try {
-        const { AutomationRule, EmailTemplate } = getDb(req);
-        const { name, description, trigger_type, trigger_config, template_id, delay_value, delay_unit, push_title, push_body } = req.body;
-        if (!name || !trigger_type || !template_id) {
-            return res.status(400).json({ success: false, message: 'name, trigger_type e template_id são obrigatórios' });
+        const { AutomationRule, EmailTemplate, PushTemplate } = getDb(req);
+        const { name, description, trigger_type, trigger_config, channel = 'email', template_id, push_template_id, delay_value, delay_unit } = req.body;
+        if (!name || !trigger_type) {
+            return res.status(400).json({ success: false, message: 'name e trigger_type são obrigatórios' });
         }
-        const template = await EmailTemplate.findByPk(template_id);
-        if (!template)
-            return res.status(404).json({ success: false, message: 'Template não encontrado' });
+        if (channel === 'email') {
+            if (!template_id)
+                return res.status(400).json({ success: false, message: 'template_id é obrigatório para canal e-mail' });
+            const tmpl = await EmailTemplate.findByPk(template_id);
+            if (!tmpl)
+                return res.status(404).json({ success: false, message: 'Template de e-mail não encontrado' });
+        }
+        if (channel === 'push') {
+            if (!push_template_id)
+                return res.status(400).json({ success: false, message: 'push_template_id é obrigatório para canal push' });
+            const ptmpl = await PushTemplate.findByPk(push_template_id);
+            if (!ptmpl)
+                return res.status(404).json({ success: false, message: 'Template de push não encontrado' });
+        }
         const rule = await AutomationRule.create({
             name, description,
             trigger_type,
             trigger_config: trigger_config ? JSON.stringify(trigger_config) : null,
-            template_id: Number(template_id),
+            channel,
+            template_id: channel === 'email' ? Number(template_id) : null,
+            push_template_id: channel === 'push' ? Number(push_template_id) : null,
             delay_value: delay_value ?? 0,
             delay_unit: delay_unit ?? 'hours',
-            push_title: push_title ?? null,
-            push_body: push_body ?? null,
         });
         return res.status(201).json({ success: true, data: rule, message: 'Regra criada com sucesso' });
     }
@@ -164,23 +178,33 @@ const createRule = async (req, res) => {
 exports.createRule = createRule;
 const updateRule = async (req, res) => {
     try {
-        const { AutomationRule, EmailTemplate } = getDb(req);
+        const { AutomationRule, EmailTemplate, PushTemplate } = getDb(req);
         const rule = await AutomationRule.findByPk(Number(req.params.id));
         if (!rule)
             return res.status(404).json({ success: false, message: 'Regra não encontrada' });
-        const { name, description, trigger_type, trigger_config, template_id, delay_value, delay_unit, active, push_title, push_body } = req.body;
-        if (template_id) {
-            const template = await EmailTemplate.findByPk(template_id);
-            if (!template)
-                return res.status(404).json({ success: false, message: 'Template não encontrado' });
+        const { name, description, trigger_type, trigger_config, channel, template_id, push_template_id, delay_value, delay_unit, active } = req.body;
+        const newChannel = channel ?? rule.channel ?? 'email';
+        if (newChannel === 'email' && template_id) {
+            const tmpl = await EmailTemplate.findByPk(template_id);
+            if (!tmpl)
+                return res.status(404).json({ success: false, message: 'Template de e-mail não encontrado' });
+        }
+        if (newChannel === 'push' && push_template_id) {
+            const ptmpl = await PushTemplate.findByPk(push_template_id);
+            if (!ptmpl)
+                return res.status(404).json({ success: false, message: 'Template de push não encontrado' });
         }
         await rule.update({
             name, description, trigger_type,
             trigger_config: trigger_config === undefined ? rule.trigger_config : JSON.stringify(trigger_config),
-            template_id: template_id ? Number(template_id) : rule.template_id,
+            channel: newChannel,
+            template_id: newChannel === 'email'
+                ? (template_id !== undefined ? (template_id ? Number(template_id) : null) : rule.template_id)
+                : null,
+            push_template_id: newChannel === 'push'
+                ? (push_template_id !== undefined ? (push_template_id ? Number(push_template_id) : null) : rule.push_template_id)
+                : null,
             delay_value, delay_unit, active,
-            push_title: push_title === undefined ? rule.push_title : (push_title || null),
-            push_body: push_body === undefined ? rule.push_body : (push_body || null),
         });
         return res.json({ success: true, data: rule, message: 'Regra atualizada com sucesso' });
     }
