@@ -422,9 +422,9 @@ export const getWeeklyTrends = async (req: Request, res: Response): Promise<Resp
 };
 
 // ==================== AULAS E ALUNOS POR MÊS ====================
-// Relatório mensal: número de aulas (excluindo canceladas) e total de
-// presenças/matrículas (excluindo as canceladas) por mês — não é aluno
-// único, é a soma de alunos em todas as aulas do mês.
+// Relatório mensal: número de aulas (excluindo canceladas), total de
+// presenças/matrículas (soma de alunos em todas as aulas do mês) e
+// alunos únicos (cada aluno conta uma vez, mesmo com várias aulas).
 
 export const getClassesAndStudentsByMonth = async (req: Request, res: Response): Promise<Response> => {
     try {
@@ -471,11 +471,35 @@ export const getClassesAndStudentsByMonth = async (req: Request, res: Response):
             raw: true,
         });
 
+        // Alunos únicos por mês — cada aluno conta uma vez, mesmo que tenha
+        // ido a várias aulas no mesmo mês
+        const uniqueStudentsByMonth = await ClassStudent.findAll({
+            attributes: [
+                [fn('DATE_FORMAT', col('Class.date'), '%Y-%m'), 'month'],
+                [fn('COUNT', fn('DISTINCT', col('ClassStudent.studentId'))), 'uniqueStudentCount'],
+            ],
+            include: [{
+                model: Class,
+                attributes: [],
+                where: {
+                    date: { [Op.between]: [rangeStart, rangeEnd] },
+                    active: true,
+                },
+                required: true,
+            }],
+            where: presenceFilter,
+            group: [fn('DATE_FORMAT', col('Class.date'), '%Y-%m')],
+            raw: true,
+        });
+
         const classMap = new Map<string, number>();
         (classesByMonth as any[]).forEach((r) => classMap.set(r.month, parseInt(r.classCount, 10)));
 
         const studentMap = new Map<string, number>();
         (studentsByMonth as any[]).forEach((r) => studentMap.set(r.month, parseInt(r.studentCount, 10)));
+
+        const uniqueStudentMap = new Map<string, number>();
+        (uniqueStudentsByMonth as any[]).forEach((r) => uniqueStudentMap.set(r.month, parseInt(r.uniqueStudentCount, 10)));
 
         const monthNames = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
         const data = [];
@@ -487,6 +511,7 @@ export const getClassesAndStudentsByMonth = async (req: Request, res: Response):
                 label: `${monthNames[d.getMonth()]}/${d.getFullYear()}`,
                 classCount: classMap.get(key) ?? 0,
                 studentCount: studentMap.get(key) ?? 0,
+                uniqueStudentCount: uniqueStudentMap.get(key) ?? 0,
             });
         }
 
