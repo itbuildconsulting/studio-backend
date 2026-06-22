@@ -1,5 +1,6 @@
 import { DataTypes, Model, Optional } from 'sequelize';
 import sequelize from '../config/database';
+import Transactions from './Transaction.model';
 
 // Interface que define os atributos do modelo
 interface ItemAttributes {
@@ -92,6 +93,8 @@ Item.init({
   tableName: 'items',
   timestamps: false,  // Se você quiser gerenciar manualmente created_at e updated_at
 });
+
+Item.belongsTo(Transactions, { foreignKey: 'transactionId', targetKey: 'transactionId', as: 'transaction' });
 
 //Item.sync({ alter: true });
 
