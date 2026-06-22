@@ -421,6 +421,84 @@ export const getWeeklyTrends = async (req: Request, res: Response): Promise<Resp
     }
 };
 
+// ==================== AULAS E ALUNOS POR MÊS ====================
+// Relatório mensal: número de aulas (excluindo canceladas) e número de
+// alunos únicos (excluindo matrículas/aulas canceladas) por mês.
+
+export const getClassesAndStudentsByMonth = async (req: Request, res: Response): Promise<Response> => {
+    try {
+        const months = parseInt(req.query.months as string) || 12;
+        const now = new Date();
+        const rangeStart = new Date(now.getFullYear(), now.getMonth() - (months - 1), 1);
+        const rangeEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+
+        const presenceFilter = await getPresenceFilter();
+
+        // Aulas por mês — só conta aulas ativas (não canceladas)
+        const classesByMonth = await Class.findAll({
+            attributes: [
+                [fn('DATE_FORMAT', col('date'), '%Y-%m'), 'month'],
+                [fn('COUNT', col('id')), 'classCount'],
+            ],
+            where: {
+                date: { [Op.between]: [rangeStart, rangeEnd] },
+                active: true,
+            },
+            group: [fn('DATE_FORMAT', col('date'), '%Y-%m')],
+            raw: true,
+        });
+
+        // Alunos únicos por mês — exclui matrículas canceladas (status=false)
+        // e aulas canceladas (active=false, que já zera o status da matrícula)
+        const studentsByMonth = await ClassStudent.findAll({
+            attributes: [
+                [fn('DATE_FORMAT', col('Class.date'), '%Y-%m'), 'month'],
+                [fn('COUNT', fn('DISTINCT', col('ClassStudent.studentId'))), 'studentCount'],
+            ],
+            include: [{
+                model: Class,
+                attributes: [],
+                where: {
+                    date: { [Op.between]: [rangeStart, rangeEnd] },
+                    active: true,
+                },
+                required: true,
+            }],
+            where: presenceFilter,
+            group: [fn('DATE_FORMAT', col('Class.date'), '%Y-%m')],
+            raw: true,
+        });
+
+        const classMap = new Map<string, number>();
+        (classesByMonth as any[]).forEach((r) => classMap.set(r.month, parseInt(r.classCount, 10)));
+
+        const studentMap = new Map<string, number>();
+        (studentsByMonth as any[]).forEach((r) => studentMap.set(r.month, parseInt(r.studentCount, 10)));
+
+        const monthNames = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+        const data = [];
+        for (let i = 0; i < months; i++) {
+            const d = new Date(rangeStart.getFullYear(), rangeStart.getMonth() + i, 1);
+            const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+            data.push({
+                month: key,
+                label: `${monthNames[d.getMonth()]}/${d.getFullYear()}`,
+                classCount: classMap.get(key) ?? 0,
+                studentCount: studentMap.get(key) ?? 0,
+            });
+        }
+
+        return res.status(200).json({ success: true, data });
+    } catch (error) {
+        console.error('Erro ao buscar aulas e alunos por mês:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Erro ao buscar aulas e alunos por mês',
+            error: error instanceof Error ? error.message : 'Erro desconhecido',
+        });
+    }
+};
+
 // ==================== INSIGHTS AUTOMÁTICOS ====================
 
 export const getAutomatedInsights = async (req: Request, res: Response): Promise<Response> => {

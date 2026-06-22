@@ -24,6 +24,7 @@ import {
     getMostPurchasedProducts,
     getProductBuyers,
     getTrialNoConversion,
+    getClassesAndStudentsByMonth,
 } from '../controllers/statisticsControllerPerformance';
 
 const router = Router();
@@ -48,6 +49,7 @@ router.get('/occupancy-by-day', getOccupancyByDayOfWeek);
 
 // ==================== TENDÊNCIAS ====================
 router.post('/weekly-trends', getWeeklyTrends);
+router.get('/classes-students-by-month', getClassesAndStudentsByMonth);
 
 // ==================== INSIGHTS ====================
 router.get('/insights', getAutomatedInsights);
