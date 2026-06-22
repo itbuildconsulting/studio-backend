@@ -906,28 +906,43 @@ export const getProductBuyers = async (req: Request, res: Response): Promise<Res
     }
 };
 
-// ==================== AULA EXPERIMENTAL SEM CONVERSÃO ====================
+// ==================== CLIENTES EXCLUSIVOS DE PRODUTO(S) ====================
+// Antes fixo em "aula experimental" (nome do produto), agora aceita uma lista
+// dinâmica de productIds via query string, já que o produto-alvo do relatório
+// muda com o tempo (hoje é a aula experimental, amanhã pode ser outro).
 
 export const getTrialNoConversion = async (req: Request, res: Response): Promise<Response> => {
     try {
-        // 1. Encontra produtos "experimentais" pelo nome
-        const trialProducts = await Product.findAll({
-            where: {
-                name: { [Op.like]: '%experimental%' }
-            },
-            attributes: ['id'],
-            raw: true,
-        });
+        const { productIds } = req.query;
 
-        const trialIds = trialProducts.map((p: any) => p.id);
+        let targetIds: number[];
 
-        if (trialIds.length === 0) {
+        if (productIds) {
+            // Filtro dinâmico: produtos escolhidos pelo usuário no relatório
+            targetIds = String(productIds)
+                .split(',')
+                .map((id) => parseInt(id, 10))
+                .filter((id) => !isNaN(id));
+        } else {
+            // Compatibilidade: sem filtro explícito, cai no comportamento antigo
+            // (produtos cujo nome contém "experimental")
+            const trialProducts = await Product.findAll({
+                where: {
+                    name: { [Op.like]: '%experimental%' }
+                },
+                attributes: ['id'],
+                raw: true,
+            });
+            targetIds = trialProducts.map((p: any) => p.id);
+        }
+
+        if (targetIds.length === 0) {
             return res.json({ success: true, data: [], meta: { total: 0 } });
         }
 
-        // 2. Alunos que compraram o produto experimental (transação paga)
+        // 2. Alunos que compraram algum dos produtos selecionados (transação paga)
         const trialItems = await Item.findAll({
-            where: { itemId: { [Op.in]: trialIds } },
+            where: { itemId: { [Op.in]: targetIds } },
             include: [{ model: Transactions, as: 'transaction', where: { status: 'paid' }, required: true }],
             attributes: ['studentId'],
             raw: true,
@@ -939,11 +954,11 @@ export const getTrialNoConversion = async (req: Request, res: Response): Promise
             return res.json({ success: true, data: [], meta: { total: 0 } });
         }
 
-        // 3. Alunos que também compraram outros produtos (converteram)
+        // 3. Alunos que também compraram outros produtos (fora da seleção)
         const convertedItems = await Item.findAll({
             where: {
                 studentId: { [Op.in]: trialStudentIds },
-                itemId: { [Op.notIn]: trialIds },
+                itemId: { [Op.notIn]: targetIds },
             },
             include: [{ model: Transactions, as: 'transaction', where: { status: 'paid' }, required: true }],
             attributes: ['studentId'],
@@ -952,7 +967,7 @@ export const getTrialNoConversion = async (req: Request, res: Response): Promise
 
         const convertedIds = new Set(convertedItems.map((i: any) => i.studentId));
 
-        // 4. Não convertidos = compraram só o experimental
+        // 4. Exclusivos = compraram só os produtos selecionados
         const nonConvertedIds = trialStudentIds.filter(id => !convertedIds.has(id));
 
         if (nonConvertedIds.length === 0) {
