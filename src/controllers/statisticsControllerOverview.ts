@@ -22,36 +22,47 @@ export const getOverviewMetrics = async (req: Request, res: Response): Promise<R
 
         const presenceFilter = await getPresenceFilter();
 
-        // Alunos ativos (pelo menos 1 presença confirmada no período)
+        // Alunos ativos (pelo menos 1 presença confirmada no período da AULA,
+        // não da matrícula — createdAt do ClassStudent não reflete a data em
+        // que a aula de fato ocorreu, então o filtro precisa ser pela Class)
         const activeStudentsCount = await ClassStudent.count({
             distinct: true,
             col: 'studentId',
-            where: {
-                ...presenceFilter,
-                createdAt: { [Op.between]: [start, end] }
-            }
+            where: presenceFilter,
+            include: [{
+                model: Class,
+                attributes: [],
+                where: { date: { [Op.between]: [start, end] } },
+                required: true,
+            }],
         });
 
         // Alunos ativos no mês anterior
         const previousActiveStudentsCount = await ClassStudent.count({
             distinct: true,
             col: 'studentId',
-            where: {
-                ...presenceFilter,
-                createdAt: { [Op.between]: [firstDayLastMonth, lastDayLastMonth] }
-            }
+            where: presenceFilter,
+            include: [{
+                model: Class,
+                attributes: [],
+                where: { date: { [Op.between]: [firstDayLastMonth, lastDayLastMonth] } },
+                required: true,
+            }],
         });
 
         const activeStudentsGrowth = previousActiveStudentsCount > 0
             ? ((activeStudentsCount - previousActiveStudentsCount) / previousActiveStudentsCount) * 100
             : 0;
 
-        // Total de presenças no período
+        // Total de presenças no período (mesma janela usada para as aulas)
         const totalCheckins = await ClassStudent.count({
-            where: {
-                ...presenceFilter,
-                createdAt: { [Op.between]: [start, end] }
-            }
+            where: presenceFilter,
+            include: [{
+                model: Class,
+                attributes: [],
+                where: { date: { [Op.between]: [start, end] } },
+                required: true,
+            }],
         });
 
         // Taxa de ocupação
@@ -400,16 +411,19 @@ export const getStudentsAtRisk = async (req: Request, res: Response): Promise<Re
 
         const presenceFilter = await getPresenceFilter();
 
-        // Alunos do mês atual
+        // Alunos do mês atual (filtra pela data da AULA, não da matrícula)
         const currentMonthStudents = await ClassStudent.findAll({
             attributes: [
                 'studentId',
-                [fn('COUNT', col('classId')), 'classCount']
+                [fn('COUNT', col('ClassStudent.classId')), 'classCount']
             ],
-            where: {
-                ...presenceFilter,
-                createdAt: { [Op.between]: [currentMonth, now] }
-            },
+            include: [{
+                model: Class,
+                attributes: [],
+                where: { date: { [Op.between]: [currentMonth, now] } },
+                required: true,
+            }],
+            where: presenceFilter,
             group: ['studentId'],
             raw: true
         });
@@ -418,12 +432,15 @@ export const getStudentsAtRisk = async (req: Request, res: Response): Promise<Re
         const lastMonthStudents = await ClassStudent.findAll({
             attributes: [
                 'studentId',
-                [fn('COUNT', col('classId')), 'classCount']
+                [fn('COUNT', col('ClassStudent.classId')), 'classCount']
             ],
-            where: {
-                ...presenceFilter,
-                createdAt: { [Op.between]: [lastMonth, endLastMonth] }
-            },
+            include: [{
+                model: Class,
+                attributes: [],
+                where: { date: { [Op.between]: [lastMonth, endLastMonth] } },
+                required: true,
+            }],
+            where: presenceFilter,
             group: ['studentId'],
             raw: true
         });
