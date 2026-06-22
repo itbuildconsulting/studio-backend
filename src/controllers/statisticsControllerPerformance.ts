@@ -422,8 +422,9 @@ export const getWeeklyTrends = async (req: Request, res: Response): Promise<Resp
 };
 
 // ==================== AULAS E ALUNOS POR MÊS ====================
-// Relatório mensal: número de aulas (excluindo canceladas) e número de
-// alunos únicos (excluindo matrículas/aulas canceladas) por mês.
+// Relatório mensal: número de aulas (excluindo canceladas) e total de
+// presenças/matrículas (excluindo as canceladas) por mês — não é aluno
+// único, é a soma de alunos em todas as aulas do mês.
 
 export const getClassesAndStudentsByMonth = async (req: Request, res: Response): Promise<Response> => {
     try {
@@ -448,12 +449,13 @@ export const getClassesAndStudentsByMonth = async (req: Request, res: Response):
             raw: true,
         });
 
-        // Alunos únicos por mês — exclui matrículas canceladas (status=false)
-        // e aulas canceladas (active=false, que já zera o status da matrícula)
+        // Total de presenças por mês (soma de alunos em todas as aulas, não
+        // únicos) — exclui matrículas canceladas (status=false) e aulas
+        // canceladas (active=false, que já zera o status da matrícula)
         const studentsByMonth = await ClassStudent.findAll({
             attributes: [
                 [fn('DATE_FORMAT', col('Class.date'), '%Y-%m'), 'month'],
-                [fn('COUNT', fn('DISTINCT', col('ClassStudent.studentId'))), 'studentCount'],
+                [fn('COUNT', col('ClassStudent.id')), 'studentCount'],
             ],
             include: [{
                 model: Class,
