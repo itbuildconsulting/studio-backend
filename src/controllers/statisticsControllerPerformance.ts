@@ -428,10 +428,17 @@ export const getWeeklyTrends = async (req: Request, res: Response): Promise<Resp
 
 export const getClassesAndStudentsByMonth = async (req: Request, res: Response): Promise<Response> => {
     try {
-        const months = parseInt(req.query.months as string) || 12;
         const now = new Date();
-        const rangeStart = new Date(now.getFullYear(), now.getMonth() - (months - 1), 1);
+        const monthsParam = req.query.months ? parseInt(req.query.months as string) : null;
+
+        // Sem "months" explícito, o padrão é desde março do ano atual
+        const rangeStart = monthsParam
+            ? new Date(now.getFullYear(), now.getMonth() - (monthsParam - 1), 1)
+            : new Date(now.getFullYear(), 2, 1);
         const rangeEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+
+        const months = (rangeEnd.getFullYear() - rangeStart.getFullYear()) * 12
+            + (rangeEnd.getMonth() - rangeStart.getMonth()) + 1;
 
         const presenceFilter = await getPresenceFilter();
 
