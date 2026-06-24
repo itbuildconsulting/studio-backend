@@ -39,9 +39,9 @@ jobs:
             -e "ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no" \
             ./ root@212.85.2.8:/var/www/prod/spingo-backend/
 
-      - name: Criar .env remoto
+      - name: Criar .env local
         run: |
-          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no root@212.85.2.8 "cat <<EOF > /var/www/prod/spingo-backend/.env
+          cat <<'EOF' > .env.deploy
           PORT=${{ secrets.PORT }}
           DB_HOST=${{ secrets.DB_HOST }}
           DB_NAME=${{ secrets.DB_NAME }}
@@ -58,7 +58,11 @@ jobs:
           SENSOR_DB_NAME=${{ secrets.SENSOR_DB_NAME }}
           SENSOR_DB_USER=${{ secrets.SENSOR_DB_USER }}
           SENSOR_DB_PASS=${{ secrets.SENSOR_DB_PASS }}
-          EOF"
+          EOF
+
+      - name: Envia .env para o servidor
+        run: |
+          scp -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no .env.deploy root@212.85.2.8:/var/www/prod/spingo-backend/.env
 
       - name: Reinicia PM2
         run: |
