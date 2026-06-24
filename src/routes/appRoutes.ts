@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { addStudentToClassWithBikeNumber, balance, cancelStudentPresenceInClass, getAllProducts, getClassById, getClassWithSingleStudent, getLatestClassesByStudent, getStudentActivities, getStudentExtrato, getStudentSummary, getUserTransactions, hours, nextClass, schedule }  from '../controllers/appController';
+import { addStudentToClassWithBikeNumber, balance, cancelStudentPresenceInClass, getAllProducts, getClassById, getClassWithSingleStudent, getLatestClassesByStudent, getSessionReadings, getStudentActivities, getStudentExtrato, getStudentSummary, getUserTransactions, hours, nextClass, schedule }  from '../controllers/appController';
 import { authenticateToken } from '../core/token/authenticateToken';
 
 const router = Router();
@@ -149,5 +149,7 @@ router.post('/v2/products', authenticateToken, getAllProducts);
 router.get('/v2/extrato/:studentId', authenticateToken, getStudentExtrato);
 
 router.get('/v2/activities/:studentId', authenticateToken, getStudentActivities);
+
+router.get('/v2/activities/session/:sessionId/readings', authenticateToken, getSessionReadings);
 
 export default router;

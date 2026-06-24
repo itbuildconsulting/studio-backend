@@ -20,6 +20,7 @@ import WaitingList from '../models/WaitingList.model';
 import { sendPushToPersons } from '../services/pushService';
 import Item from '../models/Item.model';
 import SensorSession from '../models/SensorSession.model';
+import SensorSessionReading from '../models/SensorSessionReading.model';
 
 import { checkProductUsageRestriction, getStudentProductByType } from '../services/productUsageRestriction';
 
@@ -1144,5 +1145,25 @@ export const getStudentActivities = async (req: Request, res: Response): Promise
   } catch (error) {
     console.error('Erro ao buscar atividades do sensor:', error);
     return res.status(500).json({ success: false, message: 'Erro ao buscar atividades' });
+  }
+};
+
+export const getSessionReadings = async (req: Request, res: Response): Promise<Response> => {
+  try {
+    const { sessionId } = req.params;
+
+    if (!sessionId) {
+      return res.status(400).json({ success: false, message: 'ID da sessão é obrigatório' });
+    }
+
+    const readings = await SensorSessionReading.findAll({
+      where: { sessionId },
+      order: [['elapsedS', 'ASC']],
+    });
+
+    return res.status(200).json({ success: true, data: readings });
+  } catch (error) {
+    console.error('Erro ao buscar leituras da sessão:', error);
+    return res.status(500).json({ success: false, message: 'Erro ao buscar leituras da sessão' });
   }
 };
