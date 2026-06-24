@@ -53,6 +53,11 @@ jobs:
           PAGARME_SECRET_KEY=${{ secrets.PAGARME_SECRET_KEY }}
           PAGARME_WEBHOOK_SECRET=${{ secrets.PAGARME_WEBHOOK_SECRET }}
           CRM_ENABLED=true
+          SENSOR_DB_HOST=${{ secrets.SENSOR_DB_HOST }}
+          SENSOR_DB_PORT=${{ secrets.SENSOR_DB_PORT }}
+          SENSOR_DB_NAME=${{ secrets.SENSOR_DB_NAME }}
+          SENSOR_DB_USER=${{ secrets.SENSOR_DB_USER }}
+          SENSOR_DB_PASS=${{ secrets.SENSOR_DB_PASS }}
           EOF"
 
       - name: Reinicia PM2

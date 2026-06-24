@@ -32,6 +32,11 @@ jobs:
             EMAIL_PASS=${{ vars.EMAIL_PASS }}
             JWT_SECRET=${{ vars.JWT_SECRET }}
             PAGARME_SECRET_KEY=${{ secrets.PAGARME_SECRET_KEY }}
+            SENSOR_DB_HOST=${{ vars.SENSOR_DB_HOST }}
+            SENSOR_DB_PORT=${{ vars.SENSOR_DB_PORT }}
+            SENSOR_DB_NAME=${{ vars.SENSOR_DB_NAME }}
+            SENSOR_DB_USER=${{ vars.SENSOR_DB_USER }}
+            SENSOR_DB_PASS=${{ vars.SENSOR_DB_PASS }}
           EOF"
 
       - name: Deploy Backend

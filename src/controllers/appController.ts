@@ -19,6 +19,7 @@ import { getProductById } from './productController';
 import WaitingList from '../models/WaitingList.model';
 import { sendPushToPersons } from '../services/pushService';
 import Item from '../models/Item.model';
+import SensorSession from '../models/SensorSession.model';
 
 import { checkProductUsageRestriction, getStudentProductByType } from '../services/productUsageRestriction';
 
@@ -1123,5 +1124,25 @@ export const getStudentExtrato = async (req: Request, res: Response): Promise<Re
   } catch (error) {
     console.error('Erro ao buscar extrato:', error);
     return res.status(500).json({ success: false, message: 'Erro ao buscar extrato' });
+  }
+};
+
+export const getStudentActivities = async (req: Request, res: Response): Promise<Response> => {
+  try {
+    const { studentId } = req.params;
+
+    if (!studentId) {
+      return res.status(400).json({ success: false, message: 'ID do aluno é obrigatório' });
+    }
+
+    const sessions = await SensorSession.findAll({
+      where: { studentId },
+      order: [['date', 'DESC'], ['startTime', 'DESC']],
+    });
+
+    return res.status(200).json({ success: true, data: sessions });
+  } catch (error) {
+    console.error('Erro ao buscar atividades do sensor:', error);
+    return res.status(500).json({ success: false, message: 'Erro ao buscar atividades' });
   }
 };
