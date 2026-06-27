@@ -85,6 +85,11 @@ export async function syncClassSchema(req: Request, res: Response) {
 
 export async function syncCrmSchema(req: Request, res: Response) {
   try {
+    // sync({alter:true}) nao altera coluna de chave primaria existente -
+    // corrige push_templates.id (signed -> unsigned) via SQL direto antes,
+    // pra automation_rules.push_template_id (unsigned) conseguir referenciar.
+    await sequelize.query('ALTER TABLE push_templates MODIFY id INT UNSIGNED AUTO_INCREMENT');
+
     // Ordem importa: tabelas referenciadas (push_templates, email_templates)
     // antes das que tem FK pra elas (automation_rules, email_logs).
     await PushTemplate.sync({ alter: true });
