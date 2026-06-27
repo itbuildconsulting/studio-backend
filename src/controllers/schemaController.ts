@@ -4,6 +4,8 @@ import { registerAllModels } from "../models/register";
 import Class from "../models/Class.model";
 import EmailTemplate from "../models/EmailTemplate.model";
 import AutomationRule from "../models/AutomationRule.model";
+import PushTemplate from "../models/PushTemplate.model";
+import EmailLog from "../models/EmailLog.model";
 
 export async function checkSchema(req: Request, res: Response) {
   try {
@@ -83,8 +85,12 @@ export async function syncClassSchema(req: Request, res: Response) {
 
 export async function syncCrmSchema(req: Request, res: Response) {
   try {
+    // Ordem importa: tabelas referenciadas (push_templates, email_templates)
+    // antes das que tem FK pra elas (automation_rules, email_logs).
+    await PushTemplate.sync({ alter: true });
     await EmailTemplate.sync({ alter: true });
     await AutomationRule.sync({ alter: true });
+    await EmailLog.sync({ alter: true });
     return res.status(200).json({ success: true, message: "Tabelas do CRM sincronizadas com sucesso" });
   } catch (e: any) {
     console.error("Sync CRM error:", e);

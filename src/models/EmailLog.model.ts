@@ -2,6 +2,7 @@ import { DataTypes, Model, Optional } from 'sequelize';
 import sequelize from '../config/database';
 import Person from './Person.model';
 import EmailTemplate from './EmailTemplate.model';
+import AutomationRule from './AutomationRule.model';
 
 interface EmailLogAttributes {
   id: number;
@@ -64,5 +65,6 @@ EmailLog.init(
 
 EmailLog.belongsTo(Person,        { as: 'user',     foreignKey: 'user_id' });
 EmailLog.belongsTo(EmailTemplate, { as: 'template', foreignKey: 'template_id' });
+EmailLog.belongsTo(AutomationRule, { as: 'rule',     foreignKey: 'rule_id' });
 
 export default EmailLog;
