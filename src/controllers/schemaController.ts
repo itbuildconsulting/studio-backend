@@ -2,6 +2,8 @@ import { Request, Response } from "express";
 import sequelize from "../config/database";
 import { registerAllModels } from "../models/register";
 import Class from "../models/Class.model";
+import EmailTemplate from "../models/EmailTemplate.model";
+import AutomationRule from "../models/AutomationRule.model";
 
 export async function checkSchema(req: Request, res: Response) {
   try {
@@ -76,5 +78,16 @@ export async function syncClassSchema(req: Request, res: Response) {
   } catch (e: any) {
     console.error("Sync error:", e);
     return res.status(500).json({ success: false, message: e?.message || "Erro ao sincronizar schema" });
+  }
+}
+
+export async function syncCrmSchema(req: Request, res: Response) {
+  try {
+    await EmailTemplate.sync({ alter: true });
+    await AutomationRule.sync({ alter: true });
+    return res.status(200).json({ success: true, message: "Tabelas do CRM sincronizadas com sucesso" });
+  } catch (e: any) {
+    console.error("Sync CRM error:", e);
+    return res.status(500).json({ success: false, message: e?.message || "Erro ao sincronizar schema do CRM" });
   }
 }
