@@ -13,8 +13,8 @@
   "peerDependencies": {
     "express": "^4",
     "sequelize": "^6",
-    "nodemailer": "^6",
-    "expo-server-sdk": "^3 || ^4"
+    "nodemailer": "^6 || ^8",
+    "expo-server-sdk": "^3 || ^4 || ^6"
   },
   "devDependencies": {
     "typescript": "^5",

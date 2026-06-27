@@ -46,11 +46,11 @@ exports.getTemplate = getTemplate;
 const createTemplate = async (req, res) => {
     try {
         const { EmailTemplate } = getDb(req);
-        const { name, description, subject, body_html, category } = req.body;
+        const { name, description, subject, body_html, category, header_color, header_logo_url } = req.body;
         if (!name || !subject || !body_html || !category) {
             return res.status(400).json({ success: false, message: 'name, subject, body_html e category são obrigatórios' });
         }
-        const template = await EmailTemplate.create({ name, description, subject, body_html, category });
+        const template = await EmailTemplate.create({ name, description, subject, body_html, category, header_color, header_logo_url });
         return res.status(201).json({ success: true, data: template, message: 'Template criado com sucesso' });
     }
     catch (err) {
@@ -65,8 +65,8 @@ const updateTemplate = async (req, res) => {
         const template = await EmailTemplate.findByPk(Number(req.params.id));
         if (!template)
             return res.status(404).json({ success: false, message: 'Template não encontrado' });
-        const { name, description, subject, body_html, category, active } = req.body;
-        await template.update({ name, description, subject, body_html, category, active });
+        const { name, description, subject, body_html, category, active, header_color, header_logo_url } = req.body;
+        await template.update({ name, description, subject, body_html, category, active, header_color, header_logo_url });
         return res.json({ success: true, data: template, message: 'Template atualizado com sucesso' });
     }
     catch (err) {

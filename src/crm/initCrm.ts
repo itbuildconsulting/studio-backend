@@ -36,6 +36,14 @@ export async function initCrmTables(): Promise<void> {
     "ALTER TABLE automation_rules MODIFY COLUMN trigger_type ENUM('welcome','plan_expiring','credits_low','student_inactive','birthday','post_class','win_back','periodic') NOT NULL",
   );
 
+  // Add header customization columns to email_templates
+  await sequelize.query(
+    'ALTER TABLE email_templates ADD COLUMN IF NOT EXISTS header_color VARCHAR(255) NULL',
+  );
+  await sequelize.query(
+    'ALTER TABLE email_templates ADD COLUMN IF NOT EXISTS header_logo_url VARCHAR(255) NULL',
+  );
+
   // Add url to push_templates (ignored if already exists)
   await sequelize.query(
     'ALTER TABLE push_templates ADD COLUMN IF NOT EXISTS url VARCHAR(500) NULL',

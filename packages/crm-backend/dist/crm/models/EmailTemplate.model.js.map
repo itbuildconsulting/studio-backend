@@ -1,1 +1,1 @@
-{"version":3,"file":"EmailTemplate.model.js","sourceRoot":"","sources":["../../../src/crm/models/EmailTemplate.model.ts"],"names":[],"mappings":";;AAAA,yCAA4C;AAmB5C,MAAM,aACJ,SAAQ,iBAA+D;CAaxE;AAED,kBAAe,aAAa,CAAC"}
+{"version":3,"file":"EmailTemplate.model.js","sourceRoot":"","sources":["../../../src/crm/models/EmailTemplate.model.ts"],"names":[],"mappings":";;AAAA,yCAA4C;AAqB5C,MAAM,aACJ,SAAQ,iBAA+D;CAexE;AAED,kBAAe,aAAa,CAAC"}

@@ -9,6 +9,8 @@ interface EmailTemplateAttributes {
   body_html: string;
   category: 'retention' | 'engagement' | 'revenue' | 'transactional';
   active: boolean;
+  header_color?: string | null;
+  header_logo_url?: string | null;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -23,6 +25,8 @@ class EmailTemplate extends Model<EmailTemplateAttributes, Creation> implements 
   declare body_html: string;
   declare category: 'retention' | 'engagement' | 'revenue' | 'transactional';
   declare active: boolean;
+  declare header_color: string | null;
+  declare header_logo_url: string | null;
   declare readonly createdAt: Date;
   declare readonly updatedAt: Date;
 }
@@ -36,6 +40,8 @@ EmailTemplate.init(
     body_html:   { type: DataTypes.TEXT('long'), allowNull: false },
     category:    { type: DataTypes.ENUM('retention', 'engagement', 'revenue', 'transactional'), allowNull: false },
     active:      { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: true },
+    header_color:    { type: DataTypes.STRING, allowNull: true },
+    header_logo_url: { type: DataTypes.STRING, allowNull: true },
   },
   { sequelize, tableName: 'email_templates' },
 );

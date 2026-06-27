@@ -8,10 +8,12 @@ interface EmailTemplateAttributes {
     body_html: string;
     category: EmailTemplateCategory;
     active: boolean;
+    header_color?: string | null;
+    header_logo_url?: string | null;
     createdAt?: Date;
     updatedAt?: Date;
 }
-interface EmailTemplateCreationAttributes extends Optional<EmailTemplateAttributes, 'id' | 'description' | 'active'> {
+interface EmailTemplateCreationAttributes extends Optional<EmailTemplateAttributes, 'id' | 'description' | 'active' | 'header_color' | 'header_logo_url'> {
 }
 declare class EmailTemplate extends Model<EmailTemplateAttributes, EmailTemplateCreationAttributes> implements EmailTemplateAttributes {
     id: number;
@@ -21,6 +23,8 @@ declare class EmailTemplate extends Model<EmailTemplateAttributes, EmailTemplate
     body_html: string;
     category: EmailTemplateCategory;
     active: boolean;
+    header_color: string | null;
+    header_logo_url: string | null;
     readonly createdAt: Date;
     readonly updatedAt: Date;
 }
