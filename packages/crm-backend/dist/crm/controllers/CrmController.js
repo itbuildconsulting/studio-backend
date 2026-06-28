@@ -5,6 +5,7 @@ exports.makeTrackOpenHandler = makeTrackOpenHandler;
 const sequelize_1 = require("sequelize");
 const CrmEngine_1 = require("../engine/CrmEngine");
 const emailTransport_1 = require("../engine/emailTransport");
+const emailHtml_1 = require("../engine/emailHtml");
 const pushService_1 = require("../../push/pushService");
 const getDb = (req) => req.tenantDb;
 // ─── EmailTemplate ────────────────────────────────────────────────────────────
@@ -293,7 +294,12 @@ const testTemplate = async (req, res) => {
         }
         const render = (text) => text.replace(/\{\{(\w+)\}\}/g, (_, key) => ({ nome: 'Aluno Teste', email: to_email })[key] ?? `{{${key}}}`);
         const subject = `[TESTE] ${render(template.subject)}`;
-        const html = render(template.body_html);
+        const renderedBody = render(template.body_html);
+        const html = (0, emailHtml_1.buildEmailHtml)({
+            bodyHtml: renderedBody,
+            headerColor: template.header_color,
+            headerLogoUrl: template.header_logo_url,
+        });
         await (0, emailTransport_1.getTransport)().sendMail({
             from: `${process.env.EMAIL_FROM_NAME ?? 'Avera'} <${process.env.EMAIL_USER}>`,
             to: to_email,

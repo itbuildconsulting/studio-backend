@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.EmailSender = void 0;
 const emailTransport_1 = require("./emailTransport");
+const emailHtml_1 = require("./emailHtml");
 const BATCH_SIZE = 50;
 class EmailSender {
     constructor(db, clientId) {
@@ -13,7 +14,7 @@ class EmailSender {
             where: { status: 'pending' },
             include: [
                 { model: this.db.ClientUser, as: 'user', attributes: ['id', 'name', 'email'] },
-                { model: this.db.EmailTemplate, as: 'template', attributes: ['id', 'body_html'] },
+                { model: this.db.EmailTemplate, as: 'template', attributes: ['id', 'body_html', 'header_color', 'header_logo_url'] },
             ],
             order: [['createdAt', 'ASC']],
             limit: BATCH_SIZE,
@@ -22,8 +23,13 @@ class EmailSender {
         let failed = 0;
         for (const log of pending) {
             try {
-                const rendered = this.render(log.template?.body_html ?? '', this.buildVars(log));
-                const html = this.injectPixel(rendered, log.id);
+                const renderedBody = this.render(log.template?.body_html ?? '', this.buildVars(log));
+                const fullHtml = (0, emailHtml_1.buildEmailHtml)({
+                    bodyHtml: renderedBody,
+                    headerColor: log.template?.header_color,
+                    headerLogoUrl: log.template?.header_logo_url,
+                });
+                const html = this.injectPixel(fullHtml, log.id);
                 await (0, emailTransport_1.getTransport)().sendMail({
                     from: `${process.env.EMAIL_FROM_NAME ?? 'Avera'} <${process.env.EMAIL_USER}>`,
                     to: log.to_email,

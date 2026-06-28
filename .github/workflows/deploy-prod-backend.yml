@@ -51,6 +51,7 @@ jobs:
           EMAIL_PORT=587
           EMAIL_USER=${{ secrets.EMAIL_USER }}
           EMAIL_PASS=${{ secrets.EMAIL_PASS }}
+          EMAIL_FROM_NAME=Spin'go
           JWT_SECRET=${{ secrets.JWT_SECRET }}
           PAGARME_SECRET_KEY=${{ secrets.PAGARME_SECRET_KEY }}
           PAGARME_WEBHOOK_SECRET=${{ secrets.PAGARME_WEBHOOK_SECRET }}
