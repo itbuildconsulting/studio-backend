@@ -5,6 +5,20 @@ import EmailLog       from '../models/EmailLog.model';
 import PushLog        from '../models/PushLog.model';
 import PushTemplate   from '../models/PushTemplate.model';
 
+// O MySQL deste servidor nao suporta a sintaxe "ADD COLUMN IF NOT EXISTS"
+// (gera ER_PARSE_ERROR). Checa a existencia da coluna via INFORMATION_SCHEMA
+// antes de tentar adicionar, pra funcionar em qualquer versao.
+async function addColumnIfMissing(table: string, column: string, definition: string): Promise<void> {
+  const [rows]: any = await sequelize.query(
+    'SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?',
+    { replacements: [table, column] },
+  );
+  if (rows.length === 0) {
+    await sequelize.query(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
+    console.log(`[CRM] Coluna ${table}.${column} adicionada`);
+  }
+}
+
 export async function initCrmTables(): Promise<void> {
   // Create new CRM tables if they don't exist yet
   await EmailTemplate.sync();
@@ -14,17 +28,11 @@ export async function initCrmTables(): Promise<void> {
   await PushTemplate.sync();
 
   // Add push_url (legacy, kept for backward compat)
-  await sequelize.query(
-    'ALTER TABLE automation_rules ADD COLUMN IF NOT EXISTS push_url VARCHAR(500) NULL',
-  );
+  await addColumnIfMissing('automation_rules', 'push_url', 'VARCHAR(500) NULL');
 
   // Add channel and push_template_id columns
-  await sequelize.query(
-    "ALTER TABLE automation_rules ADD COLUMN IF NOT EXISTS channel ENUM('email','push') NOT NULL DEFAULT 'email'",
-  );
-  await sequelize.query(
-    'ALTER TABLE automation_rules ADD COLUMN IF NOT EXISTS push_template_id INT UNSIGNED NULL',
-  );
+  await addColumnIfMissing('automation_rules', 'channel', "ENUM('email','push') NOT NULL DEFAULT 'email'");
+  await addColumnIfMissing('automation_rules', 'push_template_id', 'INT UNSIGNED NULL');
 
   // Allow template_id to be NULL (push-only rules have no email template)
   await sequelize.query(
@@ -37,22 +45,14 @@ export async function initCrmTables(): Promise<void> {
   );
 
   // Add header customization columns to email_templates
-  await sequelize.query(
-    'ALTER TABLE email_templates ADD COLUMN IF NOT EXISTS header_color VARCHAR(255) NULL',
-  );
-  await sequelize.query(
-    'ALTER TABLE email_templates ADD COLUMN IF NOT EXISTS header_logo_url VARCHAR(255) NULL',
-  );
+  await addColumnIfMissing('email_templates', 'header_color', 'VARCHAR(255) NULL');
+  await addColumnIfMissing('email_templates', 'header_logo_url', 'VARCHAR(255) NULL');
 
   // Add url to push_templates (ignored if already exists)
-  await sequelize.query(
-    'ALTER TABLE push_templates ADD COLUMN IF NOT EXISTS url VARCHAR(500) NULL',
-  );
+  await addColumnIfMissing('push_templates', 'url', 'VARCHAR(500) NULL');
 
-  // Add checkin_at to classStudent (MySQL ignores ADD COLUMN if already exists via IF NOT EXISTS)
-  await sequelize.query(
-    'ALTER TABLE classStudent ADD COLUMN IF NOT EXISTS checkin_at DATETIME NULL',
-  );
+  // Add checkin_at to classStudent
+  await addColumnIfMissing('classStudent', 'checkin_at', 'DATETIME NULL');
 
   // Create a view that exposes studentId as user_id (required by CrmEngine column references)
   await sequelize.query(`
