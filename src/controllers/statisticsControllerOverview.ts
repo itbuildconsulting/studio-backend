@@ -358,7 +358,7 @@ export const getInactiveStudents = async (req: Request, res: Response): Promise<
                 })
                 .map(async (record: any) => {
                     const person = await Person.findByPk(record.studentId, {
-                        attributes: ['id', 'name']
+                        attributes: ['id', 'name', 'phone']
                     });
 
                     // Buscar créditos disponíveis
@@ -378,6 +378,7 @@ export const getInactiveStudents = async (req: Request, res: Response): Promise<
                     return {
                         studentId: record.studentId,
                         name: person?.name || 'Desconhecido',
+                        phone: person?.phone ?? null,
                         lastClassDate: lastClassDate.toISOString(),
                         daysInactive,
                         credits: Math.round(credits)

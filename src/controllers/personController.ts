@@ -719,20 +719,23 @@ export const getBirthdaysThisWeek = async (req: Request, res: Response): Promise
             raw: true
         });
 
+        const parseBirthday = (birthday: string) => {
+            const [, m, d] = String(birthday).split('T')[0].split('-').map(Number);
+            return { bdMonth: m, bdDay: d };
+        };
+
         const birthdays = (persons as any[])
             .filter((p) => {
                 if (!p.birthday) return false;
-                const bd = new Date(p.birthday);
-                return days.some(
-                    (d) => d.month === bd.getMonth() + 1 && d.day === bd.getDate() + 1
-                );
+                const { bdMonth, bdDay } = parseBirthday(p.birthday);
+                return days.some((d) => d.month === bdMonth && d.day === bdDay);
             })
             .map((p) => {
-                const bd = new Date(p.birthday);
-                const thisYearBd = new Date(now.getFullYear(), bd.getMonth(), bd.getDate() + 1);
+                const { bdMonth, bdDay } = parseBirthday(p.birthday);
+                const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+                const thisYearBd = new Date(now.getFullYear(), bdMonth - 1, bdDay);
                 const daysUntil = Math.round(
-                    (thisYearBd.getTime() - new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime())
-                    / (1000 * 60 * 60 * 24)
+                    (thisYearBd.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
                 );
                 return {
                     id: p.id,
