@@ -5,6 +5,8 @@ import { sendEmail } from './emailService';
 
 const JWT_SECRET = process.env.JWT_SECRET || '6a78e7df-0a0d-4a3f-897f-de1ae0f5b9c3';
 const BACKEND_URL = process.env.BACKEND_URL || 'https://backend.studiostaging.xyz';
+// Domínio que hospeda a página /verify. Precisa apontar para o front-end.
+const FRONTEND_URL = (process.env.FRONTEND_URL || 'https://admin.spingo.com.br').replace(/\/+$/, '');
 
 // Gera um token JWT com 12h de validade para verificação por link
 function generateVerificationToken(userId: number, email: string): string {
@@ -29,7 +31,7 @@ export async function sendOtpFor(userId: number, email: string) {
 
   // Link mágico: aponta para o backend, que ativa a conta e redireciona
   const verificationToken = generateVerificationToken(userId, email);
-  const verificationLink = `https://spingo.com.br/verify?token=${verificationToken}`;
+  const verificationLink = `${FRONTEND_URL}/verify?token=${verificationToken}`;
 
   const subject = `${code} é seu código do Spin'go`;
 
