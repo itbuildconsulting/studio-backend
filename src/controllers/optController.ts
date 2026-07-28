@@ -60,6 +60,74 @@ export const sendOtp = async (req: Request, res: Response): Promise<Response> =>
   return res.status(200).json({ ok: true, message: 'Código reenviado com sucesso.' });
 };
 
+type VerifyPayload = { id: number; email: string; purpose: string };
+
+// POST /auth/verify — mesma ativação do link mágico, porém em JSON
+// Consumido pela página /verify do front-end
+export const verifyEmailByTokenJson = async (req: Request, res: Response): Promise<Response> => {
+  const token = (req.body?.token ?? req.query?.token) as string | undefined;
+
+  if (!token) {
+    return res.status(400).json({ ok: false, reason: 'missing_token', error: 'Token não informado.' });
+  }
+
+  try {
+    const payload = jwt.verify(token, JWT_SECRET) as VerifyPayload;
+
+    if (payload.purpose !== 'email-verify') {
+      return res.status(400).json({
+        ok: false,
+        reason: 'wrong_purpose',
+        error: 'Token inválido para esta operação.',
+      });
+    }
+
+    const person = await Person.findByPk(payload.id);
+    if (!person) {
+      return res.status(404).json({ ok: false, reason: 'not_found', error: 'Usuário não encontrado.' });
+    }
+
+    const alreadyVerified = person.active === 1;
+
+    if (!alreadyVerified) {
+      await person.update({ active: 1 });
+      // Invalida os códigos pendentes: a conta já foi confirmada pelo link
+      await OtpCode.destroy({ where: { user_id: person.id, purpose: 'signup' } });
+    }
+
+    const authToken = generateAuthToken({
+      id: person.id,
+      name: person.name,
+      employee_level: person.employee_level,
+    });
+
+    return res.json({
+      ok: true,
+      alreadyVerified,
+      name: person.name,
+      email: person.email,
+      token: authToken,
+    });
+  } catch (err: any) {
+    // O token expirado ainda carrega o e-mail: devolvemos para permitir o reenvio
+    if (err.name === 'TokenExpiredError') {
+      const stale = jwt.decode(token) as VerifyPayload | null;
+      return res.status(400).json({
+        ok: false,
+        reason: 'expired',
+        email: stale?.email ?? null,
+        error: 'Este link expirou. Solicite um novo código.',
+      });
+    }
+
+    return res.status(400).json({
+      ok: false,
+      reason: 'invalid_token',
+      error: 'Link inválido ou já utilizado.',
+    });
+  }
+};
+
 // GET /auth/verify?token=xxx — ativação via botão do e-mail
 // Valida o JWT, ativa a conta e retorna uma página HTML de confirmação
 export const verifyEmailByToken = async (req: Request, res: Response): Promise<void> => {
@@ -119,7 +187,7 @@ export const verifyEmailByToken = async (req: Request, res: Response): Promise<v
     }
 
     await person.update({ active: 1 });
-    
+    await OtpCode.destroy({ where: { user_id: person.id, purpose: 'signup' } });
 
     res.send(successPage(person.name));
   } catch (err: any) {
