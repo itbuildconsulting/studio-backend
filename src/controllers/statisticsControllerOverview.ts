@@ -326,12 +326,13 @@ export const getStudentsAtRisk = async (req: Request, res: Response): Promise<Re
                 // Queda de 30% ou mais
                 if (dropPercentage >= 30) {
                     const person = await Person.findByPk(currentData.studentId, {
-                        attributes: ['id', 'name']
+                        attributes: ['id', 'name', 'phone']
                     });
 
                     studentsAtRisk.push({
                         studentId: currentData.studentId,
                         name: person?.name || 'Desconhecido',
+                        phone: person?.phone || null,
                         currentMonthClasses: currentCount,
                         lastMonthClasses: previousCount,
                         dropPercentage: Math.round(dropPercentage)
