@@ -16,7 +16,7 @@ import Product from '../models/Product.model';
 import ProductType from '../models/ProductType.model';
 import Place from '../models/Place.model';
 import { getProductById } from './productController';
-import WaitingList from '../models/WaitingList.model';
+import { autoPromoteFromWaitingList } from './waitingListController';
 import { sendPushToPersons } from '../services/pushService';
 import Item from '../models/Item.model';
 import SensorSession from '../models/SensorSession.model';
@@ -554,6 +554,7 @@ export const cancelStudentPresenceInClass = async (req: Request, res: Response):
 
     // 4) Soltar a bike (se houver)
     const bike = await Bike.findOne({ where: { classId, studentId }, transaction: t, lock: t.LOCK.UPDATE });
+    const freedBikeNumber = bike?.bikeNumber ?? null;
     if (bike) {
       await bike.destroy({ transaction: t });
     }
@@ -610,56 +611,38 @@ export const cancelStudentPresenceInClass = async (req: Request, res: Response):
 
     await t.commit();
 
-    // 7) 🔔 Após o commit: notificar quem está na fila dessa aula
-    let notified = 0;
-    try {
-      const waiters = await WaitingList.findAll({
-        where: { classId: notifyClassId },
-        attributes: ['studentId'],
-        raw: true,
-      });
+    // 7) Após o commit: promove automaticamente o primeiro da fila elegível para a bike que ficou livre
+    let promotion: { promoted: boolean; studentId?: number; classStudentId?: number; bikeId?: number } = { promoted: false };
+    if (freedBikeNumber != null) {
+      try {
+        promotion = await autoPromoteFromWaitingList(notifyClassId, freedBikeNumber);
+      } catch (promoteErr) {
+        console.error('[cancelStudentPresenceInClass] erro ao promover fila automaticamente:', promoteErr);
+      }
+    }
 
-      // IDs únicos e sem o aluno que cancelou
-      const personIds = Array.from(
-        new Set(
-          waiters
-            .map(w => Number(w.studentId))
-            .filter(id => Number.isFinite(id) && id !== Number(studentId))
-        )
-      );
-
-      if (personIds.length > 0) {
-        const title = 'Vaga liberada!';
+    if (promotion.promoted && promotion.studentId) {
+      try {
+        const title = 'Você entrou na aula!';
         const timeHHmm = notifyTime?.slice(0, 5) ?? '';
-        const body = `Abriu uma vaga na aula de ${notifyDate} às ${timeHHmm}. Garanta sua vaga agora.`;
+        const body = `Uma vaga abriu na aula de ${notifyDate} às ${timeHHmm} e você foi inscrito(a) automaticamente. Bike ${freedBikeNumber}.`;
         const data = {
-          type: 'class_waitlist_spot',
+          type: 'class_waitlist_auto_promoted',
           classId: notifyClassId,
           date: notifyDate,
           time: notifyTime,
+          bikeNumber: freedBikeNumber,
           deeplink: `spingo://class/${notifyClassId}`,
         };
 
-        // assinatura: (personIds, { title, body, data })
-        const result = await sendPushToPersons(personIds, { title, body, data });
-
-
-        // logs úteis
-        console.log('[waitlist push]', {
-          classId: notifyClassId,
-          totalTokens: result.total
-        });
-
-        // se InvalidCredentials, você já mapeia 502 no /push/send; aqui só logamos
+        const result = await sendPushToPersons([promotion.studentId], { title, body, data });
         if (result.success === false) {
-          console.warn('[waitlist push] envio com falha:', result.error);
+          console.warn('[waitlist auto-promote push] envio com falha:', result.error);
         }
-      } else {
-        console.log('[waitlist push] ninguém na fila para notificar.', { classId: notifyClassId });
+      } catch (pushErr) {
+        console.error('[cancelStudentPresenceInClass] push notify (auto-promote) error:', pushErr);
+        // não falha a operação por causa do push
       }
-    } catch (pushErr) {
-      console.error('[cancelStudentPresenceInClass] push notify error:', pushErr);
-      // não falha a operação por causa do push
     }
 
     return res.status(200).json({
@@ -668,7 +651,14 @@ export const cancelStudentPresenceInClass = async (req: Request, res: Response):
       data: {
         classStudentId: classStudent.id,
         refund: refundData,
-        notifiedWaitlistCount: notified,
+        waitlistPromotion: promotion.promoted
+          ? {
+              studentId: promotion.studentId,
+              classStudentId: promotion.classStudentId,
+              bikeId: promotion.bikeId,
+              bikeNumber: freedBikeNumber,
+            }
+          : null,
       },
     });
   } catch (error: any) {

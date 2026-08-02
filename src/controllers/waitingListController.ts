@@ -296,6 +296,108 @@ export async function listMyWaitingListsPost(req: Request, res: Response) {
   }
 }
 
+// Promove automaticamente o primeiro da fila elegível (com crédito válido) para a bike informada,
+// pulando quem ainda não tem crédito disponível e deixando-o na fila para a próxima vaga.
+export async function autoPromoteFromWaitingList(
+  classId: number,
+  bikeNumber: number
+): Promise<{ promoted: boolean; studentId?: number; classStudentId?: number; bikeId?: number }> {
+  const classData = await Class.findByPk(classId);
+  const productTypeId = classData?.productTypeId;
+  if (!classData || !productTypeId) {
+    return { promoted: false };
+  }
+
+  const candidates = await WaitingList.findAll({
+    where: { classId },
+    order: [['order', 'ASC']],
+  });
+
+  for (const candidate of candidates) {
+    const sId = candidate.studentId;
+    const t: Transaction = await sequelize.transaction();
+
+    try {
+      const existingEnrollment = await ClassStudent.findOne({
+        where: { classId, studentId: sId, status: 1 },
+        transaction: t,
+        lock: t.LOCK.UPDATE,
+      });
+      if (existingEnrollment) {
+        await t.rollback();
+        continue;
+      }
+
+      const now = new Date();
+      const creditLot = await Credit.findOne({
+        where: {
+          idCustomer: sId,
+          productTypeId,
+          status: 'valid',
+          expirationDate: { [Op.gte]: now },
+          availableCredits: { [Op.gt]: 0 },
+        },
+        order: [
+          ['expirationDate', 'ASC'],
+          ['id', 'ASC'],
+        ],
+        transaction: t,
+        lock: t.LOCK.UPDATE,
+      });
+      if (!creditLot) {
+        // Sem crédito: mantém na fila e tenta o próximo candidato.
+        await t.rollback();
+        continue;
+      }
+
+      let bike = await Bike.findOne({
+        where: { classId, bikeNumber },
+        transaction: t,
+        lock: t.LOCK.UPDATE,
+      });
+
+      if (!bike) {
+        bike = await Bike.create(
+          { classId, studentId: sId, bikeNumber, status: 'in_use' },
+          { transaction: t }
+        );
+      } else if (bike.status !== 'available' && bike.studentId !== sId) {
+        await t.rollback();
+        continue;
+      } else {
+        await bike.update({ studentId: sId, status: 'in_use' }, { transaction: t });
+      }
+
+      const cs = await ClassStudent.create(
+        {
+          classId,
+          studentId: sId,
+          PersonId: sId,
+          bikeId: bike.id,
+          transactionId: creditLot.creditBatch,
+        },
+        { transaction: t }
+      );
+
+      creditLot.availableCredits -= 1;
+      creditLot.usedCredits += 1;
+      if (creditLot.availableCredits <= 0) creditLot.status = 'used';
+      await creditLot.save({ transaction: t });
+
+      await candidate.destroy({ transaction: t });
+
+      await t.commit();
+      return { promoted: true, studentId: sId, classStudentId: cs.id, bikeId: bike.id };
+    } catch (err) {
+      await t.rollback();
+      console.error('[autoPromoteFromWaitingList] erro ao promover candidato', sId, err);
+    }
+  }
+
+  return { promoted: false };
+}
+
+
 export const removeFromWaitingList = async (req: Request, res: Response): Promise<Response> => {
     try {
         const { studentId, classId } = req.body;
