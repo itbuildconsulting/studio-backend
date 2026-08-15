@@ -84,7 +84,7 @@ export const getNpsReport = async (req: Request, res: Response): Promise<Respons
         const studentIds = [...new Set(recentEntries.map(e => e.studentId))];
 
         const [classes, students] = await Promise.all([
-            Class.findAll({ where: { id: { [Op.in]: classIds } }, attributes: ['id', 'date', 'name'], raw: true }),
+            Class.findAll({ where: { id: { [Op.in]: classIds } }, attributes: ['id', 'date', 'title'], raw: true }),
             Person.findAll({ where: { id: { [Op.in]: studentIds } }, attributes: ['id', 'name'], raw: true }),
         ]);
 
@@ -96,7 +96,7 @@ export const getNpsReport = async (req: Request, res: Response): Promise<Respons
             score:       e.score,
             comment:     e.comment || null,
             createdAt:   e.createdAt,
-            className:   classMap.get(e.classId)?.name   ?? '—',
+            className:   classMap.get(e.classId)?.title  ?? '—',
             classDate:   classMap.get(e.classId)?.date   ?? null,
             studentName: studentMap.get(e.studentId)?.name ?? '—',
         }));
