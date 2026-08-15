@@ -25,6 +25,7 @@ export const submitNps = async (req: Request, res: Response): Promise<Response> 
 
         return res.status(200).json({ success: true, data: entry });
     } catch (error) {
+        console.error('[NPS] Erro ao salvar avaliação:', error);
         return res.status(500).json({ success: false, error: 'Erro ao salvar avaliação.' });
     }
 };

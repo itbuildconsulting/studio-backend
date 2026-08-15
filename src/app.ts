@@ -34,8 +34,13 @@ import webhookRoutes from './routes/webhookRoutes';
 import npsRoutes from './routes/npsRoutes';
 import sensorIntegrationRoutes from './routes/sensorIntegrationRoutes';
 import { authenticateToken } from './core/token/authenticateToken';
+import { correlationMiddleware } from './middleware/correlationMiddleware';
+import { loggerMiddleware } from './middleware/loggerMiddleware';
 
 const app: Application = express();
+
+app.use(correlationMiddleware);
+app.use(loggerMiddleware);
 
 // Configuração do CORS
 const corsOptions = {

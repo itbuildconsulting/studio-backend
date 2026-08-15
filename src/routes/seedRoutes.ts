@@ -37,6 +37,7 @@ router.post('/', authenticateToken, seedController.post);
  *       400:
  *         description: Erro ao inserir dados
  */
+router.post('/nps', authenticateToken, seedController.syncNps);
 router.post('/addFirstData', seedController.addFirstData);
 
 export default router;

@@ -14,12 +14,12 @@ import Level from '../models/Level.model';
 import Credit from '../models/Credit.model';
 import Config from '../models/Config.model';
 import WaitingList from '../models/WaitingList.model';
-import sequelize from '../config/database';
 import NotificationToken from '../models/NotificationToken.model';
 import OtpCode from '../models/OtpCode';
 import ContractSignature from '../models/ContractSignature';
 import ContractVersion from '../models/ContractVersion';
 import ParQ from '../models/ParQ.model';
+import Nps from '../models/Nps.model';
 
 // Definir funções do controlador
 export const seedController = {
@@ -45,6 +45,7 @@ export const seedController = {
             await ContractVersion.sync()//OK
             await ContractSignature.sync();//OK            
             await ParQ.sync() //OK
+            await Nps.sync() //OK
 
             //await sequelize.sync({ alter: true });
             
@@ -52,6 +53,16 @@ export const seedController = {
         } catch (err) {
             console.error('Erro ao sincronizar tabelas:', err);
             return res.status(400).send('Erro ao sincronizar tabelas: ' + err);
+        }
+    },
+
+    async syncNps(_req: Request, res: Response, _next: NextFunction): Promise<Response | void> {
+        try {
+            await Nps.sync();
+            return res.status(201).send('Tabela NPS sincronizada com sucesso');
+        } catch (err) {
+            console.error('Erro ao sincronizar tabela NPS:', err);
+            return res.status(400).send('Erro ao sincronizar tabela NPS: ' + err);
         }
     },
 
