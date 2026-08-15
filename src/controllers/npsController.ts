@@ -84,20 +84,24 @@ export const getNpsReport = async (req: Request, res: Response): Promise<Respons
         const studentIds = [...new Set(recentEntries.map(e => e.studentId))];
 
         const [classes, students] = await Promise.all([
-            Class.findAll({ where: { id: { [Op.in]: classIds } }, attributes: ['id', 'date', 'title'], raw: true }),
+            Class.findAll({
+                where: { id: { [Op.in]: classIds } },
+                attributes: ['id', 'date'],
+                include: [{ model: ProductType, attributes: ['name'] }],
+            }),
             Person.findAll({ where: { id: { [Op.in]: studentIds } }, attributes: ['id', 'name'], raw: true }),
         ]);
 
-        const classMap   = new Map((classes   as any[]).map(c => [c.id, c]));
-        const studentMap = new Map((students  as any[]).map(s => [s.id, s]));
+        const classMap   = new Map((classes as any[]).map(c => [c.id, c]));
+        const studentMap = new Map((students as any[]).map(s => [s.id, s]));
 
         const recentFeedback = recentEntries.map(e => ({
             id:          e.id,
             score:       e.score,
             comment:     e.comment || null,
             createdAt:   e.createdAt,
-            className:   classMap.get(e.classId)?.title  ?? '—',
-            classDate:   classMap.get(e.classId)?.date   ?? null,
+            className:   classMap.get(e.classId)?.ProductType?.name ?? '—',
+            classDate:   classMap.get(e.classId)?.date ?? null,
             studentName: studentMap.get(e.studentId)?.name ?? '—',
         }));
 
