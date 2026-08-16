@@ -3,6 +3,8 @@ import { Router } from 'express';
 import { sendPushToPersons } from '../services/pushService';
 import { ExpoPushMessage, ExpoPushTicket, Expo } from 'expo-server-sdk';
 import NotificationToken from '../models/NotificationToken.model';
+import ClassStudent from '../models/ClassStudent.model';
+import Nps from '../models/Nps.model';
 import { authenticateToken } from '../core/token/authenticateToken';
 
 const router = Router();
@@ -37,6 +39,51 @@ router.post('/send-by-token', authenticateToken, async (req, res) => {
     return res.json(result);
   } catch (e: any) {
     console.error('[push] /send-by-token erro', e);
+    return res.status(500).json({ success: false, error: String(e?.message ?? e) });
+  }
+});
+
+// Envia notificação NPS para alunos de uma aula específica
+router.post('/send-class-nps', authenticateToken, async (req, res) => {
+  try {
+    const { classId } = req.body;
+    if (!classId) {
+      return res.status(400).json({ success: false, message: 'classId é obrigatório' });
+    }
+
+    // Busca alunos que fizeram checkin na aula
+    const enrollments = await ClassStudent.findAll({
+      where: { classId, checkin: 1, status: true },
+      attributes: ['studentId'],
+    });
+
+    if (!enrollments.length) {
+      return res.status(404).json({ success: false, message: 'Nenhum aluno com checkin nesta aula' });
+    }
+
+    const studentIds = enrollments.map((e: any) => e.studentId).filter(Boolean) as number[];
+
+    // Filtra quem já avaliou
+    const existing = await Nps.findAll({
+      where: { classId, studentId: studentIds },
+      attributes: ['studentId'],
+    });
+    const alreadyVoted = new Set(existing.map((n: any) => n.studentId));
+    const pending = studentIds.filter(id => !alreadyVoted.has(id));
+
+    if (!pending.length) {
+      return res.json({ success: true, message: 'Todos os alunos já avaliaram esta aula', sent: 0 });
+    }
+
+    const result = await sendPushToPersons(pending, {
+      title: 'Como foi sua aula? ⭐',
+      body: 'Avalie sua experiência e nos ajude a melhorar!',
+      data: { screen: 'npsVoting', classId: Number(classId) },
+    });
+
+    return res.json({ ...result, sent: pending.length, skipped: alreadyVoted.size });
+  } catch (e: any) {
+    console.error('[push] /send-class-nps erro', e);
     return res.status(500).json({ success: false, error: String(e?.message ?? e) });
   }
 });
