@@ -109,7 +109,7 @@ export const checkoutPix = async (req: Request, res: Response): Promise<Response
                     const subtotal = items.reduce((s: number, i: any) => s + i.amount / 100, 0);
                     const pIds = items.map((i: any) => i.itemId);
                     couponResult = await validateAndApplyCoupon(couponCode, Number(personId), pIds, subtotal);
-                    if (!couponResult.valid) {
+                    if (couponResult.valid === false) {
                         return res.status(422).json({ success: false, error: couponResult.error });
                     }
                     items.splice(0, items.length, ...applyDiscountToItems(items, couponResult.discountAmount));

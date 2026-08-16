@@ -56,7 +56,7 @@ export const validateCoupon = async (req: Request, res: Response): Promise<Respo
         if (!code || !studentId) return res.status(400).json({ success: false, error: 'code e studentId são obrigatórios.' });
 
         const result = await validateAndApplyCoupon(code, Number(studentId), productIds, Number(subtotal));
-        if (!result.valid) return res.status(422).json({ success: false, error: result.error });
+        if (result.valid === false) return res.status(422).json({ success: false, error: result.error });
 
         return res.json({
             success: true,
