@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { Op, fn, col, literal } from 'sequelize';
+import { Op } from 'sequelize';
 import Nps from '../models/Nps.model';
 import Class from '../models/Class.model';
 import Person from '../models/Person.model';
@@ -86,8 +86,7 @@ export const getNpsReport = async (req: Request, res: Response): Promise<Respons
         const [classes, students] = await Promise.all([
             Class.findAll({
                 where: { id: { [Op.in]: classIds } },
-                attributes: ['id', 'date'],
-                include: [{ model: ProductType, attributes: ['name'] }],
+                attributes: ['id', 'date', 'time'],
             }),
             Person.findAll({ where: { id: { [Op.in]: studentIds } }, attributes: ['id', 'name'], raw: true }),
         ]);
@@ -100,8 +99,8 @@ export const getNpsReport = async (req: Request, res: Response): Promise<Respons
             score:       e.score,
             comment:     e.comment || null,
             createdAt:   e.createdAt,
-            className:   classMap.get(e.classId)?.ProductType?.name ?? '—',
             classDate:   classMap.get(e.classId)?.date ?? null,
+            classTime:   classMap.get(e.classId)?.time ?? null,
             studentName: studentMap.get(e.studentId)?.name ?? '—',
         }));
 
