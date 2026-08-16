@@ -20,6 +20,8 @@ import ContractSignature from '../models/ContractSignature';
 import ContractVersion from '../models/ContractVersion';
 import ParQ from '../models/ParQ.model';
 import Nps from '../models/Nps.model';
+import Coupon from '../models/Coupon.model';
+import CouponUsage from '../models/CouponUsage.model';
 
 // Definir funções do controlador
 export const seedController = {
@@ -46,6 +48,8 @@ export const seedController = {
             await ContractSignature.sync();//OK            
             await ParQ.sync() //OK
             await Nps.sync() //OK
+            await Coupon.sync() //OK
+            await CouponUsage.sync() //OK
 
             //await sequelize.sync({ alter: true });
             

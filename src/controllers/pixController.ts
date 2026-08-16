@@ -7,6 +7,19 @@ import { updateCustomerBalance } from './balanceController';
 import { checkPurchaseLimit, createItemsAfterTransaction } from './itemsController';
 import Transactions from '../models/Transaction.model';
 import Item from '../models/Item.model';
+import { validateAndApplyCoupon, registerCouponUsage } from './couponController';
+
+function applyDiscountToItems(items: any[], discountAmount: number) {
+    const totalInCents = items.reduce((s: number, i: any) => s + i.amount, 0);
+    const discountInCents = Math.min(Math.round(discountAmount * 100), totalInCents - items.length);
+    let remaining = discountInCents;
+    return items.map((item: any, idx: number) => {
+        if (idx === items.length - 1) return { ...item, amount: Math.max(1, item.amount - remaining) };
+        const share = Math.round((item.amount / totalInCents) * discountInCents);
+        remaining -= share;
+        return { ...item, amount: Math.max(1, item.amount - share) };
+    });
+}
 
 interface ProductRequest {
     productId: string;
@@ -27,13 +40,14 @@ interface CheckoutPixRequest {
     products: ProductRequest[];
     pix: PixPaymentRequest;
     billingAddress?: any;
+    couponCode?: string;
 }
 
 // Função de checkout PIX
 export const checkoutPix = async (req: Request, res: Response): Promise<Response | void> => {
     try {
         authenticateToken(req, res, async () => {
-            const { personId, products, pix, billingAddress }: CheckoutPixRequest = req.body;
+            const { personId, products, pix, billingAddress, couponCode }: CheckoutPixRequest = req.body;
             
             try {
                 const personData = await Person.findByPk(personId);
@@ -88,6 +102,18 @@ export const checkoutPix = async (req: Request, res: Response): Promise<Response
                         code: "EX123",
                     };
                 });
+
+                // ── Cupom de desconto ─────────────────────────────────────────
+                let couponResult: Awaited<ReturnType<typeof validateAndApplyCoupon>> | null = null;
+                if (couponCode) {
+                    const subtotal = items.reduce((s: number, i: any) => s + i.amount / 100, 0);
+                    const pIds = items.map((i: any) => i.itemId);
+                    couponResult = await validateAndApplyCoupon(couponCode, Number(personId), pIds, subtotal);
+                    if (!couponResult.valid) {
+                        return res.status(422).json({ success: false, error: couponResult.error });
+                    }
+                    items.splice(0, items.length, ...applyDiscountToItems(items, couponResult.discountAmount));
+                }
 
                 // Endereço de cobrança
                 const billingAddressData = {
@@ -160,6 +186,10 @@ export const checkoutPix = async (req: Request, res: Response): Promise<Response
                 const save = await saveTransaction(result.data, creditTotal, personData.id);
                 
                 if (save.success) {
+                    if (couponResult?.valid) {
+                        await registerCouponUsage(couponResult.coupon.id, Number(personId), result.data.id);
+                    }
+
                     // Criar itens vinculados à transação
                     try {
                         await createItemsAfterTransaction(result.data.id, personData.id, items);

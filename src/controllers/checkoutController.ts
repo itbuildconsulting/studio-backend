@@ -10,6 +10,21 @@ import Transactions from '../models/Transaction.model';
 import { removeCreditsForBatch } from '../services/credits.service';
 import ClassStudent from '../models/ClassStudent.model';
 import Class from '../models/Class.model';
+import { validateAndApplyCoupon, registerCouponUsage } from './couponController';
+
+function applyDiscountToItems(items: any[], discountAmount: number) {
+    const totalInCents = items.reduce((s, i) => s + i.amount, 0);
+    const discountInCents = Math.min(Math.round(discountAmount * 100), totalInCents - items.length);
+    let remaining = discountInCents;
+    return items.map((item, idx) => {
+        if (idx === items.length - 1) {
+            return { ...item, amount: Math.max(1, item.amount - remaining) };
+        }
+        const share = Math.round((item.amount / totalInCents) * discountInCents);
+        remaining -= share;
+        return { ...item, amount: Math.max(1, item.amount - share) };
+    });
+}
 
 interface ProductRequest {
     productId: string;
@@ -30,13 +45,14 @@ interface CheckoutRequest {
     products: ProductRequest[];
     payment: PaymentRequest;
     billingAddress?: any;
+    couponCode?: string;
 }
 
 // Função de checkout
 export const checkout = async (req: Request, res: Response, ): Promise<Response | void> => {
     try {
         authenticateToken(req, res, async () => {
-            const { personId, products, payment, billingAddress }: CheckoutRequest = req.body;
+            const { personId, products, payment, billingAddress, couponCode }: CheckoutRequest = req.body;
             try {
                 const personData = await Person.findByPk(personId);
                 if (!personData) {
@@ -89,6 +105,18 @@ export const checkout = async (req: Request, res: Response, ): Promise<Response 
                         code: "EX123",
                     };
                 });
+
+                // ── Cupom de desconto ─────────────────────────────────────────
+                let couponResult: Awaited<ReturnType<typeof validateAndApplyCoupon>> | null = null;
+                if (couponCode) {
+                    const subtotal = items.reduce((s, i) => s + i.amount / 100, 0);
+                    const pIds = items.map((i: any) => i.itemId);
+                    couponResult = await validateAndApplyCoupon(couponCode, Number(personId), pIds, subtotal);
+                    if (!couponResult.valid) {
+                        return res.status(422).json({ success: false, error: couponResult.error });
+                    }
+                    items.splice(0, items.length, ...applyDiscountToItems(items, couponResult.discountAmount));
+                }
 
                 // ============================================
                 // NOVO: Usar billingAddress se fornecido, senão usar dados do perfil
@@ -166,6 +194,10 @@ export const checkout = async (req: Request, res: Response, ): Promise<Response 
 
                 const save = await saveTransaction(result.data, creditTotal, personData.id);
                 if (save.success) {
+                    if (couponResult?.valid) {
+                        await registerCouponUsage(couponResult.coupon.id, Number(personId), result.data.id);
+                    }
+
                     const updateBalanceResult = await updateCustomerBalance(personData.id, creditTotal, result.data.id, true, productType);
 
                     try {

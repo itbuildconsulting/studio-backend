@@ -32,6 +32,7 @@ import installmentRulesRoutes from './routes/installmentRulesRoutes';
 import paymentRoutes from './routes/paymentRoutes';
 import webhookRoutes from './routes/webhookRoutes';
 import npsRoutes from './routes/npsRoutes';
+import couponRoutes from './routes/couponRoutes';
 import sensorIntegrationRoutes from './routes/sensorIntegrationRoutes';
 import { authenticateToken } from './core/token/authenticateToken';
 import { correlationMiddleware } from './middleware/correlationMiddleware';
@@ -86,6 +87,7 @@ app.use('/installment-rules', installmentRulesRoutes);
 app.use('/payment', paymentRoutes);
 app.use('/webhook', webhookRoutes);
 app.use('/nps', npsRoutes);
+app.use('/coupons', couponRoutes);
 app.use('/integration/sensor', sensorIntegrationRoutes);
 
 // CRM (habilitado via CRM_ENABLED=true)
