@@ -70,6 +70,17 @@ export const seedController = {
         }
     },
 
+    async syncCoupons(_req: Request, res: Response, _next: NextFunction): Promise<Response | void> {
+        try {
+            await Coupon.sync();
+            await CouponUsage.sync();
+            return res.status(201).send('Tabelas de cupons sincronizadas com sucesso');
+        } catch (err) {
+            console.error('Erro ao sincronizar tabelas de cupons:', err);
+            return res.status(400).send('Erro ao sincronizar tabelas de cupons: ' + err);
+        }
+    },
+
     // Adicionar dados iniciais
     async addFirstData(_req: Request, res: Response, _next: NextFunction): Promise<Response | void> {
         const passwordHash = await bcrypt.hash('C2rio@2021', 10);
