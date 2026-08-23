@@ -1,5 +1,8 @@
 import app from './app';
 import { startLevelUpdateJob } from './jobs/levelUpdateJob';
+import Coupon from './models/Coupon.model';
+import CouponUsage from './models/CouponUsage.model';
+import Nps from './models/Nps.model';
 
 const originalConsole = {
   log: console.log,
@@ -20,6 +23,11 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, async () => {
   console.log(`Server is running on port ${PORT}`);
   startLevelUpdateJob();
+
+  // Garante criação das tabelas novas no banco (no-op se já existirem)
+  await Nps.sync().catch((err: Error) => console.error('[Sync] Nps error:', err));
+  await Coupon.sync().catch((err: Error) => console.error('[Sync] Coupon error:', err));
+  await CouponUsage.sync().catch((err: Error) => console.error('[Sync] CouponUsage error:', err));
 
   if (process.env.CRM_ENABLED === 'true') {
     try {
