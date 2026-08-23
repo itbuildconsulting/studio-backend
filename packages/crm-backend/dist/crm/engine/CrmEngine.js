@@ -144,27 +144,20 @@ class CrmEngine {
         }
         return Array.from(sums.values()).filter(({ total }) => total < threshold).map(({ user }) => user);
     }
-    // 4. Student inactive — was active before, but not in the last min_days days (default 14)
+    // 4. Student inactive — last past class was more than min_days ago (default 14).
+    // Uses class_date (same source as the statistics/alerts inactive rule).
     async evalStudentInactive(_rule, config) {
         const minDays = config.min_days ?? 14;
         const cutoff = new Date(Date.now() - minDays * 86400000);
-        const everCheckedIn = await this.db.ClassStudent.findAll({
-            attributes: [[(0, sequelize_1.col)('user_id'), 'user_id']],
-            where: { checkin: true },
+        const today = new Date();
+        const lastClassByUser = await this.db.ClassStudent.findAll({
+            attributes: ['user_id', [(0, sequelize_1.fn)('MAX', (0, sequelize_1.col)('class_date')), 'lastClassDate']],
+            where: { class_date: { [sequelize_1.Op.lt]: today } },
             group: ['user_id'],
+            having: { lastClassDate: { [sequelize_1.Op.lt]: cutoff } },
             raw: true,
         });
-        const everIds = everCheckedIn.map(r => r.user_id);
-        if (everIds.length === 0)
-            return [];
-        const recentRows = await this.db.ClassStudent.findAll({
-            attributes: [[(0, sequelize_1.col)('user_id'), 'user_id']],
-            where: { checkin: true, checkin_at: { [sequelize_1.Op.gte]: cutoff } },
-            group: ['user_id'],
-            raw: true,
-        });
-        const recentIds = new Set(recentRows.map(r => r.user_id));
-        const inactiveIds = everIds.filter(id => !recentIds.has(id));
+        const inactiveIds = lastClassByUser.map((r) => r.user_id);
         if (inactiveIds.length === 0)
             return [];
         const users = await this.db.ClientUser.findAll({

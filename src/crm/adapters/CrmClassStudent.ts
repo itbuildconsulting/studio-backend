@@ -13,6 +13,7 @@ CrmClassStudent.init(
     user_id:    { type: DataTypes.INTEGER },
     checkin:    { type: DataTypes.INTEGER },
     checkin_at: { type: DataTypes.DATE },
+    class_date: { type: DataTypes.DATEONLY },
   },
   { sequelize, tableName: 'crm_class_students', timestamps: true },
 );

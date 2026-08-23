@@ -387,8 +387,7 @@ function makeTrackOpenHandler(getTenantDbBySlug) {
 // ─── Push Manual ──────────────────────────────────────────────────────────────
 const getPushRecipients = async (req, res) => {
     try {
-        const { NotificationToken, ClientUser } = getDb(req);
-        // Conta tokens ativos por personId em uma query
+        const { NotificationToken, ClientUser, ClassStudent } = getDb(req);
         const tokenCounts = await NotificationToken.findAll({
             attributes: ['personId', [(0, sequelize_1.fn)('COUNT', (0, sequelize_1.col)('id')), 'tokenCount']],
             where: { enabled: true },
@@ -404,13 +403,31 @@ const getPushRecipients = async (req, res) => {
             order: [['name', 'ASC']],
             raw: true,
         });
+        // Last past class date per user — same rule as the statistics/alerts inactive panel
+        const today = new Date();
+        const lastClassRows = await ClassStudent.findAll({
+            attributes: ['user_id', [(0, sequelize_1.fn)('MAX', (0, sequelize_1.col)('class_date')), 'lastClassDate']],
+            where: { class_date: { [sequelize_1.Op.lt]: today }, user_id: { [sequelize_1.Op.in]: personIds } },
+            group: ['user_id'],
+            raw: true,
+        });
+        const lastClassMap = new Map(lastClassRows.map((r) => [r.user_id, r.lastClassDate]));
         const countMap = new Map(tokenCounts.map((r) => [r.personId, Number(r.tokenCount)]));
-        const data = users.map((u) => ({
-            id: u.id,
-            name: u.name,
-            email: u.email,
-            tokenCount: countMap.get(u.id) ?? 0,
-        }));
+        const data = users.map((u) => {
+            const lastClassDate = lastClassMap.get(u.id) ?? null;
+            const daysInactive = lastClassDate
+                ? Math.floor((today.getTime() - new Date(lastClassDate).getTime()) / 86400000)
+                : null;
+            return {
+                id: u.id,
+                name: u.name,
+                email: u.email,
+                active: u.active,
+                tokenCount: countMap.get(u.id) ?? 0,
+                lastClassDate,
+                daysInactive,
+            };
+        });
         return res.json({ success: true, data });
     }
     catch (err) {

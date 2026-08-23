@@ -54,17 +54,21 @@ export async function initCrmTables(): Promise<void> {
   // Add checkin_at to classStudent
   await addColumnIfMissing('classStudent', 'checkin_at', 'DATETIME NULL');
 
-  // Create a view that exposes studentId as user_id (required by CrmEngine column references)
+  // View that exposes studentId as user_id and joins class.date as class_date,
+  // so the CRM engine can use the same "last past class" logic as the statistics alerts.
   await sequelize.query(`
     CREATE OR REPLACE VIEW crm_class_students AS
     SELECT
-      id, classId,
-      studentId  AS user_id,
-      checkin,
-      checkin_at,
-      bikeId, status, transactionId,
-      createdAt, updatedAt
-    FROM classStudent
+      cs.id,
+      cs.classId,
+      cs.studentId  AS user_id,
+      cs.checkin,
+      cs.checkin_at,
+      c.date        AS class_date,
+      cs.bikeId, cs.status, cs.transactionId,
+      cs.createdAt, cs.updatedAt
+    FROM classStudent cs
+    JOIN \`class\` c ON cs.classId = c.id
   `);
 
   console.log('[CRM] Tables and view ready');
