@@ -399,8 +399,8 @@ const getPushRecipients = async (req, res) => {
             return res.json({ success: true, data: [] });
         const personIds = tokenCounts.map((r) => r.personId);
         const users = await ClientUser.findAll({
-            attributes: ['id', 'name', 'email'],
-            where: { id: personIds, active: true },
+            attributes: ['id', 'name', 'email', 'active'],
+            where: { id: personIds },
             order: [['name', 'ASC']],
             raw: true,
         });
