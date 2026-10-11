@@ -495,7 +495,7 @@ export const cancelClass = async (req: Request, res: Response): Promise<Response
 
         // Só executa a lógica de créditos ao CANCELAR, não ao reativar
         if (!isActivating) {
-            const classStudents = await ClassStudent.findAll({ where: { classId: id } });
+            const classStudents = await ClassStudent.findAll({ where: { classId: id, status: true } });
 
             for (const classStudent of classStudents) {
                 classStudent.status = false;
