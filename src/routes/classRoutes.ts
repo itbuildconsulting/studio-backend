@@ -1,5 +1,5 @@
 import express from 'express';
-import { createClass, getAllClasses, getClassById, updateClass, deleteClass, createMultipleClasses, cancelClass, checkinClassStudent, checkinClassStudentByPair } from '../controllers/classController';
+import { createClass, getAllClasses, getClassById, updateClass, deleteClass, createMultipleClasses, cancelClass, checkinClassStudent, checkinClassStudentByPair, previewBulkCancel, bulkCancelClasses } from '../controllers/classController';
 import { authenticateToken } from '../core/token/authenticateToken';
 
 const router = express.Router();
@@ -26,6 +26,8 @@ const router = express.Router();
 router.post('/', authenticateToken, createClass);
 
 router.post('/multiple/', authenticateToken, createMultipleClasses);
+router.post('/bulk-cancel/preview', authenticateToken, previewBulkCancel);
+router.post('/bulk-cancel', authenticateToken, bulkCancelClasses);
 
 /**
  * @swagger

@@ -4,12 +4,12 @@ import ClassStudent from '../models/ClassStudent.model';
 import { authenticateToken } from '../core/token/authenticateToken';
 import moment from 'moment';
 import Bike from '../models/Bike.model';
-import { Op } from 'sequelize';
+import { Op, fn, col, where as seqWhere } from 'sequelize';
 import Person from '../models/Person.model';
 import ProductType from '../models/ProductType.model';
 import Balance from '../models/Balance.model';
 import { updateCustomerBalance } from './balanceController';
-import { parse, format } from 'date-fns'; // Importar o `parse` e `format` de `date-fns`
+import { parse, format } from 'date-fns';
 import sequelize from '../config/database';
 
 // CREATE
@@ -742,3 +742,113 @@ export async function checkinClassStudentByPair(req: Request, res: Response): Pr
     return res.status(500).json({ success: false, message: 'Erro ao efetuar check-in.' });
   }
 }
+
+// ─── Helpers cancelamento em lote ────────────────────────────────────────────
+
+function buildBulkCancelWhere(body: any) {
+  const { time, dayOfWeek, teacherId, productTypeId, dateFrom, dateTo } = body;
+  const today = format(new Date(), 'yyyy-MM-dd');
+
+  const criteria: any = {
+    active: true,
+    date: {
+      [Op.gte]: dateFrom || today,
+      ...(dateTo ? { [Op.lte]: dateTo } : {}),
+    },
+  };
+
+  if (time) criteria.time = { [Op.like]: `${time}%` };
+  if (teacherId) criteria.teacherId = teacherId;
+  if (productTypeId) criteria.productTypeId = productTypeId;
+
+  const andClauses: any[] = [criteria];
+
+  // dayOfWeek: JS 0=Dom...6=Sáb → MySQL DAYOFWEEK 1=Dom...7=Sáb
+  if (dayOfWeek !== undefined && dayOfWeek !== null && dayOfWeek !== '') {
+    andClauses.push(seqWhere(fn('DAYOFWEEK', col('date')), Number(dayOfWeek) + 1));
+  }
+
+  return { [Op.and]: andClauses };
+}
+
+// PREVIEW — retorna quantas aulas seriam canceladas
+export const previewBulkCancel = async (req: Request, res: Response): Promise<Response> => {
+  try {
+    const where = buildBulkCancelWhere(req.body);
+
+    const classes = await Class.findAll({
+      where,
+      attributes: ['id', 'date', 'time', 'teacherId', 'productTypeId'],
+      order: [['date', 'ASC'], ['time', 'ASC']],
+    });
+
+    const enriched = await Promise.all(
+      classes.map(async (c) => {
+        const [teacher, productType, enrolled] = await Promise.all([
+          Person.findByPk(c.teacherId, { attributes: ['name'] }),
+          ProductType.findByPk(c.productTypeId, { attributes: ['name'] }),
+          ClassStudent.count({ where: { classId: c.id, status: true } }),
+        ]);
+        return {
+          id: c.id,
+          date: c.date,
+          time: c.time,
+          teacher: teacher?.name ?? '—',
+          productType: productType?.name ?? '—',
+          enrolled,
+        };
+      })
+    );
+
+    return res.status(200).json({ success: true, count: classes.length, classes: enriched });
+  } catch (error) {
+    console.error('[BulkCancel] Erro no preview:', error);
+    return res.status(500).json({ success: false, error: 'Erro ao gerar preview' });
+  }
+};
+
+// EXECUTE — cancela as aulas encontradas e devolve créditos
+export const bulkCancelClasses = async (req: Request, res: Response): Promise<Response> => {
+  try {
+    const where = buildBulkCancelWhere(req.body);
+    const classes = await Class.findAll({ where });
+
+    let cancelled = 0;
+    let errors = 0;
+
+    for (const classData of classes) {
+      try {
+        classData.active = false;
+        await classData.save();
+
+        const classStudents = await ClassStudent.findAll({ where: { classId: classData.id } });
+        for (const cs of classStudents) {
+          cs.status = false;
+          await cs.save();
+
+          if (cs.studentId) {
+            const student = await Person.findByPk(cs.studentId);
+            if (student) {
+              await updateCustomerBalance(student.id, 1, cs.transactionId, true, classData.productTypeId);
+            }
+          }
+        }
+
+        cancelled++;
+      } catch (e) {
+        console.error(`[BulkCancel] Erro ao cancelar aula ${classData.id}:`, e);
+        errors++;
+      }
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: `${cancelled} aula(s) cancelada(s) com sucesso`,
+      cancelled,
+      errors,
+    });
+  } catch (error) {
+    console.error('[BulkCancel] Erro:', error);
+    return res.status(500).json({ success: false, error: 'Erro ao cancelar aulas' });
+  }
+};
