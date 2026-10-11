@@ -34,6 +34,7 @@ import webhookRoutes from './routes/webhookRoutes';
 import npsRoutes from './routes/npsRoutes';
 import couponRoutes from './routes/couponRoutes';
 import sensorIntegrationRoutes from './routes/sensorIntegrationRoutes';
+import turmaRoutes from './routes/turmaRoutes';
 import { authenticateToken } from './core/token/authenticateToken';
 import { correlationMiddleware } from './middleware/correlationMiddleware';
 import { loggerMiddleware } from './middleware/loggerMiddleware';
@@ -89,6 +90,7 @@ app.use('/webhook', webhookRoutes);
 app.use('/nps', npsRoutes);
 app.use('/coupons', couponRoutes);
 app.use('/integration/sensor', sensorIntegrationRoutes);
+app.use('/turmas', turmaRoutes);
 
 // CRM (habilitado via CRM_ENABLED=true)
 if (process.env.CRM_ENABLED === 'true') {

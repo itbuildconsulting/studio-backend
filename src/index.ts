@@ -1,8 +1,12 @@
 import app from './app';
 import { startLevelUpdateJob } from './jobs/levelUpdateJob';
+import { startTurmaScheduler } from './jobs/turmaScheduler';
 import Coupon from './models/Coupon.model';
 import CouponUsage from './models/CouponUsage.model';
 import Nps from './models/Nps.model';
+import Turma from './models/Turma.model';
+import TurmaSlot from './models/TurmaSlot.model';
+import sequelize from './config/database';
 
 const originalConsole = {
   log: console.log,
@@ -23,11 +27,29 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, async () => {
   console.log(`Server is running on port ${PORT}`);
   startLevelUpdateJob();
+  startTurmaScheduler();
 
   // Garante criação das tabelas novas no banco (no-op se já existirem)
   await Nps.sync().catch((err: Error) => console.error('[Sync] Nps error:', err));
   await Coupon.sync().catch((err: Error) => console.error('[Sync] Coupon error:', err));
   await CouponUsage.sync().catch((err: Error) => console.error('[Sync] CouponUsage error:', err));
+  // Adiciona colunas se ainda não existirem
+  const addColIfMissing = async (table: string, column: string, definition: string) => {
+    const [rows]: any = await sequelize.query(
+      'SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?',
+      { replacements: [table, column] },
+    );
+    if (rows.length === 0) {
+      await sequelize.query(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
+      console.log(`[Sync] Coluna ${table}.${column} adicionada`);
+    }
+  };
+
+  await Turma.sync().catch((err: Error) => console.error('[Sync] Turma error:', err));
+  await TurmaSlot.sync().catch((err: Error) => console.error('[Sync] TurmaSlot error:', err));
+  await addColIfMissing('class', 'turmaId', 'INT UNSIGNED NULL').catch((err: Error) => console.error('[Sync] turmaId migration error:', err));
+  await addColIfMissing('transactions', 'couponCode', 'VARCHAR(50) NULL').catch((err: Error) => console.error('[Sync] couponCode migration error:', err));
+  await addColIfMissing('transactions', 'discountAmount', 'INT NULL').catch((err: Error) => console.error('[Sync] discountAmount migration error:', err));
 
   if (process.env.CRM_ENABLED === 'true') {
     try {

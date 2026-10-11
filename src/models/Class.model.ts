@@ -16,6 +16,7 @@ interface ClassAttributes {
   productTypeId: number;
   title?: string;
   description?: string;
+  turmaId?: number | null;
 }
 
 // Interface para criação de novos registros, onde o campo `id` é opcional
@@ -35,6 +36,7 @@ class Class extends Model<ClassAttributes, ClassCreationAttributes> implements C
   public productTypeId!: number;
   public title?: string;
   public description?: string;
+  public turmaId?: number | null;
 
   // Timestamps
   public readonly createdAt!: Date;
@@ -93,6 +95,10 @@ Class.init(
     },
     description: {
       type: DataTypes.TEXT,
+      allowNull: true,
+    },
+    turmaId: {
+      type: DataTypes.INTEGER.UNSIGNED,
       allowNull: true,
     },
   },
