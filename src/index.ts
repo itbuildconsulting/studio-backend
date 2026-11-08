@@ -50,6 +50,7 @@ app.listen(PORT, async () => {
   await addColIfMissing('class', 'turmaId', 'INT UNSIGNED NULL').catch((err: Error) => console.error('[Sync] turmaId migration error:', err));
   await addColIfMissing('transactions', 'couponCode', 'VARCHAR(50) NULL').catch((err: Error) => console.error('[Sync] couponCode migration error:', err));
   await addColIfMissing('transactions', 'discountAmount', 'INT NULL').catch((err: Error) => console.error('[Sync] discountAmount migration error:', err));
+  await addColIfMissing('coupons', 'exclusiveProduct', 'TINYINT(1) NOT NULL DEFAULT 0').catch((err: Error) => console.error('[Sync] exclusiveProduct migration error:', err));
 
   if (process.env.CRM_ENABLED === 'true') {
     try {

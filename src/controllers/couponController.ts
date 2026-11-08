@@ -29,8 +29,13 @@ export async function validateAndApplyCoupon(
 
     if (coupon.productIds) {
         const allowed: number[] = JSON.parse(coupon.productIds);
-        const hasValid = productIds.some(id => allowed.includes(id));
-        if (!hasValid) return { valid: false, error: 'Cupom não válido para os produtos selecionados.' };
+        if (coupon.exclusiveProduct) {
+            const allAllowed = productIds.length > 0 && productIds.every(id => allowed.includes(id));
+            if (!allAllowed) return { valid: false, error: 'Este cupom só é válido na compra exclusiva deste produto.' };
+        } else {
+            const hasValid = productIds.some(id => allowed.includes(id));
+            if (!hasValid) return { valid: false, error: 'Cupom não válido para os produtos selecionados.' };
+        }
     }
 
     const discountAmount =
@@ -95,7 +100,7 @@ export const getCoupon = async (req: Request, res: Response): Promise<Response> 
 
 export const createCoupon = async (req: Request, res: Response): Promise<Response> => {
     try {
-        const { code, type, value, expiresAt, maxUses, maxUsesPerStudent, productIds } = req.body;
+        const { code, type, value, expiresAt, maxUses, maxUsesPerStudent, productIds, exclusiveProduct } = req.body;
         if (!code || !type || value === undefined)
             return res.status(400).json({ success: false, error: 'code, type e value são obrigatórios.' });
 
@@ -107,6 +112,7 @@ export const createCoupon = async (req: Request, res: Response): Promise<Respons
             maxUses: maxUses ?? null,
             maxUsesPerStudent: maxUsesPerStudent ?? 1,
             productIds: productIds ? JSON.stringify(productIds) : null,
+            exclusiveProduct: exclusiveProduct ?? false,
             active: true,
             usedCount: 0,
         });
@@ -124,7 +130,7 @@ export const updateCoupon = async (req: Request, res: Response): Promise<Respons
         const coupon = await Coupon.findByPk(req.params.id);
         if (!coupon) return res.status(404).json({ success: false, error: 'Cupom não encontrado.' });
 
-        const { code, type, value, expiresAt, maxUses, maxUsesPerStudent, productIds, active } = req.body;
+        const { code, type, value, expiresAt, maxUses, maxUsesPerStudent, productIds, exclusiveProduct, active } = req.body;
         await coupon.update({
             ...(code !== undefined && { code: String(code).toUpperCase().trim() }),
             ...(type !== undefined && { type }),
@@ -133,6 +139,7 @@ export const updateCoupon = async (req: Request, res: Response): Promise<Respons
             ...(maxUses !== undefined && { maxUses }),
             ...(maxUsesPerStudent !== undefined && { maxUsesPerStudent }),
             ...(productIds !== undefined && { productIds: productIds ? JSON.stringify(productIds) : null }),
+            ...(exclusiveProduct !== undefined && { exclusiveProduct }),
             ...(active !== undefined && { active }),
         });
         return res.json({ success: true, data: coupon });

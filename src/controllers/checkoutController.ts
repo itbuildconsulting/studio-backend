@@ -192,7 +192,13 @@ export const checkout = async (req: Request, res: Response, ): Promise<Response 
                     return res.status(500).json({ success: false, error: 'Falha ao criar transação:', details: result.message });
                 }
 
-                const save = await saveTransaction(result.data, creditTotal, personData.id);
+                const save = await saveTransaction(
+                    result.data,
+                    creditTotal,
+                    personData.id,
+                    couponResult?.valid ? couponCode : undefined,
+                    couponResult?.valid ? couponResult.discountAmount : undefined,
+                );
                 if (save.success) {
                     if (couponResult?.valid) {
                         await registerCouponUsage(couponResult.coupon.id, Number(personId), result.data.id);

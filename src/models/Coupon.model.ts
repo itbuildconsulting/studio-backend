@@ -11,6 +11,7 @@ class Coupon extends Model {
     public maxUses!: number | null;
     public maxUsesPerStudent!: number;
     public productIds!: string | null; // JSON array de IDs, null = todos
+    public exclusiveProduct!: boolean; // se true, carrinho deve ter APENAS esses produtos
     public usedCount!: number;
     public readonly createdAt!: Date;
     public readonly updatedAt!: Date;
@@ -27,6 +28,7 @@ Coupon.init(
         maxUses: { type: DataTypes.INTEGER, allowNull: true },
         maxUsesPerStudent: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 1 },
         productIds: { type: DataTypes.TEXT, allowNull: true },
+        exclusiveProduct: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
         usedCount: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
     },
     { sequelize, tableName: 'coupons' }

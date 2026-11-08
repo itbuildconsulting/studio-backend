@@ -183,8 +183,14 @@ export const checkoutPix = async (req: Request, res: Response): Promise<Response
                 }
 
                 // Salvar transação PIX (status pending)
-                const save = await saveTransaction(result.data, creditTotal, personData.id);
-                
+                const save = await saveTransaction(
+                    result.data,
+                    creditTotal,
+                    personData.id,
+                    couponResult?.valid ? couponCode : undefined,
+                    couponResult?.valid ? couponResult.discountAmount : undefined,
+                );
+
                 if (save.success) {
                     if (couponResult?.valid) {
                         await registerCouponUsage(couponResult.coupon.id, Number(personId), result.data.id);

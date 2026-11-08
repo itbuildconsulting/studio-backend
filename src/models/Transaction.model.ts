@@ -21,6 +21,7 @@ interface TransactionAttributes {
   discountType: number;
   discountPercent: number;
   discountAmount: number;
+  couponCode: string | null;
   closedAt: Date;
   createdAt: Date;
   updatedAt: Date;
@@ -49,6 +50,7 @@ class Transactions extends Model<TransactionAttributes, TransactionCreationAttri
   public discountType!: number;
   public discountPercent!: number;
   public discountAmount!: number;
+  public couponCode!: string | null;
   public closedAt!: Date;
 
   // Timestamps
@@ -129,6 +131,10 @@ Transactions.init({
   },
   discountAmount: {
     type: DataTypes.INTEGER,
+    allowNull: true,
+  },
+  couponCode: {
+    type: DataTypes.STRING(50),
     allowNull: true,
   },
   closedAt: {

@@ -25,16 +25,11 @@ interface TransactionData {
 }
 
 // Função para salvar transação
-export const saveTransaction = async (data: TransactionData, credit: number, studentId: number): Promise<{ success: boolean; message: string }> => {
+export const saveTransaction = async (data: TransactionData, credit: number, studentId: number, couponCode?: string, discountAmount?: number): Promise<{ success: boolean; message: string }> => {
     try {
-        //console.log('SAVE TRANSACTION');
-        //console.log(data.charges[0].id);
-        //console.log('[Data]', data);
-
-        // Criar o objeto de transação
         const objectTransaction = {
             status: data.status,
-            transactionType: 1,  // Assumindo que seja crédito
+            transactionType: 1,
             transactionId: data.id,
             transactionCode: data.code,
             chargeId: data.charges[0].id,
@@ -49,6 +44,8 @@ export const saveTransaction = async (data: TransactionData, credit: number, stu
             customerDocument: data.customer.document,
             balance: credit,
             closedAt: new Date(data.closed_at),
+            couponCode: couponCode ?? null,
+            discountAmount: discountAmount ? Math.round(discountAmount * 100) : null,
         };
 
         // Salvar a transação no banco de dados
